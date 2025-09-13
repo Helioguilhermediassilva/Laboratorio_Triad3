@@ -1,4 +1,4 @@
-import { Package, TrendingUp, AlertTriangle, CheckCircle } from "lucide-react";
+import { Package, TrendingUp, AlertTriangle, CheckCircle, Search, Filter } from "lucide-react";
 import StatsCard from "./StatsCard";
 import AssetCard from "./AssetCard";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import AddAssetForm from "./AddAssetForm";
+import AdvancedFilters, { FilterCriteria } from "./AdvancedFilters";
 import heroImage from "@/assets/hero-bg.jpg";
 import { useState } from "react";
 
@@ -81,11 +82,76 @@ const recentAssets = [
 
 export default function Dashboard() {
   const [assets, setAssets] = useState(recentAssets);
+  const [filteredAssets, setFilteredAssets] = useState(recentAssets);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isFiltersModalOpen, setIsFiltersModalOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeFilters, setActiveFilters] = useState<FilterCriteria | null>(null);
 
   const handleAddAsset = (newAsset: any) => {
-    setAssets(prev => [...prev, newAsset]);
+    const updatedAssets = [...assets, newAsset];
+    setAssets(updatedAssets);
+    applyFiltersAndSearch(updatedAssets, searchTerm, activeFilters);
     setIsAddModalOpen(false);
+  };
+
+  const applyFiltersAndSearch = (assetList: typeof recentAssets, search: string, filters: FilterCriteria | null) => {
+    let filtered = [...assetList];
+
+    // Apply search filter
+    if (search.trim()) {
+      filtered = filtered.filter(asset => 
+        asset.ticker.toLowerCase().includes(search.toLowerCase()) ||
+        asset.name.toLowerCase().includes(search.toLowerCase()) ||
+        asset.location.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+
+    // Apply advanced filters
+    if (filters) {
+      if (filters.category !== "all") {
+        filtered = filtered.filter(asset => asset.category === filters.category);
+      }
+      if (filters.broker !== "all") {
+        filtered = filtered.filter(asset => asset.location === filters.broker);
+      }
+      if (filters.minValue) {
+        filtered = filtered.filter(asset => asset.value >= parseFloat(filters.minValue));
+      }
+      if (filters.maxValue) {
+        filtered = filtered.filter(asset => asset.value <= parseFloat(filters.maxValue));
+      }
+      if (filters.dateFrom) {
+        filtered = filtered.filter(asset => new Date(asset.purchaseDate) >= new Date(filters.dateFrom));
+      }
+      if (filters.dateTo) {
+        filtered = filtered.filter(asset => new Date(asset.purchaseDate) <= new Date(filters.dateTo));
+      }
+      if (filters.status !== "all") {
+        filtered = filtered.filter(asset => asset.status === filters.status);
+      }
+      if (filters.condition !== "all") {
+        filtered = filtered.filter(asset => asset.condition === filters.condition);
+      }
+    }
+
+    setFilteredAssets(filtered);
+  };
+
+  const handleSearch = () => {
+    applyFiltersAndSearch(assets, searchTerm, activeFilters);
+  };
+
+  const handleApplyFilters = (filters: FilterCriteria) => {
+    setActiveFilters(filters);
+    applyFiltersAndSearch(assets, searchTerm, filters);
+    setIsFiltersModalOpen(false);
+  };
+
+  const handleClearFilters = () => {
+    setActiveFilters(null);
+    applyFiltersAndSearch(assets, searchTerm, null);
+    setIsFiltersModalOpen(false);
   };
 
   return (
@@ -138,13 +204,33 @@ export default function Dashboard() {
             <Input 
               placeholder="Buscar por ticker, nome ou corretora..." 
               className="flex-1"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
             />
-            <Button variant="default">
+            <Button variant="default" onClick={handleSearch}>
+              <Search className="h-4 w-4 mr-2" />
               Buscar
             </Button>
-            <Button variant="outline">
-              Filtros Avançados
-            </Button>
+            <Dialog open={isFiltersModalOpen} onOpenChange={setIsFiltersModalOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <Filter className="h-4 w-4 mr-2" />
+                  Filtros Avançados
+                  {activeFilters && (
+                    <span className="ml-2 bg-primary text-primary-foreground rounded-full px-2 py-0.5 text-xs">
+                      Ativo
+                    </span>
+                  )}
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <AdvancedFilters 
+                  onApplyFilters={handleApplyFilters}
+                  onClearFilters={handleClearFilters}
+                />
+              </DialogContent>
+            </Dialog>
           </div>
         </CardContent>
       </Card>
@@ -171,7 +257,7 @@ export default function Dashboard() {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {assets.map((asset) => (
+          {filteredAssets.map((asset) => (
             <AssetCard 
               key={asset.id} 
               asset={asset}
@@ -180,6 +266,33 @@ export default function Dashboard() {
             />
           ))}
         </div>
+
+        {filteredAssets.length === 0 && (
+          <div className="text-center py-12">
+            <div className="text-muted-foreground text-lg mb-2">
+              Nenhum ativo encontrado
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {searchTerm || activeFilters ? 
+                "Tente ajustar os filtros de busca ou limpar os filtros aplicados" : 
+                "Adicione novos ativos para começar"
+              }
+            </p>
+            {(searchTerm || activeFilters) && (
+              <Button 
+                variant="outline" 
+                className="mt-4"
+                onClick={() => {
+                  setSearchTerm("");
+                  setActiveFilters(null);
+                  setFilteredAssets(assets);
+                }}
+              >
+                Limpar Busca e Filtros
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
