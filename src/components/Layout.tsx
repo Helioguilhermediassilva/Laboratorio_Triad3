@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { NavLink, useLocation } from "react-router-dom";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -17,14 +18,15 @@ interface LayoutProps {
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "Carteira", href: "/assets", icon: Package },
-  { name: "Adicionar", href: "/add", icon: Plus },
-  { name: "Relatórios", href: "/reports", icon: BarChart3 },
-  { name: "Configurações", href: "/settings", icon: Settings },
+  { name: "Carteira", href: "/carteira", icon: Package },
+  { name: "Adicionar", href: "/adicionar", icon: Plus },
+  { name: "Relatórios", href: "/relatorios", icon: BarChart3 },
+  { name: "Configurações", href: "/configuracoes", icon: Settings },
 ];
 
 export default function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const location = useLocation();
 
   return (
     <div className="flex h-screen bg-background">
@@ -63,14 +65,25 @@ export default function Layout({ children }: LayoutProps) {
           {/* Navigation */}
           <nav className="flex-1 px-4 py-6 space-y-2">
             {navigation.map((item) => (
-              <a
+              <NavLink
                 key={item.name}
-                href={item.href}
-                className="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors hover:bg-secondary hover:text-secondary-foreground group"
+                to={item.href}
+                className={({ isActive }) => cn(
+                  "flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors group",
+                  isActive 
+                    ? "bg-primary text-primary-foreground shadow-sm" 
+                    : "hover:bg-secondary hover:text-secondary-foreground"
+                )}
+                onClick={() => setSidebarOpen(false)}
               >
-                <item.icon className="mr-3 h-5 w-5 text-muted-foreground group-hover:text-secondary-foreground" />
+                <item.icon className={cn(
+                  "mr-3 h-5 w-5 transition-colors",
+                  location.pathname === item.href 
+                    ? "text-primary-foreground" 
+                    : "text-muted-foreground group-hover:text-secondary-foreground"
+                )} />
                 {item.name}
-              </a>
+              </NavLink>
             ))}
           </nav>
         </div>
