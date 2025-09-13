@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import AddAssetForm from "./AddAssetForm";
 import AdvancedFilters, { FilterCriteria } from "./AdvancedFilters";
+import ViewAssetModal from "./ViewAssetModal";
+import EditAssetModal from "./EditAssetModal";
 import heroImage from "@/assets/hero-bg.jpg";
 import { useState } from "react";
 
@@ -87,6 +89,8 @@ export default function Dashboard() {
   const [isFiltersModalOpen, setIsFiltersModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilters, setActiveFilters] = useState<FilterCriteria | null>(null);
+  const [viewAsset, setViewAsset] = useState<any>(null);
+  const [editAsset, setEditAsset] = useState<any>(null);
 
   const handleAddAsset = (newAsset: any) => {
     const updatedAssets = [...assets, newAsset];
@@ -152,6 +156,23 @@ export default function Dashboard() {
     setActiveFilters(null);
     applyFiltersAndSearch(assets, searchTerm, null);
     setIsFiltersModalOpen(false);
+  };
+
+  const handleViewAsset = (asset: any) => {
+    setViewAsset(asset);
+  };
+
+  const handleEditAsset = (asset: any) => {
+    setEditAsset(asset);
+  };
+
+  const handleSaveAsset = (updatedAsset: any) => {
+    const updatedAssets = assets.map(asset => 
+      asset.id === updatedAsset.id ? updatedAsset : asset
+    );
+    setAssets(updatedAssets);
+    applyFiltersAndSearch(updatedAssets, searchTerm, activeFilters);
+    setEditAsset(null);
   };
 
   return (
@@ -261,8 +282,8 @@ export default function Dashboard() {
             <AssetCard 
               key={asset.id} 
               asset={asset}
-              onEdit={(asset) => console.log("Edit:", asset)}
-              onView={(asset) => console.log("View:", asset)}
+              onEdit={handleEditAsset}
+              onView={handleViewAsset}
             />
           ))}
         </div>
@@ -294,6 +315,21 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* View Asset Modal */}
+      <ViewAssetModal
+        asset={viewAsset}
+        isOpen={!!viewAsset}
+        onClose={() => setViewAsset(null)}
+      />
+
+      {/* Edit Asset Modal */}
+      <EditAssetModal
+        asset={editAsset}
+        isOpen={!!editAsset}
+        onClose={() => setEditAsset(null)}
+        onSave={handleSaveAsset}
+      />
     </div>
   );
 }
