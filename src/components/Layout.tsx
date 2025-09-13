@@ -17,7 +17,7 @@ interface LayoutProps {
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "Patrimônios", href: "/assets", icon: Package },
+  { name: "Carteira", href: "/assets", icon: Package },
   { name: "Adicionar", href: "/add", icon: Plus },
   { name: "Relatórios", href: "/reports", icon: BarChart3 },
   { name: "Configurações", href: "/settings", icon: Settings },

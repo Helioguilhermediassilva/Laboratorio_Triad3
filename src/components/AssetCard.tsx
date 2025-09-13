@@ -1,4 +1,4 @@
-import { Package, MapPin, Calendar, TrendingUp } from "lucide-react";
+import { TrendingUp, MapPin, Calendar, DollarSign } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,9 @@ interface Asset {
   purchaseDate: string;
   status: "active" | "maintenance" | "inactive";
   condition: "excellent" | "good" | "fair" | "poor";
+  ticker?: string;
+  quantity?: number;
+  currentPrice?: number;
 }
 
 interface AssetCardProps {
@@ -34,17 +37,23 @@ const conditionColors = {
 } as const;
 
 export default function AssetCard({ asset, onEdit, onView }: AssetCardProps) {
+  const isFinancialAsset = asset.ticker && asset.quantity && asset.currentPrice;
+  
   return (
     <Card className="hover:shadow-md transition-all duration-200 hover:-translate-y-1 bg-gradient-card border-border/50">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-primary/10 rounded-lg">
-              <Package className="h-5 w-5 text-primary" />
+              {isFinancialAsset ? (
+                <TrendingUp className="h-5 w-5 text-primary" />
+              ) : (
+                <DollarSign className="h-5 w-5 text-primary" />
+              )}
             </div>
             <div>
               <h3 className="font-semibold text-card-foreground line-clamp-1">
-                {asset.name}
+                {isFinancialAsset ? asset.ticker : asset.name}
               </h3>
               <p className="text-sm text-muted-foreground">{asset.category}</p>
             </div>
@@ -72,6 +81,15 @@ export default function AssetCard({ asset, onEdit, onView }: AssetCardProps) {
           <Calendar className="h-4 w-4 mr-2" />
           {new Date(asset.purchaseDate).toLocaleDateString('pt-BR')}
         </div>
+        
+        {isFinancialAsset && (
+          <div className="flex items-center text-sm text-muted-foreground">
+            <DollarSign className="h-4 w-4 mr-2" />
+            <span>
+              {asset.quantity} cotas × R$ {asset.currentPrice?.toFixed(2)}
+            </span>
+          </div>
+        )}
         
         <div className="flex items-center justify-between">
           <div className="flex items-center text-sm">
