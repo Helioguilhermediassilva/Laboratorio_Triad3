@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { 
   LayoutDashboard, 
-  Package, 
-  Plus, 
-  BarChart3, 
+  Building2, 
+  TrendingUp, 
+  Calculator, 
+  BookOpen, 
+  FileText, 
+  CreditCard,
+  BarChart3,
   Settings, 
   Menu,
   X
@@ -18,8 +22,12 @@ interface LayoutProps {
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "Carteira", href: "/carteira", icon: Package },
-  { name: "Adicionar", href: "/adicionar", icon: Plus },
+  { name: "Imobilizado", href: "/imobilizado", icon: Building2 },
+  { name: "Aplicações", href: "/aplicacoes", icon: TrendingUp },
+  { name: "Orçamentos", href: "/orcamentos", icon: Calculator },
+  { name: "Livro Caixa", href: "/livro-caixa", icon: BookOpen },
+  { name: "Imposto de Renda", href: "/imposto-renda", icon: FileText },
+  { name: "Contas Bancárias", href: "/contas-bancarias", icon: CreditCard },
   { name: "Relatórios", href: "/relatorios", icon: BarChart3 },
   { name: "Configurações", href: "/configuracoes", icon: Settings },
 ];
@@ -50,7 +58,7 @@ export default function Layout({ children }: LayoutProps) {
               <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center text-white font-bold">
                 T3
               </div>
-              <span className="ml-3 text-xl font-bold text-foreground">Triad3D</span>
+              <span className="ml-3 text-xl font-bold text-foreground">PatrimônioTech</span>
             </div>
             <Button
               variant="ghost"
@@ -104,7 +112,7 @@ export default function Layout({ children }: LayoutProps) {
           
           <div className="flex items-center space-x-4">
             <div className="text-sm text-muted-foreground">
-              Bem-vindo ao sistema de gestão
+              Gestão Inteligente de Patrimônio
             </div>
           </div>
         </header>
