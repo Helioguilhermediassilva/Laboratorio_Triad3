@@ -12,29 +12,29 @@ import EditAssetModal from "./EditAssetModal";
 import heroImage from "@/assets/hero-bg.jpg";
 import { useState } from "react";
 
-// Mock data - Financial Assets
+// Mock data - Patrimônio Geral
 const stats = [
   {
-    title: "Total de Ativos",
-    value: "47",
+    title: "Patrimônio Total",
+    value: "R$ 2.8M",
     icon: Package,
     change: { value: 12, type: "increase" as const }
   },
   {
-    title: "Valor da Carteira",
+    title: "Aplicações",
     value: "R$ 485.2K",
     icon: TrendingUp,
     change: { value: 8, type: "increase" as const }
   },
   {
-    title: "Rentabilidade",
-    value: "+15.8%",
+    title: "Imobilizado",
+    value: "R$ 1.2M",
     icon: CheckCircle,
     change: { value: 5, type: "increase" as const }
   },
   {
-    title: "Dividendos (Mês)",
-    value: "R$ 2.1K",
+    title: "Receita Mensal",
+    value: "R$ 18.5K",
     icon: AlertTriangle,
     change: { value: 22, type: "increase" as const }
   }
@@ -186,15 +186,15 @@ export default function Dashboard() {
         <div className="relative h-full flex items-center px-8">
           <div className="max-w-2xl text-white">
             <h1 className="text-4xl font-bold mb-4">
-              Gestão Inteligente de Ativos Financeiros
+              Gestão Inteligente de Patrimônio
             </h1>
             <p className="text-xl opacity-90 mb-6">
-              Controle total da sua carteira de investimentos com análises avançadas
+              Reúna todas as suas informações patrimoniais em um só lugar com comandos inteligentes
             </p>
             <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
               <DialogTrigger asChild>
                 <Button variant="secondary" size="lg" className="shadow-lg">
-                  Adicionar Novo Ativo
+                  Adicionar Novo Item
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -218,12 +218,12 @@ export default function Dashboard() {
       {/* Search and Filters */}
       <Card>
         <CardHeader>
-          <CardTitle>Buscar Ativos Financeiros</CardTitle>
+          <CardTitle>Buscar Itens do Patrimônio</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-4">
             <Input 
-              placeholder="Buscar por ticker, nome ou corretora..." 
+              placeholder="Buscar por nome, categoria ou localização..." 
               className="flex-1"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -260,7 +260,7 @@ export default function Dashboard() {
       <div>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-foreground">
-            Ativos na Carteira
+            Itens Recentes do Patrimônio
           </h2>
           <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
             <DialogTrigger asChild>

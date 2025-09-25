@@ -4,8 +4,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
-import Carteira from "./pages/Carteira";
-import Adicionar from "./pages/Adicionar";
+import Imobilizado from "./pages/Imobilizado";
+import Aplicacoes from "./pages/Aplicacoes";
+import Orcamentos from "./pages/Orcamentos";
+import LivroCaixa from "./pages/LivroCaixa";
+import ImpostoRenda from "./pages/ImpostoRenda";
+import ContasBancarias from "./pages/ContasBancarias";
 import Relatorios from "./pages/Relatorios";
 import Configuracoes from "./pages/Configuracoes";
 import NotFound from "./pages/NotFound";
@@ -20,8 +24,12 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/carteira" element={<Carteira />} />
-          <Route path="/adicionar" element={<Adicionar />} />
+          <Route path="/imobilizado" element={<Imobilizado />} />
+          <Route path="/aplicacoes" element={<Aplicacoes />} />
+          <Route path="/orcamentos" element={<Orcamentos />} />
+          <Route path="/livro-caixa" element={<LivroCaixa />} />
+          <Route path="/imposto-renda" element={<ImpostoRenda />} />
+          <Route path="/contas-bancarias" element={<ContasBancarias />} />
           <Route path="/relatorios" element={<Relatorios />} />
           <Route path="/configuracoes" element={<Configuracoes />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
