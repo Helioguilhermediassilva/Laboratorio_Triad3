@@ -58,7 +58,7 @@ export default function Layout({ children }: LayoutProps) {
               <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center text-white font-bold">
                 T3
               </div>
-              <span className="ml-3 text-xl font-bold text-foreground">PatrimônioTech</span>
+              <span className="ml-3 text-xl font-bold text-foreground">Triad3</span>
             </div>
             <Button
               variant="ghost"
