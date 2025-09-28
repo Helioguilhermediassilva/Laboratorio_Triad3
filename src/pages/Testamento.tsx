@@ -4,6 +4,11 @@ import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import NovoTestamentoModal from "@/components/NovoTestamentoModal";
+import VisualizarTestamentoModal from "@/components/VisualizarTestamentoModal";
+import EditarTestamentoModal from "@/components/EditarTestamentoModal";
 
 // Mock data for testament documents
 const mockTestamentos = [
@@ -61,7 +66,7 @@ const mockTestamentos = [
 interface TestamentCardProps {
   testamento: typeof mockTestamentos[0];
   onView: (id: number) => void;
-  onEdit: (id: number) => void;
+  onEdit: (testamento: any) => void;
   onDelete: (id: number) => void;
 }
 
@@ -163,23 +168,25 @@ function TestamentCard({ testamento, onView, onEdit, onDelete }: TestamentCardPr
         </div>
 
         <div className="flex space-x-2 pt-2">
-          <Button
-            size="sm"
-            variant="outline"
-            className="flex-1"
-            onClick={() => onView(testamento.id)}
-          >
-            <Eye className="w-4 h-4 mr-1" />
-            Visualizar
-          </Button>
-          {testamento.status === "Ativo" && (
+          <VisualizarTestamentoModal testamento={testamento}>
             <Button
               size="sm"
               variant="outline"
-              onClick={() => onEdit(testamento.id)}
+              className="flex-1"
             >
-              <Edit className="w-4 h-4" />
+              <Eye className="w-4 h-4 mr-1" />
+              Visualizar
             </Button>
+          </VisualizarTestamentoModal>
+          {testamento.status === "Ativo" && (
+            <EditarTestamentoModal testamento={testamento} onEdit={onEdit}>
+              <Button
+                size="sm"
+                variant="outline"
+              >
+                <Edit className="w-4 h-4" />
+              </Button>
+            </EditarTestamentoModal>
           )}
           <Button
             size="sm"
@@ -196,22 +203,38 @@ function TestamentCard({ testamento, onView, onEdit, onDelete }: TestamentCardPr
 }
 
 export default function Testamento() {
-  const [testamentos] = useState(mockTestamentos);
+  const [testamentos, setTestamentos] = useState(mockTestamentos);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [testamentoToDelete, setTestamentoToDelete] = useState<number | null>(null);
+  const { toast } = useToast();
 
   const handleView = (id: number) => {
     console.log("Visualizar testamento:", id);
   };
 
-  const handleEdit = (id: number) => {
-    console.log("Editar testamento:", id);
+  const handleEdit = (testamentoAtualizado: any) => {
+    setTestamentos(prev => prev.map(t => t.id === testamentoAtualizado.id ? testamentoAtualizado : t));
   };
 
   const handleDelete = (id: number) => {
-    console.log("Excluir testamento:", id);
+    setTestamentoToDelete(id);
+    setDeleteDialogOpen(true);
   };
 
-  const handleAddTestament = () => {
-    console.log("Adicionar novo testamento");
+  const confirmDelete = () => {
+    if (testamentoToDelete) {
+      setTestamentos(prev => prev.filter(t => t.id !== testamentoToDelete));
+      toast({
+        title: "Testamento excluído",
+        description: "O testamento foi removido com sucesso.",
+      });
+    }
+    setDeleteDialogOpen(false);
+    setTestamentoToDelete(null);
+  };
+
+  const handleAddTestament = (novoTestamento: any) => {
+    setTestamentos(prev => [...prev, novoTestamento]);
   };
 
   // Calculations
@@ -231,10 +254,12 @@ export default function Testamento() {
               Gerencie seus documentos testamentários e sucessão
             </p>
           </div>
-          <Button onClick={handleAddTestament}>
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Testamento
-          </Button>
+          <NovoTestamentoModal onAdd={handleAddTestament}>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Testamento
+            </Button>
+          </NovoTestamentoModal>
         </div>
 
         {/* Info Alert */}
@@ -326,14 +351,34 @@ export default function Testamento() {
               Comece organizando seus documentos testamentários.
             </p>
             <div className="mt-6">
-              <Button onClick={handleAddTestament}>
-                <Plus className="mr-2 h-4 w-4" />
-                Novo Testamento
-              </Button>
+              <NovoTestamentoModal onAdd={handleAddTestament}>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Novo Testamento
+                </Button>
+              </NovoTestamentoModal>
             </div>
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este testamento? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 }
