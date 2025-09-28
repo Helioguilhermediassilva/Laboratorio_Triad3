@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BookOpen, ArrowUpCircle, ArrowDownCircle, Calendar, Filter, Plus, Upload } from "lucide-react";
+import { BookOpen, ArrowUpCircle, ArrowDownCircle, Calendar, Filter, Plus, Upload, Search } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -191,12 +191,17 @@ export default function LivroCaixa() {
             <CardTitle>Filtros e Busca</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-              <Input
-                placeholder="Buscar transação..."
-                value={termoBusca}
-                onChange={(e) => setTermoBusca(e.target.value)}
-              />
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+              <div className="lg:col-span-2 flex gap-2">
+                <Input
+                  placeholder="Buscar transação..."
+                  value={termoBusca}
+                  onChange={(e) => setTermoBusca(e.target.value)}
+                />
+                <Button variant="outline" size="icon" title="Buscar">
+                  <Search className="h-4 w-4" />
+                </Button>
+              </div>
               
               <Select value={filtroTipo} onValueChange={setFiltroTipo}>
                 <SelectTrigger>
