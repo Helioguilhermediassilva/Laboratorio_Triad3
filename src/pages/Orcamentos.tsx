@@ -1,14 +1,17 @@
 import { useState } from "react";
-import { Calculator, TrendingUp, TrendingDown, DollarSign, Target } from "lucide-react";
+import { Calculator, TrendingUp, TrendingDown, DollarSign, Target, Plus } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
+import NovoOrcamentoModal from "@/components/NovoOrcamentoModal";
+import NovaMetaModal from "@/components/NovaMetaModal";
 
-// Mock data - Orçamentos
-const orcamentos = [
+// Mock data - Orçamentos iniciais
+const orcamentosIniciais = [
   {
     id: "1",
     nome: "Orçamento Familiar 2024",
@@ -28,11 +31,11 @@ const orcamentos = [
   }
 ];
 
-const metas = [
-  { nome: "Reserva de Emergência", valorMeta: 50000, valorAtual: 38000, prazo: "Dez 2024" },
-  { nome: "Viagem Europa", valorMeta: 25000, valorAtual: 12000, prazo: "Jun 2025" },
-  { nome: "Carro Novo", valorMeta: 80000, valorAtual: 45000, prazo: "Mar 2025" },
-  { nome: "Aposentadoria", valorMeta: 1000000, valorAtual: 285000, prazo: "2040" }
+const metasIniciais = [
+  { id: "1", nome: "Reserva de Emergência", valorMeta: 50000, valorAtual: 38000, prazo: "Dez 2024" },
+  { id: "2", nome: "Viagem Europa", valorMeta: 25000, valorAtual: 12000, prazo: "Jun 2025" },
+  { id: "3", nome: "Carro Novo", valorMeta: 80000, valorAtual: 45000, prazo: "Mar 2025" },
+  { id: "4", nome: "Aposentadoria", valorMeta: 1000000, valorAtual: 285000, prazo: "2040" }
 ];
 
 const OrcamentoCard = ({ categoria }: { categoria: any }) => {
@@ -119,9 +122,31 @@ const MetaCard = ({ meta }: { meta: any }) => {
 };
 
 export default function Orcamentos() {
+  const [orcamentos, setOrcamentos] = useState(orcamentosIniciais);
+  const [metas, setMetas] = useState(metasIniciais);
+  const [novoOrcamentoOpen, setNovoOrcamentoOpen] = useState(false);
+  const [novaMetaOpen, setNovaMetaOpen] = useState(false);
+  const { toast } = useToast();
+  
   const orcamento = orcamentos[0];
   const percentualGeral = (orcamento.totalRealizado / orcamento.totalPrevisto) * 100;
   const saldoGeral = orcamento.totalPrevisto - orcamento.totalRealizado;
+
+  const handleOrcamentoAdicionado = (novoOrcamento: any) => {
+    setOrcamentos(prev => [...prev, novoOrcamento]);
+    toast({
+      title: "Orçamento criado!",
+      description: "O orçamento foi criado com sucesso."
+    });
+  };
+
+  const handleMetaAdicionada = (novaMeta: any) => {
+    setMetas(prev => [...prev, novaMeta]);
+    toast({
+      title: "Meta criada!",
+      description: "A meta foi criada com sucesso."
+    });
+  };
   
   return (
     <Layout>
@@ -208,7 +233,10 @@ export default function Orcamentos() {
           <TabsContent value="orcamento" className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Categorias do Orçamento</h2>
-              <Button>Novo Orçamento</Button>
+              <Button onClick={() => setNovoOrcamentoOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Orçamento
+              </Button>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -221,7 +249,10 @@ export default function Orcamentos() {
           <TabsContent value="metas" className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Metas Financeiras</h2>
-              <Button>Nova Meta</Button>
+              <Button onClick={() => setNovaMetaOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Nova Meta
+              </Button>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -231,6 +262,19 @@ export default function Orcamentos() {
             </div>
           </TabsContent>
         </Tabs>
+
+        {/* Modals */}
+        <NovoOrcamentoModal 
+          open={novoOrcamentoOpen}
+          onOpenChange={setNovoOrcamentoOpen}
+          onOrcamentoAdicionado={handleOrcamentoAdicionado}
+        />
+        
+        <NovaMetaModal 
+          open={novaMetaOpen}
+          onOpenChange={setNovaMetaOpen}
+          onMetaAdicionada={handleMetaAdicionada}
+        />
       </div>
     </Layout>
   );
