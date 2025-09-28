@@ -214,7 +214,7 @@ export default function LivroCaixa() {
             <CardTitle>Filtros e Busca</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
               <Input
                 placeholder="Buscar transação..."
                 value={termoBusca}
@@ -257,17 +257,17 @@ export default function LivroCaixa() {
                   ))}
                 </SelectContent>
               </Select>
-
-              <div className="flex gap-2">
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nova Transação
-                </Button>
-                <Button variant="outline">
-                  <Upload className="h-4 w-4 mr-2" />
-                  Importar Livro Caixa
-                </Button>
-              </div>
+            </div>
+            
+            <div className="flex gap-2 mt-4">
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Nova Transação
+              </Button>
+              <Button variant="outline">
+                <Upload className="h-4 w-4 mr-2" />
+                Importar Livro Caixa
+              </Button>
             </div>
           </CardContent>
         </Card>
