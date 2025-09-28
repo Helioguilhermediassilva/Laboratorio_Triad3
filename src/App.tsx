@@ -10,6 +10,7 @@ import Orcamentos from "./pages/Orcamentos";
 import LivroCaixa from "./pages/LivroCaixa";
 import ImpostoRenda from "./pages/ImpostoRenda";
 import ContasBancarias from "./pages/ContasBancarias";
+import Dividas from "./pages/Dividas";
 import Relatorios from "./pages/Relatorios";
 import Configuracoes from "./pages/Configuracoes";
 import NotFound from "./pages/NotFound";
@@ -30,6 +31,7 @@ const App = () => (
           <Route path="/livro-caixa" element={<LivroCaixa />} />
           <Route path="/imposto-renda" element={<ImpostoRenda />} />
           <Route path="/contas-bancarias" element={<ContasBancarias />} />
+          <Route path="/dividas" element={<Dividas />} />
           <Route path="/relatorios" element={<Relatorios />} />
           <Route path="/configuracoes" element={<Configuracoes />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
