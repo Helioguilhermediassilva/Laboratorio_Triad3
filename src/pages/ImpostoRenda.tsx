@@ -104,7 +104,7 @@ const despesasDedutivel = [
   }
 ];
 
-const prazos = [
+const prazosInitial = [
   {
     evento: "Entrega da Declaração IRPF 2024",
     data: "2024-04-30",
@@ -139,6 +139,7 @@ export default function ImpostoRenda() {
   const [rendimentoIndex, setRendimentoIndex] = useState(-1);
   const [declaracoesList, setDeclaracoesList] = useState(declaracoes);
   const [rendimentosList, setRendimentosList] = useState(rendimentos);
+  const [prazosList, setPrazosList] = useState(prazosInitial);
   const { toast } = useToast();
   
   const declaracaoAtual = declaracoesList.find(d => d.ano === anoSelecionado) || declaracoesList[0];
@@ -210,6 +211,14 @@ export default function ImpostoRenda() {
   };
 
   const handleMarcarFeito = (evento: string, index: number) => {
+    setPrazosList(prev => 
+      prev.map((prazo, i) => 
+        i === index 
+          ? { ...prazo, status: "Concluído" }
+          : prazo
+      )
+    );
+    
     toast({
       title: "Marcado como feito!",
       description: `${evento} foi marcado como concluído.`
@@ -228,6 +237,7 @@ export default function ImpostoRenda() {
       case "Entregue": return "bg-green-100 text-green-800";
       case "Em Andamento": return "bg-yellow-100 text-yellow-800";
       case "Pendente": return "bg-red-100 text-red-800";
+      case "Concluído": return "bg-green-100 text-green-800";
       default: return "bg-gray-100 text-gray-800";
     }
   };
@@ -495,7 +505,7 @@ export default function ImpostoRenda() {
             </div>
             
             <div className="space-y-4">
-              {prazos.map((prazo, index) => (
+              {prazosList.map((prazo, index) => (
                 <Card key={index}>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
