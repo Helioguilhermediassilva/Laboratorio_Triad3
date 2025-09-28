@@ -6,9 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useToast } from "@/hooks/use-toast";
+import NovaContaModal from "@/components/NovaContaModal";
+import ExtratoModal from "@/components/ExtratoModal";
+import TransferirModal from "@/components/TransferirModal";
 
-// Mock data - Contas Bancárias
-const contas = [
+// Mock data - Contas Bancárias iniciais
+const contasIniciais = [
   {
     id: "1",
     banco: "Itaú",
@@ -103,7 +107,17 @@ const transacoesRecentes = [
   }
 ];
 
-const CartaoConta = ({ conta, mostrarSaldo }: { conta: typeof contas[0], mostrarSaldo: boolean }) => {
+const CartaoConta = ({ 
+  conta, 
+  mostrarSaldo, 
+  onExtrato, 
+  onTransferir 
+}: { 
+  conta: typeof contasIniciais[0];
+  mostrarSaldo: boolean;
+  onExtrato: (conta: any) => void;
+  onTransferir: (conta: any) => void;
+}) => {
   return (
     <Card className="relative overflow-hidden">
       <div 
@@ -156,10 +170,20 @@ const CartaoConta = ({ conta, mostrarSaldo }: { conta: typeof contas[0], mostrar
         </div>
         
         <div className="flex gap-2 pt-2">
-          <Button variant="outline" size="sm" className="flex-1">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex-1"
+            onClick={() => onExtrato(conta)}
+          >
             Extrato
           </Button>
-          <Button variant="default" size="sm" className="flex-1">
+          <Button 
+            variant="default" 
+            size="sm" 
+            className="flex-1"
+            onClick={() => onTransferir(conta)}
+          >
             Transferir
           </Button>
         </div>
@@ -170,9 +194,33 @@ const CartaoConta = ({ conta, mostrarSaldo }: { conta: typeof contas[0], mostrar
 
 export default function ContasBancarias() {
   const [mostrarSaldos, setMostrarSaldos] = useState(true);
+  const [contas, setContas] = useState(contasIniciais);
+  const [novaContaOpen, setNovaContaOpen] = useState(false);
+  const [extratoOpen, setExtratoOpen] = useState(false);
+  const [transferirOpen, setTransferirOpen] = useState(false);
+  const [contaSelecionada, setContaSelecionada] = useState<any>(null);
+  const { toast } = useToast();
 
   const saldoTotal = contas.reduce((sum, conta) => sum + conta.saldo, 0);
   const limiteTotal = contas.reduce((sum, conta) => sum + conta.limite, 0);
+
+  const handleContaAdicionada = (novaConta: any) => {
+    setContas(prev => [...prev, novaConta]);
+    toast({
+      title: "Conta adicionada!",
+      description: "A conta foi adicionada com sucesso."
+    });
+  };
+
+  const handleExtrato = (conta: any) => {
+    setContaSelecionada(conta);
+    setExtratoOpen(true);
+  };
+
+  const handleTransferir = (conta: any) => {
+    setContaSelecionada(conta);
+    setTransferirOpen(true);
+  };
   
   const formatCurrency = (valor: number) => {
     return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -204,7 +252,7 @@ export default function ContasBancarias() {
               {mostrarSaldos ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
               {mostrarSaldos ? 'Ocultar' : 'Mostrar'} Saldos
             </Button>
-            <Button>
+            <Button onClick={() => setNovaContaOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Nova Conta
             </Button>
@@ -266,6 +314,8 @@ export default function ContasBancarias() {
                 key={conta.id} 
                 conta={conta} 
                 mostrarSaldo={mostrarSaldos}
+                onExtrato={handleExtrato}
+                onTransferir={handleTransferir}
               />
             ))}
           </div>
@@ -333,6 +383,26 @@ export default function ContasBancarias() {
             </Table>
           </CardContent>
         </Card>
+
+        {/* Modals */}
+        <NovaContaModal 
+          open={novaContaOpen}
+          onOpenChange={setNovaContaOpen}
+          onContaAdicionada={handleContaAdicionada}
+        />
+        
+        <ExtratoModal 
+          open={extratoOpen}
+          onOpenChange={setExtratoOpen}
+          conta={contaSelecionada}
+        />
+        
+        <TransferirModal 
+          open={transferirOpen}
+          onOpenChange={setTransferirOpen}
+          contaOrigem={contaSelecionada}
+          contas={contas}
+        />
       </div>
     </Layout>
   );
