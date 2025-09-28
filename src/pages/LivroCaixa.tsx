@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BookOpen, ArrowUpCircle, ArrowDownCircle, Calendar, Filter, Plus, Upload } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,90 +7,24 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import NovaTransacaoModal from "@/components/NovaTransacaoModal";
+import ImportarLivroCaixaModal from "@/components/ImportarLivroCaixaModal";
 
-// Mock data - Livro Caixa
-const transacoes = [
-  {
-    id: "1",
-    data: "2024-01-15",
-    descricao: "Salário - Empresa XYZ",
-    categoria: "Salário",
-    tipo: "entrada" as const,
-    valor: 8500,
-    conta: "Conta Corrente Itaú",
-    observacoes: "Salário mensal"
-  },
-  {
-    id: "2",
-    data: "2024-01-16",
-    descricao: "Aluguel Apartamento",
-    categoria: "Moradia",
-    tipo: "saida" as const,
-    valor: 2200,
-    conta: "Conta Corrente Itaú",
-    observacoes: "Aluguel mensal do apartamento"
-  },
-  {
-    id: "3",
-    data: "2024-01-17",
-    descricao: "Dividendos PETR4",
-    categoria: "Investimentos",
-    tipo: "entrada" as const,
-    valor: 450,
-    conta: "Conta Corrente XP",
-    observacoes: "Dividendos ações Petrobras"
-  },
-  {
-    id: "4",
-    data: "2024-01-18",
-    descricao: "Supermercado Extra",
-    categoria: "Alimentação",
-    tipo: "saida" as const,
-    valor: 380,
-    conta: "Cartão de Crédito",
-    observacoes: "Compras mensais"
-  },
-  {
-    id: "5",
-    data: "2024-01-19",
-    descricao: "Freelance - Design",
-    categoria: "Freelance",
-    tipo: "entrada" as const,
-    valor: 1200,
-    conta: "Conta Corrente Nubank",
-    observacoes: "Projeto de identidade visual"
-  },
-  {
-    id: "6",
-    data: "2024-01-20",
-    descricao: "Gasolina Posto Shell",
-    categoria: "Transporte",
-    tipo: "saida" as const,
-    valor: 85,
-    conta: "Cartão de Débito",
-    observacoes: "Abastecimento Honda Civic"
-  },
-  {
-    id: "7",
-    data: "2024-01-21",
-    descricao: "Consulta Médica",
-    categoria: "Saúde",
-    tipo: "saida" as const,
-    valor: 250,
-    conta: "Cartão de Crédito",
-    observacoes: "Consulta cardiologista"
-  },
-  {
-    id: "8",
-    data: "2024-01-22",
-    descricao: "Venda Produto Online",
-    categoria: "Vendas",
-    tipo: "entrada" as const,
-    valor: 650,
-    conta: "PayPal",
-    observacoes: "Venda curso online"
-  }
-];
+type Transacao = {
+  id: string;
+  data: string;
+  descricao: string;
+  categoria: string;
+  tipo: string;
+  valor: number;
+  conta: string;
+  observacoes: string | null;
+  created_at?: string;
+  updated_at?: string;
+  user_id?: string;
+};
 
 const categorias = [
   "Todas",
@@ -121,13 +55,56 @@ export default function LivroCaixa() {
   const [filtroConta, setFiltroConta] = useState("Todas");
   const [filtroTipo, setFiltroTipo] = useState("todos");
   const [termoBusca, setTermoBusca] = useState("");
+  const [transacoes, setTransacoes] = useState<Transacao[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [novaTransacaoOpen, setNovaTransacaoOpen] = useState(false);
+  const [importarOpen, setImportarOpen] = useState(false);
+  const { toast } = useToast();
+
+  // Fetch transações from Supabase
+  const fetchTransacoes = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast({
+          title: "Erro",
+          description: "Você precisa estar logado para ver suas transações.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('transacoes')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('data', { ascending: false });
+
+      if (error) throw error;
+
+      setTransacoes(data || []);
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao carregar transações.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTransacoes();
+  }, []);
 
   const transacoesFiltradas = transacoes.filter(transacao => {
     const matchCategoria = filtroCategoria === "Todas" || transacao.categoria === filtroCategoria;
     const matchConta = filtroConta === "Todas" || transacao.conta === filtroConta;
     const matchTipo = filtroTipo === "todos" || transacao.tipo === filtroTipo;
     const matchBusca = transacao.descricao.toLowerCase().includes(termoBusca.toLowerCase()) ||
-                      transacao.observacoes.toLowerCase().includes(termoBusca.toLowerCase());
+                      (transacao.observacoes && transacao.observacoes.toLowerCase().includes(termoBusca.toLowerCase()));
     
     return matchCategoria && matchConta && matchTipo && matchBusca;
   });
@@ -260,11 +237,11 @@ export default function LivroCaixa() {
             </div>
             
             <div className="flex gap-2 mt-4">
-              <Button>
+              <Button onClick={() => setNovaTransacaoOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Nova Transação
               </Button>
-              <Button variant="outline">
+              <Button variant="outline" onClick={() => setImportarOpen(true)}>
                 <Upload className="h-4 w-4 mr-2" />
                 Importar Livro Caixa
               </Button>
@@ -278,79 +255,100 @@ export default function LivroCaixa() {
             <CardTitle>Transações ({transacoesFiltradas.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead>Categoria</TableHead>
-                  <TableHead>Conta</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
-                  <TableHead>Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {transacoesFiltradas.map((transacao) => (
-                  <TableRow key={transacao.id}>
-                    <TableCell>{formatDate(transacao.data)}</TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{transacao.descricao}</div>
-                        {transacao.observacoes && (
-                          <div className="text-sm text-muted-foreground">
-                            {transacao.observacoes}
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{transacao.categoria}</Badge>
-                    </TableCell>
-                    <TableCell className="text-sm">{transacao.conta}</TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={transacao.tipo === "entrada" ? "default" : "destructive"}
-                        className="capitalize"
-                      >
-                        {transacao.tipo === "entrada" ? (
-                          <ArrowUpCircle className="h-3 w-3 mr-1" />
-                        ) : (
-                          <ArrowDownCircle className="h-3 w-3 mr-1" />
-                        )}
-                        {transacao.tipo}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className={`text-right font-medium ${
-                      transacao.tipo === "entrada" ? "text-green-600" : "text-red-600"
-                    }`}>
-                      {transacao.tipo === "entrada" ? "+" : "-"}
-                      {formatCurrency(transacao.valor)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm">
-                          Editar
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-
-            {transacoesFiltradas.length === 0 && (
+            {loading ? (
               <div className="text-center py-8">
-                <div className="text-muted-foreground text-lg mb-2">
-                  Nenhuma transação encontrada
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Tente ajustar os filtros ou adicionar novas transações
-                </p>
+                <div className="text-muted-foreground">Carregando transações...</div>
               </div>
+            ) : (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead>Categoria</TableHead>
+                      <TableHead>Conta</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                      <TableHead>Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {transacoesFiltradas.map((transacao) => (
+                      <TableRow key={transacao.id}>
+                        <TableCell>{formatDate(transacao.data)}</TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{transacao.descricao}</div>
+                            {transacao.observacoes && (
+                              <div className="text-sm text-muted-foreground">
+                                {transacao.observacoes}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{transacao.categoria}</Badge>
+                        </TableCell>
+                        <TableCell className="text-sm">{transacao.conta}</TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant={transacao.tipo === "entrada" ? "default" : "destructive"}
+                            className="capitalize"
+                          >
+                            {transacao.tipo === "entrada" ? (
+                              <ArrowUpCircle className="h-3 w-3 mr-1" />
+                            ) : (
+                              <ArrowDownCircle className="h-3 w-3 mr-1" />
+                            )}
+                            {transacao.tipo}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className={`text-right font-medium ${
+                          transacao.tipo === "entrada" ? "text-green-600" : "text-red-600"
+                        }`}>
+                          {transacao.tipo === "entrada" ? "+" : "-"}
+                          {formatCurrency(transacao.valor)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button variant="outline" size="sm">
+                              Editar
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+
+                {transacoesFiltradas.length === 0 && !loading && (
+                  <div className="text-center py-8">
+                    <div className="text-muted-foreground text-lg mb-2">
+                      Nenhuma transação encontrada
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Tente ajustar os filtros ou adicionar novas transações
+                    </p>
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
+
+        {/* Modals */}
+        <NovaTransacaoModal 
+          open={novaTransacaoOpen}
+          onOpenChange={setNovaTransacaoOpen}
+          onTransacaoAdded={fetchTransacoes}
+        />
+        
+        <ImportarLivroCaixaModal 
+          open={importarOpen}
+          onOpenChange={setImportarOpen}
+          onTransacoesImported={fetchTransacoes}
+        />
       </div>
     </Layout>
   );
