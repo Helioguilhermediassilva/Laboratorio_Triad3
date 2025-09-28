@@ -8,14 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import NovaTransacaoModal from "@/components/NovaTransacaoModal";
 import ImportarLivroCaixaModal from "@/components/ImportarLivroCaixaModal";
-import AuthModal from "@/components/AuthModal";
-import { User } from "@supabase/supabase-js";
 
-// Mock data - Livro Caixa (para usuários não logados)
-const mockTransacoes = [
+// Dados de exemplo - Livro Caixa
+const transacoesExemplo = [
   {
     id: "1",
     data: "2024-01-15",
@@ -111,104 +108,24 @@ export default function LivroCaixa() {
   const [filtroConta, setFiltroConta] = useState("Todas");
   const [filtroTipo, setFiltroTipo] = useState("todos");
   const [termoBusca, setTermoBusca] = useState("");
-  const [transacoes, setTransacoes] = useState<Transacao[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [transacoes, setTransacoes] = useState<Transacao[]>(transacoesExemplo);
+  const [loading, setLoading] = useState(false);
   const [novaTransacaoOpen, setNovaTransacaoOpen] = useState(false);
   const [importarOpen, setImportarOpen] = useState(false);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
   const { toast } = useToast();
 
-  // Check auth status
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      
-      if (user) {
-        fetchTransacoes();
-      } else {
-        // Use mock data for non-logged users
-        setTransacoes(mockTransacoes);
-        setLoading(false);
-      }
-    };
-
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          fetchTransacoes();
-        } else {
-          setTransacoes(mockTransacoes);
-          setLoading(false);
-        }
-      }
-    );
-
-    checkAuth();
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // Fetch transações from Supabase (only for logged users)
-  const fetchTransacoes = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        setTransacoes(mockTransacoes);
-        setLoading(false);
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('transacoes')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('data', { ascending: false });
-
-      if (error) throw error;
-
-      setTransacoes(data || []);
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message || "Erro ao carregar transações.",
-        variant: "destructive"
-      });
-      // Fallback to mock data on error
-      setTransacoes(mockTransacoes);
-    } finally {
-      setLoading(false);
-    }
+  const handleTransacaoAdded = () => {
+    toast({
+      title: "Transação adicionada!",
+      description: "A transação foi adicionada com sucesso."
+    });
   };
 
-  const handleActionRequiringAuth = (action: () => void) => {
-    if (!user) {
-      setAuthModalOpen(true);
-    } else {
-      action();
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      
-      toast({
-        title: "Logout realizado",
-        description: "Você foi desconectado com sucesso."
-      });
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message || "Erro ao fazer logout.",
-        variant: "destructive"
-      });
-    }
+  const handleTransacoesImported = () => {
+    toast({
+      title: "Transações importadas!",
+      description: "As transações foram importadas com sucesso."
+    });
   };
 
   const transacoesFiltradas = transacoes.filter(transacao => {
@@ -243,29 +160,13 @@ export default function LivroCaixa() {
     <Layout>
       <div className="space-y-8">
         {/* Header */}
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">
-              Livro Caixa
-            </h1>
-            <p className="text-muted-foreground">
-              Controle detalhado de todas as suas receitas e despesas
-              {!user && (
-                <span className="block text-sm text-amber-600 mt-1">
-                  Modo demonstração - Faça login para salvar suas transações
-                </span>
-              )}
-            </p>
-          </div>
-          {user ? (
-            <Button variant="outline" onClick={handleLogout}>
-              Sair
-            </Button>
-          ) : (
-            <Button onClick={() => setAuthModalOpen(true)}>
-              Entrar
-            </Button>
-          )}
+        <div>
+          <h1 className="text-3xl font-bold text-foreground mb-2">
+            Livro Caixa
+          </h1>
+          <p className="text-muted-foreground">
+            Controle detalhado de todas as suas receitas e despesas
+          </p>
         </div>
 
         {/* Summary Cards */}
@@ -370,11 +271,11 @@ export default function LivroCaixa() {
             </div>
             
             <div className="flex gap-2 mt-4">
-              <Button onClick={() => handleActionRequiringAuth(() => setNovaTransacaoOpen(true))}>
+              <Button onClick={() => setNovaTransacaoOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Nova Transação
               </Button>
-              <Button variant="outline" onClick={() => handleActionRequiringAuth(() => setImportarOpen(true))}>
+              <Button variant="outline" onClick={() => setImportarOpen(true)}>
                 <Upload className="h-4 w-4 mr-2" />
                 Importar Livro Caixa
               </Button>
@@ -474,25 +375,13 @@ export default function LivroCaixa() {
         <NovaTransacaoModal 
           open={novaTransacaoOpen}
           onOpenChange={setNovaTransacaoOpen}
-          onTransacaoAdded={fetchTransacoes}
+          onTransacaoAdded={handleTransacaoAdded}
         />
         
         <ImportarLivroCaixaModal 
           open={importarOpen}
           onOpenChange={setImportarOpen}
-          onTransacoesImported={fetchTransacoes}
-        />
-        
-        <AuthModal 
-          open={authModalOpen}
-          onOpenChange={setAuthModalOpen}
-          onSuccess={() => {
-            fetchTransacoes();
-            toast({
-              title: "Bem-vindo!",
-              description: "Agora você pode gerenciar suas transações."
-            });
-          }}
+          onTransacoesImported={handleTransacoesImported}
         />
       </div>
     </Layout>
