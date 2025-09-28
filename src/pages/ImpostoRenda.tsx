@@ -12,10 +12,13 @@ import NovaDeclaracaoModal from "@/components/NovaDeclaracaoModal";
 import AdicionarRendimentoModal from "@/components/AdicionarRendimentoModal";
 import AdicionarDespesaModal from "@/components/AdicionarDespesaModal";
 import AdicionarLembreteModal from "@/components/AdicionarLembreteModal";
+import EditarDeclaracaoModal from "@/components/EditarDeclaracaoModal";
+import VisualizarReciboModal from "@/components/VisualizarReciboModal";
 
 // Mock data - Imposto de Renda
 const declaracoes = [
   {
+    id: "1",
     ano: 2024,
     status: "Em Andamento",
     prazoLimite: "2024-04-30",
@@ -24,6 +27,7 @@ const declaracoes = [
     valorRestituir: 0
   },
   {
+    id: "2",
     ano: 2023,
     status: "Entregue",
     prazoLimite: "2023-04-28",
@@ -32,6 +36,7 @@ const declaracoes = [
     valorRestituir: 1250
   },
   {
+    id: "3",
     ano: 2022,
     status: "Entregue",
     prazoLimite: "2022-04-29",
@@ -122,13 +127,42 @@ export default function ImpostoRenda() {
   const [adicionarRendimentoOpen, setAdicionarRendimentoOpen] = useState(false);
   const [adicionarDespesaOpen, setAdicionarDespesaOpen] = useState(false);
   const [adicionarLembreteOpen, setAdicionarLembreteOpen] = useState(false);
+  const [editarDeclaracaoOpen, setEditarDeclaracaoOpen] = useState(false);
+  const [visualizarReciboOpen, setVisualizarReciboOpen] = useState(false);
+  const [declaracaoSelecionada, setDeclaracaoSelecionada] = useState<any>(null);
+  const [declaracoesList, setDeclaracoesList] = useState(declaracoes);
   const { toast } = useToast();
   
-  const declaracaoAtual = declaracoes.find(d => d.ano === anoSelecionado) || declaracoes[0];
+  const declaracaoAtual = declaracoesList.find(d => d.ano === anoSelecionado) || declaracoesList[0];
   const rendimentosAno = rendimentos.filter(r => r.ano === anoSelecionado);
   const totalRendimentos = rendimentosAno.reduce((sum, r) => sum + r.valor, 0);
   const totalIRRF = rendimentosAno.reduce((sum, r) => sum + r.irrf, 0);
   const totalDeducoes = despesasDedutivel.reduce((sum, d) => sum + d.valor, 0);
+
+  const handleEditarDeclaracao = (declaracao: any) => {
+    setDeclaracaoSelecionada(declaracao);
+    setEditarDeclaracaoOpen(true);
+  };
+
+  const handleVisualizarRecibo = (declaracao: any) => {
+    setDeclaracaoSelecionada(declaracao);
+    setVisualizarReciboOpen(true);
+  };
+
+  const handleDeclaracaoUpdated = (updatedDeclaracao: any) => {
+    setDeclaracoesList(prev => 
+      prev.map(d => 
+        d.id === declaracaoSelecionada.id 
+          ? { ...updatedDeclaracao, id: d.id }
+          : d
+      )
+    );
+    
+    toast({
+      title: "Declaração atualizada!",
+      description: "As alterações foram salvas com sucesso."
+    });
+  };
 
   const formatCurrency = (valor: number) => {
     return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -263,8 +297,8 @@ export default function ImpostoRenda() {
             </div>
             
             <div className="grid gap-4">
-              {declaracoes.map((declaracao) => (
-                <Card key={declaracao.ano}>
+              {declaracoesList.map((declaracao) => (
+                <Card key={declaracao.id}>
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div className="space-y-2">
@@ -310,15 +344,15 @@ export default function ImpostoRenda() {
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => handleEditarItem('declaração', declaracao)}
+                          onClick={() => handleEditarDeclaracao(declaracao)}
                         >
                           Editar
                         </Button>
-                        {declaracao.status === "Entregue" && (
+                        {declaracao.status === "Entregue" && declaracao.recibo && (
                           <Button 
                             variant="outline" 
                             size="sm"
-                            onClick={() => handleDownloadRecibo(declaracao.recibo!)}
+                            onClick={() => handleVisualizarRecibo(declaracao)}
                           >
                             <Download className="h-4 w-4 mr-1" />
                             Recibo
@@ -510,6 +544,19 @@ export default function ImpostoRenda() {
               description: "Lembrete adicionado à sua agenda fiscal."
             });
           }}
+        />
+        
+        <EditarDeclaracaoModal 
+          open={editarDeclaracaoOpen}
+          onOpenChange={setEditarDeclaracaoOpen}
+          declaracao={declaracaoSelecionada}
+          onDeclaracaoUpdated={handleDeclaracaoUpdated}
+        />
+        
+        <VisualizarReciboModal 
+          open={visualizarReciboOpen}
+          onOpenChange={setVisualizarReciboOpen}
+          declaracao={declaracaoSelecionada}
         />
       </div>
     </Layout>
