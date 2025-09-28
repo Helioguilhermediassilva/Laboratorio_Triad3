@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CreditCard, TrendingUp, TrendingDown, Eye, EyeOff, MoreHorizontal, Plus } from "lucide-react";
+import { CreditCard, TrendingUp, TrendingDown, Eye, EyeOff, MoreHorizontal, Plus, Upload, Edit } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useToast } from "@/hooks/use-toast";
 import NovaContaModal from "@/components/NovaContaModal";
 import ExtratoModal from "@/components/ExtratoModal";
-import TransferirModal from "@/components/TransferirModal";
+import ImportarExtratoModal from "@/components/ImportarExtratoModal";
+import EditarContaModal from "@/components/EditarContaModal";
 
 // Mock data - Contas Bancárias iniciais
 const contasIniciais = [
@@ -111,12 +112,14 @@ const CartaoConta = ({
   conta, 
   mostrarSaldo, 
   onExtrato, 
-  onTransferir 
+  onImportarExtrato,
+  onEditar
 }: { 
   conta: typeof contasIniciais[0];
   mostrarSaldo: boolean;
   onExtrato: (conta: any) => void;
-  onTransferir: (conta: any) => void;
+  onImportarExtrato: (conta: any) => void;
+  onEditar: (conta: any) => void;
 }) => {
   return (
     <Card className="relative overflow-hidden">
@@ -179,12 +182,22 @@ const CartaoConta = ({
             Extrato
           </Button>
           <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex-1"
+            onClick={() => onImportarExtrato(conta)}
+          >
+            <Upload className="h-3 w-3 mr-1" />
+            Importar
+          </Button>
+          <Button 
             variant="default" 
             size="sm" 
             className="flex-1"
-            onClick={() => onTransferir(conta)}
+            onClick={() => onEditar(conta)}
           >
-            Transferir
+            <Edit className="h-3 w-3 mr-1" />
+            Editar
           </Button>
         </div>
       </CardContent>
@@ -197,7 +210,8 @@ export default function ContasBancarias() {
   const [contas, setContas] = useState(contasIniciais);
   const [novaContaOpen, setNovaContaOpen] = useState(false);
   const [extratoOpen, setExtratoOpen] = useState(false);
-  const [transferirOpen, setTransferirOpen] = useState(false);
+  const [importarExtratoOpen, setImportarExtratoOpen] = useState(false);
+  const [editarContaOpen, setEditarContaOpen] = useState(false);
   const [contaSelecionada, setContaSelecionada] = useState<any>(null);
   const { toast } = useToast();
 
@@ -217,9 +231,33 @@ export default function ContasBancarias() {
     setExtratoOpen(true);
   };
 
-  const handleTransferir = (conta: any) => {
+  const handleImportarExtrato = (conta: any) => {
     setContaSelecionada(conta);
-    setTransferirOpen(true);
+    setImportarExtratoOpen(true);
+  };
+
+  const handleEditar = (conta: any) => {
+    setContaSelecionada(conta);
+    setEditarContaOpen(true);
+  };
+
+  const handleExtratoImportado = () => {
+    toast({
+      title: "Extrato importado!",
+      description: "As transações foram sincronizadas com sucesso."
+    });
+  };
+
+  const handleContaEditada = (contaEditada: any) => {
+    setContas(prev => 
+      prev.map(conta => 
+        conta.id === contaEditada.id ? contaEditada : conta
+      )
+    );
+    toast({
+      title: "Conta atualizada!",
+      description: "Os dados da conta foram atualizados com sucesso."
+    });
   };
   
   const formatCurrency = (valor: number) => {
@@ -315,7 +353,8 @@ export default function ContasBancarias() {
                 conta={conta} 
                 mostrarSaldo={mostrarSaldos}
                 onExtrato={handleExtrato}
-                onTransferir={handleTransferir}
+                onImportarExtrato={handleImportarExtrato}
+                onEditar={handleEditar}
               />
             ))}
           </div>
@@ -397,11 +436,18 @@ export default function ContasBancarias() {
           conta={contaSelecionada}
         />
         
-        <TransferirModal 
-          open={transferirOpen}
-          onOpenChange={setTransferirOpen}
-          contaOrigem={contaSelecionada}
-          contas={contas}
+        <ImportarExtratoModal 
+          open={importarExtratoOpen}
+          onOpenChange={setImportarExtratoOpen}
+          conta={contaSelecionada}
+          onExtratoImportado={handleExtratoImportado}
+        />
+        
+        <EditarContaModal 
+          open={editarContaOpen}
+          onOpenChange={setEditarContaOpen}
+          conta={contaSelecionada}
+          onContaEditada={handleContaEditada}
         />
       </div>
     </Layout>
