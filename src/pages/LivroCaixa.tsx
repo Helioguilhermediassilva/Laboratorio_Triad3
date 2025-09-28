@@ -11,7 +11,62 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import NovaTransacaoModal from "@/components/NovaTransacaoModal";
 import ImportarLivroCaixaModal from "@/components/ImportarLivroCaixaModal";
-import { LogOut } from "lucide-react";
+import AuthModal from "@/components/AuthModal";
+import { User } from "@supabase/supabase-js";
+
+// Mock data - Livro Caixa (para usuários não logados)
+const mockTransacoes = [
+  {
+    id: "1",
+    data: "2024-01-15",
+    descricao: "Salário - Empresa XYZ",
+    categoria: "Salário",
+    tipo: "entrada" as const,
+    valor: 8500,
+    conta: "Conta Corrente Itaú",
+    observacoes: "Salário mensal"
+  },
+  {
+    id: "2",
+    data: "2024-01-16",
+    descricao: "Aluguel Apartamento",
+    categoria: "Moradia",
+    tipo: "saida" as const,
+    valor: 2200,
+    conta: "Conta Corrente Itaú",
+    observacoes: "Aluguel mensal do apartamento"
+  },
+  {
+    id: "3",
+    data: "2024-01-17",
+    descricao: "Dividendos PETR4",
+    categoria: "Investimentos",
+    tipo: "entrada" as const,
+    valor: 450,
+    conta: "Conta Corrente XP",
+    observacoes: "Dividendos ações Petrobras"
+  },
+  {
+    id: "4",
+    data: "2024-01-18",
+    descricao: "Supermercado Extra",
+    categoria: "Alimentação",
+    tipo: "saida" as const,
+    valor: 380,
+    conta: "Cartão de Crédito",
+    observacoes: "Compras mensais"
+  },
+  {
+    id: "5",
+    data: "2024-01-19",
+    descricao: "Freelance - Design",
+    categoria: "Freelance",
+    tipo: "entrada" as const,
+    valor: 1200,
+    conta: "Conta Corrente Nubank",
+    observacoes: "Projeto de identidade visual"
+  }
+];
 
 type Transacao = {
   id: string;
@@ -60,37 +115,51 @@ export default function LivroCaixa() {
   const [loading, setLoading] = useState(true);
   const [novaTransacaoOpen, setNovaTransacaoOpen] = useState(false);
   const [importarOpen, setImportarOpen] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
   const { toast } = useToast();
 
-  const handleLogout = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+  // Check auth status
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
       
-      toast({
-        title: "Logout realizado",
-        description: "Você foi desconectado com sucesso."
-      });
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message || "Erro ao fazer logout.",
-        variant: "destructive"
-      });
-    }
-  };
+      if (user) {
+        fetchTransacoes();
+      } else {
+        // Use mock data for non-logged users
+        setTransacoes(mockTransacoes);
+        setLoading(false);
+      }
+    };
 
-  // Fetch transações from Supabase
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          fetchTransacoes();
+        } else {
+          setTransacoes(mockTransacoes);
+          setLoading(false);
+        }
+      }
+    );
+
+    checkAuth();
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Fetch transações from Supabase (only for logged users)
   const fetchTransacoes = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        toast({
-          title: "Erro",
-          description: "Você precisa estar logado para ver suas transações.",
-          variant: "destructive"
-        });
+        setTransacoes(mockTransacoes);
+        setLoading(false);
         return;
       }
 
@@ -109,14 +178,38 @@ export default function LivroCaixa() {
         description: error.message || "Erro ao carregar transações.",
         variant: "destructive"
       });
+      // Fallback to mock data on error
+      setTransacoes(mockTransacoes);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchTransacoes();
-  }, []);
+  const handleActionRequiringAuth = (action: () => void) => {
+    if (!user) {
+      setAuthModalOpen(true);
+    } else {
+      action();
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      toast({
+        title: "Logout realizado",
+        description: "Você foi desconectado com sucesso."
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao fazer logout.",
+        variant: "destructive"
+      });
+    }
+  };
 
   const transacoesFiltradas = transacoes.filter(transacao => {
     const matchCategoria = filtroCategoria === "Todas" || transacao.categoria === filtroCategoria;
@@ -157,12 +250,22 @@ export default function LivroCaixa() {
             </h1>
             <p className="text-muted-foreground">
               Controle detalhado de todas as suas receitas e despesas
+              {!user && (
+                <span className="block text-sm text-amber-600 mt-1">
+                  Modo demonstração - Faça login para salvar suas transações
+                </span>
+              )}
             </p>
           </div>
-          <Button variant="outline" onClick={handleLogout}>
-            <LogOut className="h-4 w-4 mr-2" />
-            Sair
-          </Button>
+          {user ? (
+            <Button variant="outline" onClick={handleLogout}>
+              Sair
+            </Button>
+          ) : (
+            <Button onClick={() => setAuthModalOpen(true)}>
+              Entrar
+            </Button>
+          )}
         </div>
 
         {/* Summary Cards */}
@@ -267,11 +370,11 @@ export default function LivroCaixa() {
             </div>
             
             <div className="flex gap-2 mt-4">
-              <Button onClick={() => setNovaTransacaoOpen(true)}>
+              <Button onClick={() => handleActionRequiringAuth(() => setNovaTransacaoOpen(true))}>
                 <Plus className="h-4 w-4 mr-2" />
                 Nova Transação
               </Button>
-              <Button variant="outline" onClick={() => setImportarOpen(true)}>
+              <Button variant="outline" onClick={() => handleActionRequiringAuth(() => setImportarOpen(true))}>
                 <Upload className="h-4 w-4 mr-2" />
                 Importar Livro Caixa
               </Button>
@@ -378,6 +481,18 @@ export default function LivroCaixa() {
           open={importarOpen}
           onOpenChange={setImportarOpen}
           onTransacoesImported={fetchTransacoes}
+        />
+        
+        <AuthModal 
+          open={authModalOpen}
+          onOpenChange={setAuthModalOpen}
+          onSuccess={() => {
+            fetchTransacoes();
+            toast({
+              title: "Bem-vindo!",
+              description: "Agora você pode gerenciar suas transações."
+            });
+          }}
         />
       </div>
     </Layout>
