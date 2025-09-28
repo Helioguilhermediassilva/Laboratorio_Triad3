@@ -10,6 +10,7 @@ import {
   CreditCard,
   Receipt,
   BarChart3,
+  ScrollText,
   Settings, 
   Menu,
   X
@@ -33,6 +34,7 @@ const navigation = [
   { name: "Contas Bancárias", href: "/contas-bancarias", icon: CreditCard },
   { name: "Dívidas", href: "/dividas", icon: Receipt },
   { name: "Relatórios", href: "/relatorios", icon: BarChart3 },
+  { name: "Testamento", href: "/testamento", icon: ScrollText },
   { name: "Configurações", href: "/configuracoes", icon: Settings },
 ];
 
