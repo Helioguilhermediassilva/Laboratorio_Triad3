@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BookOpen, ArrowUpCircle, ArrowDownCircle, Calendar, Filter, Plus } from "lucide-react";
+import { BookOpen, ArrowUpCircle, ArrowDownCircle, Calendar, Filter, Plus, Upload } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -258,10 +258,16 @@ export default function LivroCaixa() {
                 </SelectContent>
               </Select>
 
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Nova Transação
-              </Button>
+              <div className="flex gap-2">
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nova Transação
+                </Button>
+                <Button variant="outline">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Importar Livro Caixa
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
