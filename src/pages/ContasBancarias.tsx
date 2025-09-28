@@ -110,12 +110,10 @@ const transacoesRecentes = [
 
 const CartaoConta = ({ 
   conta, 
-  mostrarSaldo, 
   onExtrato, 
   onImportarExtrato
 }: { 
   conta: typeof contasIniciais[0];
-  mostrarSaldo: boolean;
   onExtrato: (conta: any) => void;
   onImportarExtrato: (conta: any) => void;
 }) => {
@@ -150,10 +148,7 @@ const CartaoConta = ({
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground">Saldo Atual</span>
             <span className="text-2xl font-bold">
-              {mostrarSaldo ? 
-                conta.saldo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 
-                '****'
-              }
+              {conta.saldo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </span>
           </div>
           
@@ -161,10 +156,7 @@ const CartaoConta = ({
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Limite Disponível</span>
               <span className="text-green-600">
-                {mostrarSaldo ? 
-                  conta.limite.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 
-                  '****'
-                }
+                {conta.limite.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </span>
             </div>
           )}
@@ -195,7 +187,6 @@ const CartaoConta = ({
 };
 
 export default function ContasBancarias() {
-  const [mostrarSaldos, setMostrarSaldos] = useState(true);
   const [contas, setContas] = useState(contasIniciais);
   const [novaContaOpen, setNovaContaOpen] = useState(false);
   const [extratoOpen, setExtratoOpen] = useState(false);
@@ -256,19 +247,10 @@ export default function ContasBancarias() {
             </p>
           </div>
           
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setMostrarSaldos(!mostrarSaldos)}
-            >
-              {mostrarSaldos ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-              {mostrarSaldos ? 'Ocultar' : 'Mostrar'} Saldos
-            </Button>
-            <Button onClick={() => setNovaContaOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Nova Conta
-            </Button>
-          </div>
+          <Button onClick={() => setNovaContaOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nova Conta
+          </Button>
         </div>
 
         {/* Summary Cards */}
@@ -282,7 +264,7 @@ export default function ContasBancarias() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {mostrarSaldos ? formatCurrency(saldoTotal) : '****'}
+                {formatCurrency(saldoTotal)}
               </div>
             </CardContent>
           </Card>
@@ -311,7 +293,7 @@ export default function ContasBancarias() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                {mostrarSaldos ? formatCurrency(limiteTotal) : '****'}
+                {formatCurrency(limiteTotal)}
               </div>
             </CardContent>
           </Card>
@@ -325,7 +307,6 @@ export default function ContasBancarias() {
               <CartaoConta 
                 key={conta.id} 
                 conta={conta} 
-                mostrarSaldo={mostrarSaldos}
                 onExtrato={handleExtrato}
                 onImportarExtrato={handleImportarExtrato}
               />
@@ -373,7 +354,7 @@ export default function ContasBancarias() {
                         <TrendingDown className="h-4 w-4 inline mr-1" />
                       )}
                       {transacao.tipo === "entrada" ? "+" : "-"}
-                      {mostrarSaldos ? formatCurrency(transacao.valor) : '****'}
+                      {formatCurrency(transacao.valor)}
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
