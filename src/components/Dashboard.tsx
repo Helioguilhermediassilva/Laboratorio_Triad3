@@ -10,7 +10,7 @@ import AdvancedFilters, { FilterCriteria } from "./AdvancedFilters";
 import ViewAssetModal from "./ViewAssetModal";
 import EditAssetModal from "./EditAssetModal";
 import heroImage from "@/assets/hero-bg.jpg";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 // Mock data - Patrimônio Geral
 const stats = [
@@ -91,6 +91,15 @@ export default function Dashboard() {
   const [activeFilters, setActiveFilters] = useState<FilterCriteria | null>(null);
   const [viewAsset, setViewAsset] = useState<any>(null);
   const [editAsset, setEditAsset] = useState<any>(null);
+
+  // Busca automática - executa sempre que searchTerm muda
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      applyFiltersAndSearch(assets, searchTerm, activeFilters);
+    }, 300); // Debounce de 300ms para evitar muitas execuções
+
+    return () => clearTimeout(timer);
+  }, [searchTerm, assets, activeFilters]);
 
   const handleAddAsset = (newAsset: any) => {
     const updatedAssets = [...assets, newAsset];
