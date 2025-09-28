@@ -1,11 +1,15 @@
 import { useState } from "react";
-import { Search, Filter, Home, Car, Wrench, MapPin } from "lucide-react";
+import { Search, Filter, Home, Car, Wrench, MapPin, Plus } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import AdicionarBemModal from "@/components/AdicionarBemModal";
+import VisualizarBemModal from "@/components/VisualizarBemModal";
+import EditarBemModal from "@/components/EditarBemModal";
 
 // Mock data - Imobilizado
 const imobilizadoItems = [
@@ -55,7 +59,15 @@ const imobilizadoItems = [
   }
 ];
 
-const ImobilizadoCard = ({ item }: { item: typeof imobilizadoItems[0] }) => {
+const ImobilizadoCard = ({ 
+  item, 
+  onVisualizar, 
+  onEditar 
+}: { 
+  item: typeof imobilizadoItems[0];
+  onVisualizar: (item: any) => void;
+  onEditar: (item: any) => void;
+}) => {
   const getIcon = () => {
     switch (item.categoria) {
       case "Imóvel": return <Home className="h-5 w-5" />;
@@ -121,10 +133,20 @@ const ImobilizadoCard = ({ item }: { item: typeof imobilizadoItems[0] }) => {
           )}
           
           <div className="flex gap-2 pt-2">
-            <Button variant="outline" size="sm" className="flex-1">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex-1"
+              onClick={() => onVisualizar(item)}
+            >
               Visualizar
             </Button>
-            <Button variant="default" size="sm" className="flex-1">
+            <Button 
+              variant="default" 
+              size="sm" 
+              className="flex-1"
+              onClick={() => onEditar(item)}
+            >
               Editar
             </Button>
           </div>
@@ -138,8 +160,14 @@ export default function Imobilizado() {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [items, setItems] = useState(imobilizadoItems);
+  const [adicionarBemOpen, setAdicionarBemOpen] = useState(false);
+  const [visualizarBemOpen, setVisualizarBemOpen] = useState(false);
+  const [editarBemOpen, setEditarBemOpen] = useState(false);
+  const [bemSelecionado, setBemSelecionado] = useState<any>(null);
+  const { toast } = useToast();
 
-  const filteredItems = imobilizadoItems
+  const filteredItems = items
     .filter(item => {
       const matchesSearch = item.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           item.endereco.toLowerCase().includes(searchTerm.toLowerCase());
@@ -148,7 +176,37 @@ export default function Imobilizado() {
       return matchesSearch && matchesCategory && matchesStatus;
     });
 
-  const totalValue = imobilizadoItems.reduce((sum, item) => sum + item.valor, 0);
+  const totalValue = items.reduce((sum, item) => sum + item.valor, 0);
+
+  const handleBemAdicionado = (novoBem: any) => {
+    setItems(prev => [...prev, novoBem]);
+    toast({
+      title: "Bem adicionado!",
+      description: "O bem foi adicionado ao patrimônio com sucesso."
+    });
+  };
+
+  const handleVisualizarBem = (bem: any) => {
+    setBemSelecionado(bem);
+    setVisualizarBemOpen(true);
+  };
+
+  const handleEditarBem = (bem: any) => {
+    setBemSelecionado(bem);
+    setEditarBemOpen(true);
+  };
+
+  const handleBemEditado = (bemEditado: any) => {
+    setItems(prev => 
+      prev.map(item => 
+        item.id === bemEditado.id ? bemEditado : item
+      )
+    );
+    toast({
+      title: "Bem atualizado!",
+      description: "As alterações foram salvas com sucesso."
+    });
+  };
 
   return (
     <Layout>
@@ -186,7 +244,7 @@ export default function Imobilizado() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-foreground">
-                {imobilizadoItems.length}
+                {items.length}
               </div>
             </CardContent>
           </Card>
@@ -257,14 +315,20 @@ export default function Imobilizado() {
             <h2 className="text-xl font-semibold text-foreground">
               Bens ({filteredItems.length})
             </h2>
-            <Button>
+            <Button onClick={() => setAdicionarBemOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
               Adicionar Bem
             </Button>
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {filteredItems.map((item) => (
-              <ImobilizadoCard key={item.id} item={item} />
+              <ImobilizadoCard 
+                key={item.id} 
+                item={item}
+                onVisualizar={handleVisualizarBem}
+                onEditar={handleEditarBem}
+              />
             ))}
           </div>
 
@@ -279,6 +343,26 @@ export default function Imobilizado() {
             </div>
           )}
         </div>
+
+        {/* Modals */}
+        <AdicionarBemModal 
+          open={adicionarBemOpen}
+          onOpenChange={setAdicionarBemOpen}
+          onBemAdicionado={handleBemAdicionado}
+        />
+        
+        <VisualizarBemModal 
+          open={visualizarBemOpen}
+          onOpenChange={setVisualizarBemOpen}
+          bem={bemSelecionado}
+        />
+        
+        <EditarBemModal 
+          open={editarBemOpen}
+          onOpenChange={setEditarBemOpen}
+          bem={bemSelecionado}
+          onBemEditado={handleBemEditado}
+        />
       </div>
     </Layout>
   );
