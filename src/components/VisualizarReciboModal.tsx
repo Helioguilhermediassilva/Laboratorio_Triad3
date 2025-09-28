@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { Download, FileText, Calendar, DollarSign } from "lucide-react";
+import jsPDF from 'jspdf';
 
 interface Declaracao {
   ano: number;
@@ -32,19 +33,86 @@ export default function VisualizarReciboModal({ open, onOpenChange, declaracao }
   };
 
   const handleDownloadPDF = () => {
-    // Simulate PDF download
-    toast({
-      title: "Download iniciado",
-      description: "O recibo está sendo baixado em PDF..."
-    });
+    if (!declaracao) return;
+
+    // Create PDF
+    const doc = new jsPDF();
     
-    // Simulate file download
-    setTimeout(() => {
-      toast({
-        title: "Download concluído!",
-        description: `Recibo_IRPF_${declaracao?.ano}_${declaracao?.recibo}.pdf baixado com sucesso.`
-      });
-    }, 2000);
+    // Header
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("RECEITA FEDERAL DO BRASIL", 105, 20, { align: "center" });
+    
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.text("Recibo de Entrega de Declaração", 105, 30, { align: "center" });
+    doc.text("Imposto sobre a Renda da Pessoa Física", 105, 40, { align: "center" });
+    
+    // Line separator
+    doc.line(20, 50, 190, 50);
+    
+    // Content
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text("DADOS DO RECIBO", 20, 65);
+    
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Número do Recibo: ${declaracao.recibo}`, 20, 80);
+    doc.text(`Ano-Calendário: ${declaracao.ano}`, 20, 90);
+    doc.text(`Data de Entrega: ${formatDate(declaracao.prazoLimite)}`, 20, 100);
+    doc.text(`Status: ${declaracao.status}`, 20, 110);
+    
+    // Line separator
+    doc.line(20, 120, 190, 120);
+    
+    // Financial summary
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text("RESUMO FINANCEIRO", 20, 135);
+    
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "normal");
+    let yPos = 150;
+    
+    if (declaracao.valorPagar > 0) {
+      doc.text(`Imposto a Pagar: ${formatCurrency(declaracao.valorPagar)}`, 20, yPos);
+      yPos += 10;
+    }
+    
+    if (declaracao.valorRestituir > 0) {
+      doc.text(`Imposto a Restituir: ${formatCurrency(declaracao.valorRestituir)}`, 20, yPos);
+      yPos += 10;
+    }
+    
+    if (declaracao.valorPagar === 0 && declaracao.valorRestituir === 0) {
+      doc.text("Situação: Sem Imposto a Pagar/Restituir", 20, yPos);
+      yPos += 10;
+    }
+    
+    // Line separator
+    yPos += 10;
+    doc.line(20, yPos, 190, yPos);
+    
+    // Footer info
+    yPos += 15;
+    doc.setFontSize(10);
+    doc.text("Este recibo comprova que sua Declaração de Ajuste Anual do", 20, yPos);
+    yPos += 8;
+    doc.text("Imposto sobre a Renda foi recebida pela Receita Federal.", 20, yPos);
+    yPos += 15;
+    doc.text("Guarde este recibo para seus arquivos pessoais.", 20, yPos);
+    
+    yPos += 20;
+    doc.text(`Data de Geração: ${new Date().toLocaleString('pt-BR')}`, 20, yPos);
+    
+    // Save PDF
+    doc.save(`Recibo_IRPF_${declaracao.ano}_${declaracao.recibo}.pdf`);
+
+    toast({
+      title: "Download concluído!",
+      description: `Recibo_IRPF_${declaracao.ano}_${declaracao.recibo}.pdf baixado com sucesso.`
+    });
   };
 
   const handlePrint = () => {
