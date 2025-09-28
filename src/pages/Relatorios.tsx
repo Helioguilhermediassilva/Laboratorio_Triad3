@@ -1,9 +1,11 @@
-import { TrendingUp, TrendingDown, BarChart3, PieChart } from "lucide-react";
+import { TrendingUp, TrendingDown, BarChart3, PieChart, FileText } from "lucide-react";
 import Layout from "@/components/Layout";
 import StatsCard from "@/components/StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import jsPDF from 'jspdf';
 
 // Mock data for reports
 const performanceData = [
@@ -23,9 +25,111 @@ const categoryDistribution = [
 ];
 
 export default function Relatorios() {
+  const { toast } = useToast();
   const totalValue = 495600;
   const monthlyGrowth = 2.1;
   const yearlyGrowth = 18.7;
+
+  const exportToPDF = () => {
+    try {
+      const doc = new jsPDF();
+      let yPosition = 20;
+
+      // Header
+      doc.setFontSize(20);
+      doc.setFont("helvetica", "bold");
+      doc.text("Relatório de Investimentos", 20, yPosition);
+      yPosition += 10;
+
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Data: ${new Date().toLocaleDateString('pt-BR')}`, 20, yPosition);
+      yPosition += 20;
+
+      // Performance Stats
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.text("Resumo Executivo", 20, yPosition);
+      yPosition += 15;
+
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Valor Total da Carteira: ${totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 20, yPosition);
+      yPosition += 8;
+      doc.text(`Crescimento Mensal: +${monthlyGrowth}%`, 20, yPosition);
+      yPosition += 8;
+      doc.text(`Crescimento Anual: +${yearlyGrowth}%`, 20, yPosition);
+      yPosition += 8;
+      doc.text(`Melhor Ativo: VALE3 (+24.5%)`, 20, yPosition);
+      yPosition += 8;
+      doc.text(`Dividendos (Ano): R$ 18.5K`, 20, yPosition);
+      yPosition += 20;
+
+      // Portfolio Evolution
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.text("Evolução da Carteira (Últimos 6 Meses)", 20, yPosition);
+      yPosition += 15;
+
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      performanceData.forEach((data) => {
+        const value = data.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const growth = data.growth >= 0 ? `+${data.growth}%` : `${data.growth}%`;
+        doc.text(`${data.month}: ${value} (${growth})`, 20, yPosition);
+        yPosition += 8;
+      });
+      yPosition += 15;
+
+      // Category Distribution
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.text("Distribuição por Categoria", 20, yPosition);
+      yPosition += 15;
+
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      categoryDistribution.forEach((item) => {
+        const value = item.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        doc.text(`${item.category}: ${value} (${item.percentage}%)`, 20, yPosition);
+        yPosition += 8;
+      });
+      yPosition += 15;
+
+      // Recent Transactions
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.text("Últimas Transações", 20, yPosition);
+      yPosition += 15;
+
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      doc.text("• Compra PETR4 - 15/01/2024 - R$ 35.840 (1.000 ações)", 20, yPosition);
+      yPosition += 8;
+      doc.text("• Dividendos HGLG11 - 10/01/2024 - +R$ 124 (120 cotas)", 20, yPosition);
+      yPosition += 20;
+
+      // Footer
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "italic");
+      doc.text("Relatório gerado automaticamente pela plataforma de investimentos", 20, 280);
+      doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 20, 285);
+
+      // Save the PDF
+      doc.save(`relatorio-investimentos-${new Date().toISOString().split('T')[0]}.pdf`);
+
+      toast({
+        title: "PDF Exportado!",
+        description: "O relatório foi exportado com sucesso."
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao exportar",
+        description: "Ocorreu um erro ao gerar o PDF.",
+        variant: "destructive"
+      });
+    }
+  };
 
   return (
     <Layout>
@@ -53,7 +157,8 @@ export default function Relatorios() {
                 <SelectItem value="1y">1 Ano</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline">
+            <Button variant="outline" onClick={exportToPDF}>
+              <FileText className="h-4 w-4 mr-2" />
               Exportar PDF
             </Button>
           </div>
