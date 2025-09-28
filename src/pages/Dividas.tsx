@@ -5,6 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import NovaDividaModal from "@/components/NovaDividaModal";
+import VisualizarDividaModal from "@/components/VisualizarDividaModal";
 
 // Mock data for debts
 const mockDividas = [
@@ -153,15 +157,16 @@ function DebtCard({ divida, onView, onDelete }: DebtCardProps) {
         </div>
 
         <div className="flex space-x-2 pt-2">
-          <Button
-            size="sm"
-            variant="outline"
-            className="flex-1"
-            onClick={() => onView(divida.id)}
-          >
-            <Eye className="w-4 h-4 mr-1" />
-            Detalhes
-          </Button>
+          <VisualizarDividaModal divida={divida}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1"
+            >
+              <Eye className="w-4 h-4 mr-1" />
+              Detalhes
+            </Button>
+          </VisualizarDividaModal>
           <Button
             size="sm"
             variant="outline"
@@ -177,18 +182,34 @@ function DebtCard({ divida, onView, onDelete }: DebtCardProps) {
 }
 
 export default function Dividas() {
-  const [dividas] = useState(mockDividas);
+  const [dividas, setDividas] = useState(mockDividas);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [dividaToDelete, setDividaToDelete] = useState<number | null>(null);
+  const { toast } = useToast();
 
   const handleView = (id: number) => {
     console.log("Visualizar dívida:", id);
   };
 
   const handleDelete = (id: number) => {
-    console.log("Excluir dívida:", id);
+    setDividaToDelete(id);
+    setDeleteDialogOpen(true);
   };
 
-  const handleAddDebt = () => {
-    console.log("Adicionar nova dívida");
+  const confirmDelete = () => {
+    if (dividaToDelete) {
+      setDividas(prev => prev.filter(d => d.id !== dividaToDelete));
+      toast({
+        title: "Dívida excluída",
+        description: "A dívida foi removida com sucesso.",
+      });
+    }
+    setDeleteDialogOpen(false);
+    setDividaToDelete(null);
+  };
+
+  const handleAddDebt = (novaDivida: any) => {
+    setDividas(prev => [...prev, novaDivida]);
   };
 
   // Calculations
@@ -207,10 +228,12 @@ export default function Dividas() {
               Gerencie todos os seus empréstimos e financiamentos
             </p>
           </div>
-          <Button onClick={handleAddDebt}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nova Dívida
-          </Button>
+          <NovaDividaModal onAdd={handleAddDebt}>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Nova Dívida
+            </Button>
+          </NovaDividaModal>
         </div>
 
         {/* Stats Cards */}
@@ -284,14 +307,34 @@ export default function Dividas() {
               Comece adicionando uma nova dívida ou financiamento.
             </p>
             <div className="mt-6">
-              <Button onClick={handleAddDebt}>
-                <Plus className="mr-2 h-4 w-4" />
-                Nova Dívida
-              </Button>
+              <NovaDividaModal onAdd={handleAddDebt}>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Nova Dívida
+                </Button>
+              </NovaDividaModal>
             </div>
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir esta dívida? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 }

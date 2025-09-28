@@ -1,0 +1,259 @@
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { z } from "zod";
+
+const dividaSchema = z.object({
+  tipo: z.string().min(1, "Tipo é obrigatório"),
+  credor: z.string().min(1, "Credor é obrigatório"),
+  valorTotal: z.number().min(0.01, "Valor deve ser maior que zero"),
+  valorPrestacao: z.number().min(0.01, "Valor da prestação deve ser maior que zero"),
+  parcelas: z.number().min(1, "Número de parcelas deve ser maior que zero"),
+  juros: z.number().min(0, "Taxa de juros não pode ser negativa"),
+  vencimento: z.string().min(1, "Data de vencimento é obrigatória"),
+  categoria: z.string().min(1, "Categoria é obrigatória"),
+  observacoes: z.string().optional(),
+});
+
+interface NovaDividaModalProps {
+  children: React.ReactNode;
+  onAdd: (divida: any) => void;
+}
+
+export default function NovaDividaModal({ children, onAdd }: NovaDividaModalProps) {
+  const [open, setOpen] = useState(false);
+  const { toast } = useToast();
+  const [formData, setFormData] = useState({
+    tipo: "",
+    credor: "",
+    valorTotal: "",
+    valorPrestacao: "",
+    parcelas: "",
+    juros: "",
+    vencimento: "",
+    categoria: "",
+    observacoes: "",
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      const data = {
+        ...formData,
+        valorTotal: parseFloat(formData.valorTotal),
+        valorPrestacao: parseFloat(formData.valorPrestacao),
+        parcelas: parseInt(formData.parcelas),
+        juros: parseFloat(formData.juros),
+      };
+
+      dividaSchema.parse(data);
+
+      const novaDivida = {
+        id: Date.now(),
+        ...data,
+        valorPendente: data.valorTotal,
+        proximoVencimento: data.vencimento,
+        parcelasPagas: 0,
+        status: "Em dia"
+      };
+
+      onAdd(novaDivida);
+      setOpen(false);
+      setFormData({
+        tipo: "",
+        credor: "",
+        valorTotal: "",
+        valorPrestacao: "",
+        parcelas: "",
+        juros: "",
+        vencimento: "",
+        categoria: "",
+        observacoes: "",
+      });
+      setErrors({});
+
+      toast({
+        title: "Dívida adicionada!",
+        description: "A nova dívida foi adicionada com sucesso.",
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const newErrors: Record<string, string> = {};
+        error.errors.forEach((err) => {
+          if (err.path[0]) {
+            newErrors[err.path[0] as string] = err.message;
+          }
+        });
+        setErrors(newErrors);
+      }
+    }
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: "" }));
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {children}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Nova Dívida</DialogTitle>
+        </DialogHeader>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="tipo">Tipo de Dívida</Label>
+              <Input
+                id="tipo"
+                value={formData.tipo}
+                onChange={(e) => handleInputChange("tipo", e.target.value)}
+                placeholder="Ex: Financiamento Imobiliário"
+                className={errors.tipo ? "border-red-500" : ""}
+              />
+              {errors.tipo && <p className="text-sm text-red-500">{errors.tipo}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="credor">Credor/Instituição</Label>
+              <Input
+                id="credor"
+                value={formData.credor}
+                onChange={(e) => handleInputChange("credor", e.target.value)}
+                placeholder="Ex: Banco do Brasil"
+                className={errors.credor ? "border-red-500" : ""}
+              />
+              {errors.credor && <p className="text-sm text-red-500">{errors.credor}</p>}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="valorTotal">Valor Total</Label>
+              <Input
+                id="valorTotal"
+                type="number"
+                step="0.01"
+                value={formData.valorTotal}
+                onChange={(e) => handleInputChange("valorTotal", e.target.value)}
+                placeholder="0,00"
+                className={errors.valorTotal ? "border-red-500" : ""}
+              />
+              {errors.valorTotal && <p className="text-sm text-red-500">{errors.valorTotal}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="valorPrestacao">Valor da Prestação</Label>
+              <Input
+                id="valorPrestacao"
+                type="number"
+                step="0.01"
+                value={formData.valorPrestacao}
+                onChange={(e) => handleInputChange("valorPrestacao", e.target.value)}
+                placeholder="0,00"
+                className={errors.valorPrestacao ? "border-red-500" : ""}
+              />
+              {errors.valorPrestacao && <p className="text-sm text-red-500">{errors.valorPrestacao}</p>}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="parcelas">Nº de Parcelas</Label>
+              <Input
+                id="parcelas"
+                type="number"
+                value={formData.parcelas}
+                onChange={(e) => handleInputChange("parcelas", e.target.value)}
+                placeholder="60"
+                className={errors.parcelas ? "border-red-500" : ""}
+              />
+              {errors.parcelas && <p className="text-sm text-red-500">{errors.parcelas}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="juros">Taxa de Juros (% a.a.)</Label>
+              <Input
+                id="juros"
+                type="number"
+                step="0.1"
+                value={formData.juros}
+                onChange={(e) => handleInputChange("juros", e.target.value)}
+                placeholder="8,5"
+                className={errors.juros ? "border-red-500" : ""}
+              />
+              {errors.juros && <p className="text-sm text-red-500">{errors.juros}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="vencimento">Data de Vencimento</Label>
+              <Input
+                id="vencimento"
+                type="date"
+                value={formData.vencimento}
+                onChange={(e) => handleInputChange("vencimento", e.target.value)}
+                className={errors.vencimento ? "border-red-500" : ""}
+              />
+              {errors.vencimento && <p className="text-sm text-red-500">{errors.vencimento}</p>}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="categoria">Categoria</Label>
+            <Select
+              value={formData.categoria}
+              onValueChange={(value) => handleInputChange("categoria", value)}
+            >
+              <SelectTrigger className={errors.categoria ? "border-red-500" : ""}>
+                <SelectValue placeholder="Selecione uma categoria" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Imóvel">Imóvel</SelectItem>
+                <SelectItem value="Veículo">Veículo</SelectItem>
+                <SelectItem value="Pessoal">Pessoal</SelectItem>
+                <SelectItem value="Cartão">Cartão de Crédito</SelectItem>
+                <SelectItem value="Estudantil">Empréstimo Estudantil</SelectItem>
+                <SelectItem value="Empresarial">Empresarial</SelectItem>
+                <SelectItem value="Outros">Outros</SelectItem>
+              </SelectContent>
+            </Select>
+            {errors.categoria && <p className="text-sm text-red-500">{errors.categoria}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="observacoes">Observações (Opcional)</Label>
+            <Textarea
+              id="observacoes"
+              value={formData.observacoes}
+              onChange={(e) => handleInputChange("observacoes", e.target.value)}
+              placeholder="Informações adicionais sobre a dívida..."
+              rows={3}
+            />
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit">
+              Adicionar Dívida
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
