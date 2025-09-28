@@ -7,6 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
+import { useToast } from "@/hooks/use-toast";
+import NovaDeclaracaoModal from "@/components/NovaDeclaracaoModal";
+import AdicionarRendimentoModal from "@/components/AdicionarRendimentoModal";
+import AdicionarDespesaModal from "@/components/AdicionarDespesaModal";
+import AdicionarLembreteModal from "@/components/AdicionarLembreteModal";
 
 // Mock data - Imposto de Renda
 const declaracoes = [
@@ -113,6 +118,11 @@ const prazos = [
 
 export default function ImpostoRenda() {
   const [anoSelecionado, setAnoSelecionado] = useState(2024);
+  const [novaDeclaracaoOpen, setNovaDeclaracaoOpen] = useState(false);
+  const [adicionarRendimentoOpen, setAdicionarRendimentoOpen] = useState(false);
+  const [adicionarDespesaOpen, setAdicionarDespesaOpen] = useState(false);
+  const [adicionarLembreteOpen, setAdicionarLembreteOpen] = useState(false);
+  const { toast } = useToast();
   
   const declaracaoAtual = declaracoes.find(d => d.ano === anoSelecionado) || declaracoes[0];
   const rendimentosAno = rendimentos.filter(r => r.ano === anoSelecionado);
@@ -126,6 +136,28 @@ export default function ImpostoRenda() {
 
   const formatDate = (data: string) => {
     return new Date(data).toLocaleDateString('pt-BR');
+  };
+
+  const handleDownloadRecibo = (recibo: string) => {
+    // Simulate PDF download
+    toast({
+      title: "Download iniciado",
+      description: `Baixando recibo ${recibo}...`
+    });
+  };
+
+  const handleMarcarFeito = (evento: string, index: number) => {
+    toast({
+      title: "Marcado como feito!",
+      description: `${evento} foi marcado como concluído.`
+    });
+  };
+
+  const handleEditarItem = (tipo: string, item: any) => {
+    toast({
+      title: "Função em desenvolvimento",
+      description: `Edição de ${tipo} será implementada em breve.`
+    });
   };
 
   const getStatusColor = (status: string) => {
@@ -224,7 +256,7 @@ export default function ImpostoRenda() {
           <TabsContent value="declaracoes" className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Histórico de Declarações</h2>
-              <Button>
+              <Button onClick={() => setNovaDeclaracaoOpen(true)}>
                 <FileText className="h-4 w-4 mr-2" />
                 Nova Declaração
               </Button>
@@ -275,11 +307,19 @@ export default function ImpostoRenda() {
                       </div>
                       
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleEditarItem('declaração', declaracao)}
+                        >
                           Editar
                         </Button>
                         {declaracao.status === "Entregue" && (
-                          <Button variant="outline" size="sm">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleDownloadRecibo(declaracao.recibo!)}
+                          >
                             <Download className="h-4 w-4 mr-1" />
                             Recibo
                           </Button>
@@ -295,7 +335,9 @@ export default function ImpostoRenda() {
           <TabsContent value="rendimentos" className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Rendimentos {anoSelecionado}</h2>
-              <Button>Adicionar Rendimento</Button>
+              <Button onClick={() => setAdicionarRendimentoOpen(true)}>
+                Adicionar Rendimento
+              </Button>
             </div>
             
             <Card>
@@ -326,7 +368,11 @@ export default function ImpostoRenda() {
                           {formatCurrency(rendimento.irrf)}
                         </TableCell>
                         <TableCell>
-                          <Button variant="outline" size="sm">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleEditarItem('rendimento', rendimento)}
+                          >
                             Editar
                           </Button>
                         </TableCell>
@@ -341,7 +387,9 @@ export default function ImpostoRenda() {
           <TabsContent value="deducoes" className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Despesas Dedutíveis</h2>
-              <Button>Adicionar Despesa</Button>
+              <Button onClick={() => setAdicionarDespesaOpen(true)}>
+                Adicionar Despesa
+              </Button>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -360,7 +408,11 @@ export default function ImpostoRenda() {
                         <span className="text-2xl font-bold text-green-600">
                           {formatCurrency(despesa.valor)}
                         </span>
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleEditarItem('despesa', despesa)}
+                        >
                           Editar
                         </Button>
                       </div>
@@ -374,7 +426,9 @@ export default function ImpostoRenda() {
           <TabsContent value="prazos" className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Próximos Prazos</h2>
-              <Button>Adicionar Lembrete</Button>
+              <Button onClick={() => setAdicionarLembreteOpen(true)}>
+                Adicionar Lembrete
+              </Button>
             </div>
             
             <div className="space-y-4">
@@ -397,7 +451,11 @@ export default function ImpostoRenda() {
                         <Badge className={getStatusColor(prazo.status)}>
                           {prazo.status}
                         </Badge>
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleMarcarFeito(prazo.evento, index)}
+                        >
                           Marcar como Feito
                         </Button>
                       </div>
@@ -408,6 +466,51 @@ export default function ImpostoRenda() {
             </div>
           </TabsContent>
         </Tabs>
+        
+        {/* Modals */}
+        <NovaDeclaracaoModal 
+          open={novaDeclaracaoOpen}
+          onOpenChange={setNovaDeclaracaoOpen}
+          onDeclaracaoAdded={() => {
+            toast({
+              title: "Sucesso!",
+              description: "Nova declaração criada. Os dados serão atualizados."
+            });
+          }}
+        />
+        
+        <AdicionarRendimentoModal 
+          open={adicionarRendimentoOpen}
+          onOpenChange={setAdicionarRendimentoOpen}
+          onRendimentoAdded={() => {
+            toast({
+              title: "Sucesso!",
+              description: "Rendimento adicionado. Os cálculos serão atualizados."
+            });
+          }}
+        />
+        
+        <AdicionarDespesaModal 
+          open={adicionarDespesaOpen}
+          onOpenChange={setAdicionarDespesaOpen}
+          onDespesaAdded={() => {
+            toast({
+              title: "Sucesso!",
+              description: "Despesa adicionada. As deduções serão atualizadas."
+            });
+          }}
+        />
+        
+        <AdicionarLembreteModal 
+          open={adicionarLembreteOpen}
+          onOpenChange={setAdicionarLembreteOpen}
+          onLembreteAdded={() => {
+            toast({
+              title: "Sucesso!",
+              description: "Lembrete adicionado à sua agenda fiscal."
+            });
+          }}
+        />
       </div>
     </Layout>
   );
