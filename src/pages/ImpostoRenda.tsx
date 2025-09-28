@@ -340,19 +340,13 @@ export default function ImpostoRenda() {
           <TabsContent value="declaracoes" className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Histórico de Declarações</h2>
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setImportarDeclaracaoOpen(true)}
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Importar Declaração
-                </Button>
-                <Button onClick={() => setNovaDeclaracaoOpen(true)}>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Nova Declaração
-                </Button>
-              </div>
+              <Button 
+                variant="outline" 
+                onClick={() => setImportarDeclaracaoOpen(true)}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Importar Declaração
+              </Button>
             </div>
             
             <div className="grid gap-4">
