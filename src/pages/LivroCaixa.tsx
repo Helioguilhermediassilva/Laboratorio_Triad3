@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import NovaTransacaoModal from "@/components/NovaTransacaoModal";
 import ImportarLivroCaixaModal from "@/components/ImportarLivroCaixaModal";
+import { LogOut } from "lucide-react";
 
 type Transacao = {
   id: string;
@@ -60,6 +61,24 @@ export default function LivroCaixa() {
   const [novaTransacaoOpen, setNovaTransacaoOpen] = useState(false);
   const [importarOpen, setImportarOpen] = useState(false);
   const { toast } = useToast();
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      toast({
+        title: "Logout realizado",
+        description: "Você foi desconectado com sucesso."
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao fazer logout.",
+        variant: "destructive"
+      });
+    }
+  };
 
   // Fetch transações from Supabase
   const fetchTransacoes = async () => {
@@ -131,13 +150,19 @@ export default function LivroCaixa() {
     <Layout>
       <div className="space-y-8">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">
-            Livro Caixa
-          </h1>
-          <p className="text-muted-foreground">
-            Controle detalhado de todas as suas receitas e despesas
-          </p>
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground mb-2">
+              Livro Caixa
+            </h1>
+            <p className="text-muted-foreground">
+              Controle detalhado de todas as suas receitas e despesas
+            </p>
+          </div>
+          <Button variant="outline" onClick={handleLogout}>
+            <LogOut className="h-4 w-4 mr-2" />
+            Sair
+          </Button>
         </div>
 
         {/* Summary Cards */}
