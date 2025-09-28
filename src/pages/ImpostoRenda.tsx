@@ -14,6 +14,7 @@ import AdicionarDespesaModal from "@/components/AdicionarDespesaModal";
 import AdicionarLembreteModal from "@/components/AdicionarLembreteModal";
 import EditarDeclaracaoModal from "@/components/EditarDeclaracaoModal";
 import VisualizarReciboModal from "@/components/VisualizarReciboModal";
+import EditarRendimentoModal from "@/components/EditarRendimentoModal";
 
 // Mock data - Imposto de Renda
 const declaracoes = [
@@ -48,6 +49,7 @@ const declaracoes = [
 
 const rendimentos = [
   {
+    id: "1",
     fonte: "Empresa XYZ Ltda",
     cnpj: "12.345.678/0001-90",
     tipo: "Salário",
@@ -56,6 +58,7 @@ const rendimentos = [
     ano: 2024
   },
   {
+    id: "2",
     fonte: "Freelance - Diversos",
     cnpj: "Pessoa Física",
     tipo: "Serviços",
@@ -64,6 +67,7 @@ const rendimentos = [
     ano: 2024
   },
   {
+    id: "3",
     fonte: "Dividendos - PETR4",
     cnpj: "33.000.167/0001-01",
     tipo: "Dividendos",
@@ -128,13 +132,17 @@ export default function ImpostoRenda() {
   const [adicionarDespesaOpen, setAdicionarDespesaOpen] = useState(false);
   const [adicionarLembreteOpen, setAdicionarLembreteOpen] = useState(false);
   const [editarDeclaracaoOpen, setEditarDeclaracaoOpen] = useState(false);
+  const [editarRendimentoOpen, setEditarRendimentoOpen] = useState(false);
   const [visualizarReciboOpen, setVisualizarReciboOpen] = useState(false);
   const [declaracaoSelecionada, setDeclaracaoSelecionada] = useState<any>(null);
+  const [rendimentoSelecionado, setRendimentoSelecionado] = useState<any>(null);
+  const [rendimentoIndex, setRendimentoIndex] = useState(-1);
   const [declaracoesList, setDeclaracoesList] = useState(declaracoes);
+  const [rendimentosList, setRendimentosList] = useState(rendimentos);
   const { toast } = useToast();
   
   const declaracaoAtual = declaracoesList.find(d => d.ano === anoSelecionado) || declaracoesList[0];
-  const rendimentosAno = rendimentos.filter(r => r.ano === anoSelecionado);
+  const rendimentosAno = rendimentosList.filter(r => r.ano === anoSelecionado);
   const totalRendimentos = rendimentosAno.reduce((sum, r) => sum + r.valor, 0);
   const totalIRRF = rendimentosAno.reduce((sum, r) => sum + r.irrf, 0);
   const totalDeducoes = despesasDedutivel.reduce((sum, d) => sum + d.valor, 0);
@@ -142,6 +150,12 @@ export default function ImpostoRenda() {
   const handleEditarDeclaracao = (declaracao: any) => {
     setDeclaracaoSelecionada(declaracao);
     setEditarDeclaracaoOpen(true);
+  };
+
+  const handleEditarRendimento = (rendimento: any, index: number) => {
+    setRendimentoSelecionado(rendimento);
+    setRendimentoIndex(index);
+    setEditarRendimentoOpen(true);
   };
 
   const handleVisualizarRecibo = (declaracao: any) => {
@@ -160,6 +174,21 @@ export default function ImpostoRenda() {
     
     toast({
       title: "Declaração atualizada!",
+      description: "As alterações foram salvas com sucesso."
+    });
+  };
+
+  const handleRendimentoUpdated = (index: number, updatedRendimento: any) => {
+    setRendimentosList(prev => 
+      prev.map((r, i) => 
+        i === index 
+          ? { ...updatedRendimento, id: r.id }
+          : r
+      )
+    );
+    
+    toast({
+      title: "Rendimento atualizado!",
       description: "As alterações foram salvas com sucesso."
     });
   };
@@ -405,7 +434,7 @@ export default function ImpostoRenda() {
                           <Button 
                             variant="outline" 
                             size="sm"
-                            onClick={() => handleEditarItem('rendimento', rendimento)}
+                            onClick={() => handleEditarRendimento(rendimento, index)}
                           >
                             Editar
                           </Button>
@@ -557,6 +586,14 @@ export default function ImpostoRenda() {
           open={visualizarReciboOpen}
           onOpenChange={setVisualizarReciboOpen}
           declaracao={declaracaoSelecionada}
+        />
+        
+        <EditarRendimentoModal 
+          open={editarRendimentoOpen}
+          onOpenChange={setEditarRendimentoOpen}
+          rendimento={rendimentoSelecionado}
+          rendimentoIndex={rendimentoIndex}
+          onRendimentoUpdated={handleRendimentoUpdated}
         />
       </div>
     </Layout>
