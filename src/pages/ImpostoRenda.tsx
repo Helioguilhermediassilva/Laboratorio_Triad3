@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, Calculator, Calendar, TrendingUp, AlertTriangle, Download } from "lucide-react";
+import { FileText, Calculator, Calendar, TrendingUp, AlertTriangle, Download, Upload } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import AdicionarLembreteModal from "@/components/AdicionarLembreteModal";
 import EditarDeclaracaoModal from "@/components/EditarDeclaracaoModal";
 import VisualizarReciboModal from "@/components/VisualizarReciboModal";
 import EditarRendimentoModal from "@/components/EditarRendimentoModal";
+import ImportarDeclaracaoModal from "@/components/ImportarDeclaracaoModal";
 
 // Mock data - Imposto de Renda
 const declaracoes = [
@@ -134,6 +135,7 @@ export default function ImpostoRenda() {
   const [editarDeclaracaoOpen, setEditarDeclaracaoOpen] = useState(false);
   const [editarRendimentoOpen, setEditarRendimentoOpen] = useState(false);
   const [visualizarReciboOpen, setVisualizarReciboOpen] = useState(false);
+  const [importarDeclaracaoOpen, setImportarDeclaracaoOpen] = useState(false);
   const [declaracaoSelecionada, setDeclaracaoSelecionada] = useState<any>(null);
   const [rendimentoSelecionado, setRendimentoSelecionado] = useState<any>(null);
   const [rendimentoIndex, setRendimentoIndex] = useState(-1);
@@ -191,6 +193,15 @@ export default function ImpostoRenda() {
     toast({
       title: "Rendimento atualizado!",
       description: "As alterações foram salvas com sucesso."
+    });
+  };
+
+  const handleDeclaracaoImportada = (declaracaoImportada: any) => {
+    setDeclaracoesList(prev => [...prev, declaracaoImportada]);
+    
+    toast({
+      title: "Declaração importada!",
+      description: "A declaração foi importada e adicionada ao histórico."
     });
   };
 
@@ -329,10 +340,19 @@ export default function ImpostoRenda() {
           <TabsContent value="declaracoes" className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Histórico de Declarações</h2>
-              <Button onClick={() => setNovaDeclaracaoOpen(true)}>
-                <FileText className="h-4 w-4 mr-2" />
-                Nova Declaração
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setImportarDeclaracaoOpen(true)}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Importar Declaração
+                </Button>
+                <Button onClick={() => setNovaDeclaracaoOpen(true)}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Nova Declaração
+                </Button>
+              </div>
             </div>
             
             <div className="grid gap-4">
@@ -604,6 +624,12 @@ export default function ImpostoRenda() {
           rendimento={rendimentoSelecionado}
           rendimentoIndex={rendimentoIndex}
           onRendimentoUpdated={handleRendimentoUpdated}
+        />
+        
+        <ImportarDeclaracaoModal 
+          open={importarDeclaracaoOpen}
+          onOpenChange={setImportarDeclaracaoOpen}
+          onDeclaracaoImportada={handleDeclaracaoImportada}
         />
       </div>
     </Layout>
