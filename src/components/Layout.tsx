@@ -7,6 +7,7 @@ import {
   BookOpen, 
   FileText, 
   CreditCard,
+  Receipt,
   BarChart3,
   Settings, 
   Menu,
@@ -28,6 +29,7 @@ const navigation = [
   { name: "Livro Caixa", href: "/livro-caixa", icon: BookOpen },
   { name: "Imposto de Renda", href: "/imposto-renda", icon: FileText },
   { name: "Contas Bancárias", href: "/contas-bancarias", icon: CreditCard },
+  { name: "Dívidas", href: "/dividas", icon: Receipt },
   { name: "Relatórios", href: "/relatorios", icon: BarChart3 },
   { name: "Configurações", href: "/configuracoes", icon: Settings },
 ];
