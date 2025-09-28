@@ -6,6 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import VisualizarAplicacaoModal from "@/components/VisualizarAplicacaoModal";
+import EditarAplicacaoModal from "@/components/EditarAplicacaoModal";
 
 // Mock data - Financial Assets
 const portfolioAssets = [
@@ -93,8 +96,13 @@ export default function Carteira() {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [sortBy, setSortBy] = useState("value");
+  const [assets, setAssets] = useState(portfolioAssets);
+  const [visualizarAplicacaoOpen, setVisualizarAplicacaoOpen] = useState(false);
+  const [editarAplicacaoOpen, setEditarAplicacaoOpen] = useState(false);
+  const [aplicacaoSelecionada, setAplicacaoSelecionada] = useState<any>(null);
+  const { toast } = useToast();
 
-  const filteredAssets = portfolioAssets
+  const filteredAssets = assets
     .filter(asset => {
       const matchesSearch = asset.ticker.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           asset.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -108,8 +116,30 @@ export default function Carteira() {
       return 0;
     });
 
-  const totalValue = portfolioAssets.reduce((sum, asset) => sum + asset.value, 0);
-  const totalAssets = portfolioAssets.length;
+  const totalValue = assets.reduce((sum, asset) => sum + asset.value, 0);
+  const totalAssets = assets.length;
+
+  const handleVisualizarAplicacao = (aplicacao: any) => {
+    setAplicacaoSelecionada(aplicacao);
+    setVisualizarAplicacaoOpen(true);
+  };
+
+  const handleEditarAplicacao = (aplicacao: any) => {
+    setAplicacaoSelecionada(aplicacao);
+    setEditarAplicacaoOpen(true);
+  };
+
+  const handleAplicacaoEditada = (aplicacaoEditada: any) => {
+    setAssets(prev => 
+      prev.map(asset => 
+        asset.id === aplicacaoEditada.id ? aplicacaoEditada : asset
+      )
+    );
+    toast({
+      title: "Aplicação atualizada!",
+      description: "As alterações foram salvas com sucesso."
+    });
+  };
 
   return (
     <Layout>
@@ -235,8 +265,8 @@ export default function Carteira() {
               <AssetCard 
                 key={asset.id} 
                 asset={asset}
-                onEdit={(asset) => console.log("Edit:", asset)}
-                onView={(asset) => console.log("View:", asset)}
+                onEdit={handleEditarAplicacao}
+                onView={handleVisualizarAplicacao}
               />
             ))}
           </div>
@@ -252,6 +282,20 @@ export default function Carteira() {
             </div>
           )}
         </div>
+
+        {/* Modals */}
+        <VisualizarAplicacaoModal 
+          open={visualizarAplicacaoOpen}
+          onOpenChange={setVisualizarAplicacaoOpen}
+          aplicacao={aplicacaoSelecionada}
+        />
+        
+        <EditarAplicacaoModal 
+          open={editarAplicacaoOpen}
+          onOpenChange={setEditarAplicacaoOpen}
+          aplicacao={aplicacaoSelecionada}
+          onAplicacaoEditada={handleAplicacaoEditada}
+        />
       </div>
     </Layout>
   );
