@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CreditCard, TrendingUp, TrendingDown, Eye, EyeOff, MoreHorizontal, Plus, Upload, Edit } from "lucide-react";
+import { CreditCard, TrendingUp, TrendingDown, Eye, EyeOff, MoreHorizontal, Plus, Upload } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import NovaContaModal from "@/components/NovaContaModal";
 import ExtratoModal from "@/components/ExtratoModal";
 import ImportarExtratoModal from "@/components/ImportarExtratoModal";
-import EditarContaModal from "@/components/EditarContaModal";
+
 
 // Mock data - Contas Bancárias iniciais
 const contasIniciais = [
@@ -112,14 +112,12 @@ const CartaoConta = ({
   conta, 
   mostrarSaldo, 
   onExtrato, 
-  onImportarExtrato,
-  onEditar
+  onImportarExtrato
 }: { 
   conta: typeof contasIniciais[0];
   mostrarSaldo: boolean;
   onExtrato: (conta: any) => void;
   onImportarExtrato: (conta: any) => void;
-  onEditar: (conta: any) => void;
 }) => {
   return (
     <Card className="relative overflow-hidden">
@@ -190,15 +188,6 @@ const CartaoConta = ({
             <Upload className="h-3 w-3 mr-1" />
             Importar
           </Button>
-          <Button 
-            variant="default" 
-            size="sm" 
-            className="flex-1"
-            onClick={() => onEditar(conta)}
-          >
-            <Edit className="h-3 w-3 mr-1" />
-            Editar
-          </Button>
         </div>
       </CardContent>
     </Card>
@@ -211,7 +200,7 @@ export default function ContasBancarias() {
   const [novaContaOpen, setNovaContaOpen] = useState(false);
   const [extratoOpen, setExtratoOpen] = useState(false);
   const [importarExtratoOpen, setImportarExtratoOpen] = useState(false);
-  const [editarContaOpen, setEditarContaOpen] = useState(false);
+  
   const [contaSelecionada, setContaSelecionada] = useState<any>(null);
   const { toast } = useToast();
 
@@ -236,10 +225,6 @@ export default function ContasBancarias() {
     setImportarExtratoOpen(true);
   };
 
-  const handleEditar = (conta: any) => {
-    setContaSelecionada(conta);
-    setEditarContaOpen(true);
-  };
 
   const handleExtratoImportado = () => {
     toast({
@@ -248,17 +233,6 @@ export default function ContasBancarias() {
     });
   };
 
-  const handleContaEditada = (contaEditada: any) => {
-    setContas(prev => 
-      prev.map(conta => 
-        conta.id === contaEditada.id ? contaEditada : conta
-      )
-    );
-    toast({
-      title: "Conta atualizada!",
-      description: "Os dados da conta foram atualizados com sucesso."
-    });
-  };
   
   const formatCurrency = (valor: number) => {
     return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -354,7 +328,6 @@ export default function ContasBancarias() {
                 mostrarSaldo={mostrarSaldos}
                 onExtrato={handleExtrato}
                 onImportarExtrato={handleImportarExtrato}
-                onEditar={handleEditar}
               />
             ))}
           </div>
@@ -443,12 +416,6 @@ export default function ContasBancarias() {
           onExtratoImportado={handleExtratoImportado}
         />
         
-        <EditarContaModal 
-          open={editarContaOpen}
-          onOpenChange={setEditarContaOpen}
-          conta={contaSelecionada}
-          onContaEditada={handleContaEditada}
-        />
       </div>
     </Layout>
   );
