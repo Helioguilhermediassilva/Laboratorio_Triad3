@@ -5,6 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import NovoPlanoPrevidenciaModal from "@/components/NovoPlanoPrevidenciaModal";
+import VisualizarPlanoModal from "@/components/VisualizarPlanoModal";
 
 // Mock data for pension plans
 const mockPrevidencia = [
@@ -190,15 +194,16 @@ function PensionCard({ plano, onView, onDelete }: PensionCardProps) {
         </div>
 
         <div className="flex space-x-2 pt-2">
-          <Button
-            size="sm"
-            variant="outline"
-            className="flex-1"
-            onClick={() => onView(plano.id)}
-          >
-            <Eye className="w-4 h-4 mr-1" />
-            Detalhes
-          </Button>
+          <VisualizarPlanoModal plano={plano}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1"
+            >
+              <Eye className="w-4 h-4 mr-1" />
+              Detalhes
+            </Button>
+          </VisualizarPlanoModal>
           <Button
             size="sm"
             variant="outline"
@@ -214,18 +219,34 @@ function PensionCard({ plano, onView, onDelete }: PensionCardProps) {
 }
 
 export default function Previdencia() {
-  const [planos] = useState(mockPrevidencia);
+  const [planos, setPlanos] = useState(mockPrevidencia);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [planoToDelete, setPlanoToDelete] = useState<number | null>(null);
+  const { toast } = useToast();
 
   const handleView = (id: number) => {
     console.log("Visualizar plano:", id);
   };
 
   const handleDelete = (id: number) => {
-    console.log("Excluir plano:", id);
+    setPlanoToDelete(id);
+    setDeleteDialogOpen(true);
   };
 
-  const handleAddPlan = () => {
-    console.log("Adicionar novo plano");
+  const confirmDelete = () => {
+    if (planoToDelete) {
+      setPlanos(prev => prev.filter(p => p.id !== planoToDelete));
+      toast({
+        title: "Plano excluído",
+        description: "O plano previdenciário foi removido com sucesso.",
+      });
+    }
+    setDeleteDialogOpen(false);
+    setPlanoToDelete(null);
+  };
+
+  const handleAddPlan = (novoPlano: any) => {
+    setPlanos(prev => [...prev, novoPlano]);
   };
 
   // Calculations
@@ -244,10 +265,12 @@ export default function Previdencia() {
               Gerencie seus planos previdenciários e aposentadoria
             </p>
           </div>
-          <Button onClick={handleAddPlan}>
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Plano
-          </Button>
+          <NovoPlanoPrevidenciaModal onAdd={handleAddPlan}>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Plano
+            </Button>
+          </NovoPlanoPrevidenciaModal>
         </div>
 
         {/* Stats Cards */}
@@ -321,14 +344,34 @@ export default function Previdencia() {
               Comece adicionando um novo plano de previdência.
             </p>
             <div className="mt-6">
-              <Button onClick={handleAddPlan}>
-                <Plus className="mr-2 h-4 w-4" />
-                Novo Plano
-              </Button>
+              <NovoPlanoPrevidenciaModal onAdd={handleAddPlan}>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Novo Plano
+                </Button>
+              </NovoPlanoPrevidenciaModal>
             </div>
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este plano previdenciário? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 }
