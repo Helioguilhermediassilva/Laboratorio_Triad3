@@ -34,298 +34,159 @@ export default function Relatorios() {
     try {
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      let yPosition = 25;
+      let yPos = 20;
 
-      // Define colors
-      const primaryColor = [34, 197, 94]; // Green
-      const secondaryColor = [59, 130, 246]; // Blue
-      const accentColor = [168, 85, 247]; // Purple
-      const textColor = [31, 41, 55]; // Gray-800
-      const lightGray = [243, 244, 246]; // Gray-100
-      const darkGray = [107, 114, 128]; // Gray-500
+      // Colors
+      const primary = '#22c55e';
+      const secondary = '#3b82f6';
+      const text = '#1f2937';
+      const gray = '#6b7280';
 
-      // Header Background
-      doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-      doc.rect(0, 0, pageWidth, 50, 'F');
-
-      // Header gradient effect (using multiple rectangles with opacity)
-      for (let i = 0; i < 10; i++) {
-        const alpha = 0.1 - (i * 0.01);
-        doc.setFillColor(255, 255, 255, alpha);
-        doc.rect(0, 40 + i, pageWidth, 1, 'F');
-      }
-
-      // Company Logo Area (placeholder)
-      doc.setFillColor(255, 255, 255);
-      doc.circle(35, 25, 12, 'F');
-      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-      doc.setFontSize(14);
-      doc.setFont("helvetica", "bold");
-      doc.text("₹", 31, 29);
-
-      // Header Title
+      // Header
+      doc.setFillColor(34, 197, 94);
+      doc.rect(0, 0, pageWidth, 40, 'F');
+      
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(24);
+      doc.setFontSize(20);
       doc.setFont("helvetica", "bold");
-      doc.text("RELATÓRIO DE INVESTIMENTOS", 60, 25);
-
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "normal");
-      doc.text("Análise Completa da Carteira", 60, 32);
-
-      // Date and Period Info
+      doc.text("RELATÓRIO DE INVESTIMENTOS", 20, yPos);
+      
       doc.setFontSize(10);
-      const currentDate = new Date().toLocaleDateString('pt-BR', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      });
-      doc.text(`Gerado em: ${currentDate}`, pageWidth - 75, 20);
-      doc.text("Período: Últimos 6 meses", pageWidth - 75, 28);
-      doc.text("Status: Atualizado", pageWidth - 75, 36);
-
-      yPosition = 70;
-
-      // Executive Summary Box
-      doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
-      doc.roundedRect(15, yPosition - 5, pageWidth - 30, 60, 3, 3, 'F');
-      
-      doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-      doc.setLineWidth(0.5);
-      doc.roundedRect(15, yPosition - 5, pageWidth - 30, 60, 3, 3, 'S');
-
-      doc.setTextColor(textColor[0], textColor[1], textColor[2]);
-      doc.setFontSize(16);
-      doc.setFont("helvetica", "bold");
-      doc.text("📊 RESUMO EXECUTIVO", 25, yPosition + 5);
-
-      // Summary Cards in Grid
-      const cardWidth = 40;
-      const cardHeight = 20;
-      const cardSpacing = 45;
-      
-      // Card 1 - Total Value
-      doc.setFillColor(255, 255, 255);
-      doc.roundedRect(25, yPosition + 12, cardWidth, cardHeight, 2, 2, 'F');
-      doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-      doc.roundedRect(25, yPosition + 12, cardWidth, cardHeight, 2, 2, 'S');
-      
-      doc.setFontSize(8);
-      doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
-      doc.text("VALOR TOTAL", 27, yPosition + 18);
-      doc.setFontSize(12);
-      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-      doc.setFont("helvetica", "bold");
-      doc.text(totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), 27, yPosition + 26);
-
-      // Card 2 - Monthly Growth
-      doc.setFillColor(255, 255, 255);
-      doc.roundedRect(25 + cardSpacing, yPosition + 12, cardWidth, cardHeight, 2, 2, 'F');
-      doc.setDrawColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
-      doc.roundedRect(25 + cardSpacing, yPosition + 12, cardWidth, cardHeight, 2, 2, 'S');
-      
-      doc.setFontSize(8);
-      doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
-      doc.text("CRESCIMENTO MENSAL", 27 + cardSpacing, yPosition + 18);
-      doc.setFontSize(12);
-      doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
-      doc.setFont("helvetica", "bold");
-      doc.text(`+${monthlyGrowth}%`, 27 + cardSpacing, yPosition + 26);
-
-      // Card 3 - Annual Growth
-      doc.setFillColor(255, 255, 255);
-      doc.roundedRect(25 + cardSpacing * 2, yPosition + 12, cardWidth, cardHeight, 2, 2, 'F');
-      doc.setDrawColor(accentColor[0], accentColor[1], accentColor[2]);
-      doc.roundedRect(25 + cardSpacing * 2, yPosition + 12, cardWidth, cardHeight, 2, 2, 'S');
-      
-      doc.setFontSize(8);
-      doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
-      doc.text("CRESCIMENTO ANUAL", 27 + cardSpacing * 2, yPosition + 18);
-      doc.setFontSize(12);
-      doc.setTextColor(accentColor[0], accentColor[1], accentColor[2]);
-      doc.setFont("helvetica", "bold");
-      doc.text(`+${yearlyGrowth}%`, 27 + cardSpacing * 2, yPosition + 26);
-
-      // Additional metrics
-      yPosition += 45;
-      doc.setFontSize(9);
-      doc.setTextColor(textColor[0], textColor[1], textColor[2]);
       doc.setFont("helvetica", "normal");
-      doc.text(`🏆 Melhor Ativo: VALE3 (+24.5%)`, 25, yPosition);
-      doc.text(`💰 Dividendos Recebidos: R$ 18.500`, 120, yPosition);
+      doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 20, yPos + 8);
 
-      yPosition += 25;
+      yPos = 60;
 
-      // Portfolio Evolution Section
-      doc.setFillColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
-      doc.rect(15, yPosition, 5, 20, 'F');
+      // Resumo Executivo
+      doc.setFontSize(14);
+      doc.setTextColor(31, 41, 55);
+      doc.setFont("helvetica", "bold");
+      doc.text("RESUMO EXECUTIVO", 20, yPos);
+      yPos += 15;
+
+      // Métricas principais
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Valor Total da Carteira: ${totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 20, yPos);
+      yPos += 8;
       
-      doc.setTextColor(textColor[0], textColor[1], textColor[2]);
+      doc.text(`Crescimento Mensal: +${monthlyGrowth}%`, 20, yPos);
+      yPos += 8;
+      
+      doc.text(`Crescimento Anual: +${yearlyGrowth}%`, 20, yPos);
+      yPos += 8;
+      
+      doc.text(`Melhor Ativo: VALE3 (+24.5%)`, 20, yPos);
+      yPos += 8;
+      
+      doc.text(`Dividendos Recebidos (Ano): R$ 18.500,00`, 20, yPos);
+      yPos += 20;
+
+      // Evolução da Carteira
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
-      doc.text("📈 EVOLUÇÃO DA CARTEIRA", 25, yPosition + 8);
+      doc.text("EVOLUÇÃO DA CARTEIRA", 20, yPos);
+      yPos += 15;
 
-      yPosition += 20;
-
-      // Create a visual chart effect for performance data
-      const chartStartY = yPosition;
-      const chartWidth = pageWidth - 50;
-      const chartHeight = 40;
-      
-      // Chart background
-      doc.setFillColor(248, 250, 252);
-      doc.roundedRect(25, chartStartY, chartWidth, chartHeight, 2, 2, 'F');
-      
-      // Chart data visualization
-      const maxValue = Math.max(...performanceData.map(d => d.value));
-      const minValue = Math.min(...performanceData.map(d => d.value));
-      
-      performanceData.forEach((data, index) => {
-        const x = 30 + (index * (chartWidth - 20) / (performanceData.length - 1));
-        const normalizedValue = (data.value - minValue) / (maxValue - minValue);
-        const barHeight = normalizedValue * (chartHeight - 20) + 10;
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      performanceData.forEach((data) => {
+        const value = data.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const growth = data.growth >= 0 ? `+${data.growth}%` : `${data.growth}%`;
         
-        // Draw bars
-        doc.setFillColor(data.growth >= 0 ? primaryColor[0] : 220, data.growth >= 0 ? primaryColor[1] : 38, data.growth >= 0 ? primaryColor[2] : 38);
-        doc.rect(x - 2, chartStartY + chartHeight - barHeight, 4, barHeight, 'F');
-        
-        // Month labels
-        doc.setFontSize(8);
-        doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
-        doc.text(data.month, x - 3, chartStartY + chartHeight + 8);
+        doc.text(`${data.month}: ${value} (${growth})`, 20, yPos);
+        yPos += 6;
       });
+      yPos += 10;
 
-      yPosition = chartStartY + chartHeight + 20;
-
-      // Performance table
-      doc.setFillColor(255, 255, 255);
-      doc.roundedRect(25, yPosition, chartWidth, 50, 2, 2, 'F');
-      doc.setDrawColor(lightGray[0], lightGray[1], lightGray[2]);
-      doc.roundedRect(25, yPosition, chartWidth, 50, 2, 2, 'S');
-
-      yPosition += 10;
-      performanceData.forEach((data, index) => {
-        if (index < 3) { // Show only first 3 months to fit
-          const value = data.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-          const growth = data.growth >= 0 ? `+${data.growth}%` : `${data.growth}%`;
-          
-          doc.setFontSize(9);
-          doc.setTextColor(textColor[0], textColor[1], textColor[2]);
-          doc.setFont("helvetica", "bold");
-          doc.text(data.month, 30, yPosition);
-          
-          doc.setFont("helvetica", "normal");
-          doc.text(value, 50, yPosition);
-          
-          doc.setTextColor(data.growth >= 0 ? primaryColor[0] : 220, data.growth >= 0 ? primaryColor[1] : 38, data.growth >= 0 ? primaryColor[2] : 38);
-          doc.text(growth, 120, yPosition);
-          
-          yPosition += 8;
-        }
-      });
-
-      yPosition += 20;
-
-      // Asset Distribution Section
-      doc.setFillColor(accentColor[0], accentColor[1], accentColor[2]);
-      doc.rect(15, yPosition, 5, 20, 'F');
-      
-      doc.setTextColor(textColor[0], textColor[1], textColor[2]);
+      // Distribuição por Categoria
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
-      doc.text("🥧 DISTRIBUIÇÃO POR CATEGORIA", 25, yPosition + 8);
+      doc.text("DISTRIBUIÇÃO POR CATEGORIA", 20, yPos);
+      yPos += 15;
 
-      yPosition += 25;
-
-      // Pie chart representation using rectangles
-      let currentX = 25;
-      categoryDistribution.forEach((item, index) => {
-        const colors = [primaryColor, secondaryColor, accentColor, [239, 68, 68]];
-        const color = colors[index % colors.length];
-        const rectWidth = (item.percentage / 100) * (chartWidth * 0.7);
-        
-        doc.setFillColor(color[0], color[1], color[2]);
-        doc.roundedRect(currentX, yPosition, rectWidth, 8, 1, 1, 'F');
-        
-        // Category info
-        doc.setFontSize(9);
-        doc.setTextColor(textColor[0], textColor[1], textColor[2]);
-        doc.text(`${item.category}: ${item.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} (${item.percentage}%)`, 25, yPosition + 20 + (index * 8));
-        
-        currentX += rectWidth + 2;
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      categoryDistribution.forEach((item) => {
+        const value = item.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        doc.text(`${item.category}: ${value} (${item.percentage}%)`, 20, yPos);
+        yPos += 6;
       });
+      yPos += 10;
 
-      yPosition += 65;
+      // Transações Recentes
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("ÚLTIMAS TRANSAÇÕES", 20, yPos);
+      yPos += 15;
 
-      // Recent Transactions
-      if (yPosition < pageHeight - 80) {
-        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.rect(15, yPosition, 5, 20, 'F');
-        
-        doc.setTextColor(textColor[0], textColor[1], textColor[2]);
-        doc.setFontSize(14);
-        doc.setFont("helvetica", "bold");
-        doc.text("💼 ÚLTIMAS TRANSAÇÕES", 25, yPosition + 8);
+      const transactions = [
+        { type: "Compra", asset: "PETR4", date: "15/01/2024", value: "R$ 35.840", qty: "1.000 ações" },
+        { type: "Dividendos", asset: "HGLG11", date: "10/01/2024", value: "R$ 124", qty: "120 cotas" },
+        { type: "Venda", asset: "ITUB4", date: "08/01/2024", value: "R$ 15.200", qty: "500 ações" },
+        { type: "Compra", asset: "BBDC4", date: "05/01/2024", value: "R$ 28.450", qty: "800 ações" }
+      ];
 
-        yPosition += 25;
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      transactions.forEach((transaction) => {
+        doc.text(`${transaction.date} - ${transaction.type} ${transaction.asset}: ${transaction.value} (${transaction.qty})`, 20, yPos);
+        yPos += 6;
+      });
+      yPos += 15;
 
-        // Transaction items
-        const transactions = [
-          { type: "Compra", asset: "PETR4", date: "15/01/2024", value: "R$ 35.840", qty: "1.000 ações" },
-          { type: "Dividendos", asset: "HGLG11", date: "10/01/2024", value: "+R$ 124", qty: "120 cotas" }
-        ];
+      // Análise de Risco
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("ANÁLISE DE RISCO", 20, yPos);
+      yPos += 15;
 
-        transactions.forEach((transaction, index) => {
-          doc.setFillColor(255, 255, 255);
-          doc.roundedRect(25, yPosition, chartWidth, 15, 2, 2, 'F');
-          doc.setDrawColor(lightGray[0], lightGray[1], lightGray[2]);
-          doc.roundedRect(25, yPosition, chartWidth, 15, 2, 2, 'S');
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text("Perfil de Risco: Moderado", 20, yPos);
+      yPos += 6;
+      
+      doc.text("Diversificação: Bem diversificada (4 categorias)", 20, yPos);
+      yPos += 6;
+      
+      doc.text("Volatilidade da Carteira: 12.3% (anual)", 20, yPos);
+      yPos += 6;
+      
+      doc.text("Sharpe Ratio: 1.45 (Excelente)", 20, yPos);
+      yPos += 15;
 
-          doc.setFontSize(9);
-          doc.setTextColor(textColor[0], textColor[1], textColor[2]);
-          doc.setFont("helvetica", "bold");
-          doc.text(`${transaction.type} ${transaction.asset}`, 30, yPosition + 6);
-          
-          doc.setFont("helvetica", "normal");
-          doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
-          doc.text(transaction.date, 30, yPosition + 11);
-          
-          doc.setTextColor(transaction.type === "Dividendos" ? primaryColor[0] : textColor[0], transaction.type === "Dividendos" ? primaryColor[1] : textColor[1], transaction.type === "Dividendos" ? primaryColor[2] : textColor[2]);
-          doc.setFont("helvetica", "bold");
-          doc.text(transaction.value, pageWidth - 80, yPosition + 6);
-          
-          doc.setFont("helvetica", "normal");
-          doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
-          doc.text(transaction.qty, pageWidth - 80, yPosition + 11);
+      // Recomendações
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("RECOMENDAÇÕES", 20, yPos);
+      yPos += 15;
 
-          yPosition += 20;
-        });
-      }
+      const recommendations = [
+        "Considere rebalancear a carteira para manter a diversificação",
+        "Aumente a posição em Renda Fixa para reduzir risco",
+        "Monitore o desempenho dos FIIs no próximo trimestre",
+        "Considere aportes mensais regulares para aproveitar custo médio"
+      ];
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      recommendations.forEach((rec, index) => {
+        doc.text(`${index + 1}. ${rec}`, 20, yPos);
+        yPos += 6;
+      });
 
       // Footer
-      doc.setFillColor(248, 250, 252);
-      doc.rect(0, pageHeight - 25, pageWidth, 25, 'F');
-      
-      doc.setDrawColor(lightGray[0], lightGray[1], lightGray[2]);
-      doc.line(15, pageHeight - 25, pageWidth - 15, pageHeight - 25);
-      
+      const pageHeight = doc.internal.pageSize.getHeight();
       doc.setFontSize(8);
-      doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
-      doc.setFont("helvetica", "italic");
-      doc.text("Relatório gerado automaticamente pela plataforma Triad3 de investimentos", 20, pageHeight - 15);
-      doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')} | Confidencial`, 20, pageHeight - 8);
-      
-      doc.setFont("helvetica", "bold");
-      doc.text("TRIAD3 INVESTIMENTOS", pageWidth - 60, pageHeight - 10);
+      doc.setTextColor(107, 114, 128);
+      doc.text("Relatório gerado pela plataforma Triad3 - Confidencial", 20, pageHeight - 20);
+      doc.text(`Página 1 de 1 - ${new Date().toLocaleString('pt-BR')}`, 20, pageHeight - 12);
 
-      // Save the PDF
       doc.save(`relatorio-investimentos-${new Date().toISOString().split('T')[0]}.pdf`);
 
       toast({
-        title: "PDF Exportado com Sucesso! 📄",
-        description: "Relatório elegante gerado e baixado automaticamente."
+        title: "PDF exportado com sucesso!",
+        description: "Relatório limpo e organizado baixado."
       });
     } catch (error) {
       toast({
