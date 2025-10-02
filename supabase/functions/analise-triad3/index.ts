@@ -261,22 +261,13 @@ serve(async (req) => {
     };
 
     // Preparar prompt para análise com IA
-    const prompt = `Você é um consultor financeiro especializado no conceito Triad3 de gestão patrimonial, baseado no modelo do Dr. Maxuel Silva Torres.
+    const prompt = `Você é um consultor financeiro especializado no conceito Triad3 de gestão patrimonial.
 
 CONCEITO TRIAD3:
 O patrimônio ideal deve estar dividido em:
 - 33% em LIQUIDEZ (investimentos líquidos, ações, FIIs, conta corrente, poupança)
 - 33% em IMOBILIZADO (imóveis, veículos, bens duráveis, equipamentos)
-- 33% em NEGÓCIOS (empresas, participações societárias, rendimentos de negócios)
-
-CONTEXTO DO CLIENTE:
-Cliente empresário com participações em sociedades empresariais:
-- COOPERATIVA DE CRÉDITO DE LIVRE ADMISSÃO DO NOROESTE DE MINAS
-- BURITI REFLORESTAMENTO
-- QUALITY EMPREENDIMENTOS FLORESTAIS LTDA
-- QUALITY CARVÃO FLORESTAL LTDA
-- QUALITY SERVIÇOS AGROFLORESTAIS LTDA
-- MCP REFLORESTAMENTO LTDA
+- 33% em NEGÓCIOS (empresas, participações societárias, rendimentos de negócios, renda ativa)
 
 DADOS PATRIMONIAIS ATUAIS:
 Patrimônio Bruto Total: R$ ${totais.total.toFixed(2)}
@@ -297,27 +288,35 @@ ${dadosTransacoes && dadosTransacoes.length > 0 && !transacoes?.length ? '\n(An�
 TAREFA:
 Analise a distribuição patrimonial atual e forneça:
 
-1. **Diagnóstico Executivo**: Avalie se a distribuição está alinhada com o conceito Triad3 (33-33-33) e o contexto empresarial do cliente
+1. **Diagnóstico Executivo**: 
+   - Avalie se a distribuição está alinhada com o conceito Triad3 (33-33-33)
+   - Identifique pontos fortes e fracos da distribuição atual
 
 2. **Pontos Críticos de Atenção**: 
-   - Identifique desequilíbrios significativos e seus riscos específicos
+   - Identifique desequilíbrios significativos e seus riscos
    - Analise o impacto das dívidas no patrimônio líquido
    - Avalie a diversificação dos investimentos
+   - Considere riscos de concentração em categorias específicas
 
 3. **Recomendações Estratégicas**: Forneça 4-6 ações práticas e específicas para:
-   - Melhorar o equilíbrio patrimonial conforme Triad3
+   - Melhorar o equilíbrio patrimonial conforme o conceito Triad3
    - Otimizar a gestão das dívidas existentes
    - Aumentar participação em áreas deficitárias
    - Maximizar retorno dos ativos existentes
+   - Proteger e preservar o patrimônio
 
 4. **Análise de Liquidez e Risco**: 
-   - Avalie a capacidade de honrar compromissos
+   - Avalie a capacidade de honrar compromissos financeiros
    - Analise a proporção patrimônio/dívida
-   - Identifique riscos de concentração
+   - Identifique riscos de liquidez e concentração
+   - Considere reservas de emergência
 
-5. **Plano de Ação 6 Meses**: Sugira objetivos tangíveis e mensuráveis para os próximos 6 meses
+5. **Plano de Ação 6 Meses**: 
+   - Sugira 3-5 objetivos tangíveis e mensuráveis
+   - Priorize ações de acordo com o impacto no equilíbrio Triad3
+   - Estabeleça metas realistas de acordo com o perfil atual
 
-Forneça uma análise profissional, clara, acionável e contextualizada ao perfil empresarial e às participações societárias do cliente.`;
+Forneça uma análise profissional, clara, acionável e personalizada para o perfil patrimonial apresentado.`;
 
     console.log("Calling Lovable AI for analysis...");
 
