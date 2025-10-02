@@ -17,28 +17,17 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY not configured");
     }
 
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader) {
-      throw new Error("Authorization header required");
-    }
-
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      throw new Error("User not authenticated");
-    }
-
-    // Buscar transações do usuário
+    // Buscar todas as transações disponíveis
     const { data: transacoes, error: transacoesError } = await supabase
       .from('transacoes')
       .select('*')
-      .eq('user_id', user.id)
-      .order('data', { ascending: false });
+      .order('data', { ascending: false })
+      .limit(100);
 
     if (transacoesError) {
       console.error("Error fetching transactions:", transacoesError);
