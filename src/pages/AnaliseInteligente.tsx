@@ -12,6 +12,42 @@ const AnaliseInteligente = () => {
   const [analise, setAnalise] = useState<any>(null);
   const { toast } = useToast();
 
+  const convertMarkdownTableToHtml = (text: string) => {
+    // Detecta tabelas markdown e converte para HTML
+    const tableRegex = /\|(.+)\|[\r\n]+\|[\s\:\-\|]+\|[\r\n]+((?:\|.+\|[\r\n]*)+)/g;
+    
+    return text.replace(tableRegex, (match, headers, rows) => {
+      const headerCells = headers.split('|').filter((h: string) => h.trim()).map((h: string) => h.trim());
+      const rowData = rows.trim().split('\n').map((row: string) => 
+        row.split('|').filter((cell: string) => cell.trim()).map((cell: string) => cell.trim())
+      );
+
+      let tableHtml = '<div class="my-6 overflow-x-auto rounded-lg border border-border"><table class="w-full">';
+      
+      // Header
+      tableHtml += '<thead class="bg-muted/50"><tr>';
+      headerCells.forEach((header: string) => {
+        tableHtml += `<th class="px-4 py-3 text-left text-sm font-semibold text-foreground border-b border-border">${header}</th>`;
+      });
+      tableHtml += '</tr></thead>';
+      
+      // Body
+      tableHtml += '<tbody class="divide-y divide-border">';
+      rowData.forEach((row: string[], index: number) => {
+        tableHtml += `<tr class="${index % 2 === 0 ? 'bg-background' : 'bg-muted/20'} hover:bg-muted/40 transition-colors">`;
+        row.forEach((cell: string, cellIndex: number) => {
+          const isFirstColumn = cellIndex === 0;
+          const cellClass = isFirstColumn ? 'font-medium' : '';
+          tableHtml += `<td class="px-4 py-3 text-sm text-foreground ${cellClass}">${cell}</td>`;
+        });
+        tableHtml += '</tr>';
+      });
+      tableHtml += '</tbody></table></div>';
+      
+      return tableHtml;
+    });
+  };
+
   const gerarAnalise = async () => {
     setLoading(true);
     try {
@@ -27,15 +63,23 @@ const AnaliseInteligente = () => {
       }
 
       // Processar o texto da análise para melhorar formatação
+      let textoProcessado = data.analise
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Converte **texto** em <strong>
+        .replace(/R\\\$/g, 'R$') // Corrige R\$ para R$
+        .replace(/\\\(/g, '(') // Remove barra invertida antes de parênteses
+        .replace(/\\\)/g, ')'); // Remove barra invertida depois de parênteses
+      
+      // Converte tabelas markdown antes de processar quebras de linha
+      textoProcessado = convertMarkdownTableToHtml(textoProcessado);
+      
+      // Aplica formatação de parágrafos e quebras de linha
+      textoProcessado = textoProcessado
+        .replace(/\n\n/g, '</p><p class="mb-4">') // Parágrafos
+        .replace(/\n/g, '<br/>'); // Quebras de linha
+
       const analiseProcessada = {
         ...data,
-        analise: data.analise
-          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Converte **texto** em <strong>
-          .replace(/R\\\$/g, 'R$') // Corrige R\$ para R$
-          .replace(/\\\(/g, '(') // Remove barra invertida antes de parênteses
-          .replace(/\\\)/g, ')') // Remove barra invertida depois de parênteses
-          .replace(/\n\n/g, '</p><p class="mb-4">') // Parágrafos
-          .replace(/\n/g, '<br/>') // Quebras de linha
+        analise: textoProcessado
       };
 
       setAnalise(analiseProcessada);
