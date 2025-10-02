@@ -138,13 +138,29 @@ const AnaliseInteligente = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
                     <div className="text-sm font-medium text-muted-foreground mb-2">
-                      Patrimônio Total
+                      Patrimônio Bruto Total
                     </div>
                     <div className="text-3xl font-bold text-primary">
                       {formatCurrency(analise.dados.totais.total)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground mb-2">
+                      Total de Dívidas
+                    </div>
+                    <div className="text-2xl font-bold text-destructive">
+                      {formatCurrency(analise.dados.dividas)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground mb-2">
+                      Patrimônio Líquido
+                    </div>
+                    <div className="text-3xl font-bold text-green-600">
+                      {formatCurrency(analise.dados.patrimonioLiquido)}
                     </div>
                   </div>
                 </div>
