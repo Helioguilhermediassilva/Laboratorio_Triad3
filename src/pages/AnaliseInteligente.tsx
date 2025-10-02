@@ -26,7 +26,17 @@ const AnaliseInteligente = () => {
         throw new Error(data.error);
       }
 
-      setAnalise(data);
+      // Processar o texto da análise para melhorar formatação
+      const analiseProcessada = {
+        ...data,
+        analise: data.analise
+          .replace(/\*\*/g, '') // Remove asteriscos duplos
+          .replace(/R\\\$/g, 'R$') // Corrige R\$ para R$
+          .replace(/\\\(/g, '(') // Remove barra invertida antes de parênteses
+          .replace(/\\\)/g, ')') // Remove barra invertida depois de parênteses
+      };
+
+      setAnalise(analiseProcessada);
       toast({
         title: "Análise Gerada",
         description: "Sua análise patrimonial foi gerada com sucesso!",
