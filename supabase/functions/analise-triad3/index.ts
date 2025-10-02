@@ -34,6 +34,84 @@ serve(async (req) => {
       throw transacoesError;
     }
 
+    // Se não houver transações, usar dados de exemplo
+    const dadosTransacoes = transacoes && transacoes.length > 0 ? transacoes : [
+      {
+        id: "1",
+        data: "2024-01-15",
+        descricao: "Salário - Empresa XYZ",
+        categoria: "Salário",
+        tipo: "entrada",
+        valor: 8500,
+        conta: "Conta Corrente Itaú"
+      },
+      {
+        id: "2",
+        data: "2024-01-16",
+        descricao: "Aluguel Apartamento",
+        categoria: "Moradia",
+        tipo: "saida",
+        valor: 2200,
+        conta: "Conta Corrente Itaú"
+      },
+      {
+        id: "3",
+        data: "2024-01-17",
+        descricao: "Dividendos PETR4",
+        categoria: "Investimentos",
+        tipo: "entrada",
+        valor: 450,
+        conta: "Conta Corrente XP"
+      },
+      {
+        id: "4",
+        data: "2024-01-18",
+        descricao: "Supermercado Extra",
+        categoria: "Alimentação",
+        tipo: "saida",
+        valor: 380,
+        conta: "Cartão de Crédito"
+      },
+      {
+        id: "5",
+        data: "2024-01-19",
+        descricao: "Freelance - Design",
+        categoria: "Freelance",
+        tipo: "entrada",
+        valor: 1200,
+        conta: "Conta Corrente Nubank"
+      },
+      {
+        id: "6",
+        data: "2024-01-20",
+        descricao: "Participação Quality Carvão",
+        categoria: "Negócios",
+        tipo: "entrada",
+        valor: 15000,
+        conta: "Conta Empresarial"
+      },
+      {
+        id: "7",
+        data: "2024-01-21",
+        descricao: "Investimento em Fundos",
+        categoria: "Investimentos",
+        tipo: "entrada",
+        valor: 12000,
+        conta: "Conta XP Investimentos"
+      },
+      {
+        id: "8",
+        data: "2024-01-22",
+        descricao: "Imóvel - Aluguel Recebido",
+        categoria: "Patrimônio",
+        tipo: "entrada",
+        valor: 3500,
+        conta: "Conta Corrente Itaú"
+      }
+    ];
+
+    console.log(`Analyzing ${dadosTransacoes.length} transactions...`);
+
     // Calcular totais por categoria baseado no conceito Triad3
     const totais = {
       liquidez: 0,
@@ -48,7 +126,7 @@ serve(async (req) => {
       negocios: ['Salário', 'Freelance', 'Negócios', 'Empresa']
     };
 
-    transacoes?.forEach((t: any) => {
+    dadosTransacoes?.forEach((t: any) => {
       const valor = parseFloat(t.valor);
       if (t.tipo === 'entrada') {
         totais.total += valor;
@@ -88,7 +166,8 @@ Distribuição Atual:
 - Imobilizado: R$ ${totais.imobilizado.toFixed(2)} (${percentuais.imobilizado}%)
 - Negócios: R$ ${totais.negocios.toFixed(2)} (${percentuais.negocios}%)
 
-Últimas ${transacoes?.length || 0} transações analisadas.
+Últimas ${dadosTransacoes?.length || 0} transações analisadas.
+${dadosTransacoes && dadosTransacoes.length > 0 && !transacoes?.length ? '\n(Análise baseada em dados de exemplo - adicione suas transações reais no Livro Caixa)' : ''}
 
 TAREFA:
 Analise a distribuição patrimonial atual e forneça:
