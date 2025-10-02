@@ -11,7 +11,8 @@ import {
   Receipt,
   BarChart3,
   ScrollText,
-  Settings, 
+  Settings,
+  Sparkles,
   Menu,
   X
 } from "lucide-react";
@@ -34,6 +35,7 @@ const navigation = [
   { name: "Contas Bancárias", href: "/contas-bancarias", icon: CreditCard },
   { name: "Dívidas", href: "/dividas", icon: Receipt },
   { name: "Relatórios", href: "/relatorios", icon: BarChart3 },
+  { name: "Análise Inteligente", href: "/analise-inteligente", icon: Sparkles },
   { name: "Testamento", href: "/testamento", icon: ScrollText },
   { name: "Configurações", href: "/configuracoes", icon: Settings },
 ];
