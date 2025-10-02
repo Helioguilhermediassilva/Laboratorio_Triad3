@@ -34,11 +34,12 @@ serve(async (req) => {
       throw transacoesError;
     }
 
-    // Se não houver transações, usar dados de exemplo consolidados de todo o sistema
-    // Patrimônio Total conforme Dashboard: R$ 2.8M (R$ 2.800.000)
-    // Aplicações: R$ 485.2K | Imobilizado: R$ 1.2M | Negócios/Rendimentos: R$ 1.114.8K
+    // Se não houver transações, usar dados de exemplo consolidados de TODAS as páginas da Triad3
+    // VALORES EXATOS:
+    // Dívidas: R$ 360.350 (Financ. Imob R$ 287.500 + Financ. Veic R$ 45.600 + Emprést. R$ 18.750 + Cartão R$ 8.500)
+    // Imobilizado: R$ 1.450.000 (Casa Praia R$ 850K + Apt Centro R$ 450K + Honda Civic R$ 125K + Equipamentos R$ 25K)
     const dadosTransacoes = transacoes && transacoes.length > 0 ? transacoes : [
-      // Imobilizado - R$ 1.200.000 (conforme Dashboard)
+      // Imobilizado - R$ 1.450.000 (valores EXATOS da página)
       {
         id: "imob1",
         data: "2020-03-15",
@@ -63,7 +64,7 @@ serve(async (req) => {
         descricao: "Casa de Praia - Guarujá",
         categoria: "Patrimônio",
         tipo: "entrada",
-        valor: 600000,
+        valor: 850000,
         conta: "Imobilizado"
       },
       {
@@ -166,15 +167,14 @@ serve(async (req) => {
         valor: 36960,
         conta: "Banco do Brasil"
       },
-      // Negócios/Receita - R$ 1.114.800 (para completar R$ 2.8M)
-      // Inclui rendimentos de negócios, participações societárias e receitas diversas
+      // Negócios/Receita - Ajustado para totalizar R$ 2.8M
       {
         id: "neg1",
         data: "2023-01-01",
         descricao: "Participações Societárias - Empresas",
         categoria: "Negócios",
         tipo: "entrada",
-        valor: 850000,
+        valor: 600000,
         conta: "Participações"
       },
       {
@@ -231,11 +231,11 @@ serve(async (req) => {
         valor: 2800,
         conta: "Conta XP"
       },
-      // Dívidas
+      // Dívidas - R$ 360.350 EXATO (valores da página Dívidas)
       {
         id: "div1",
         data: "2024-01-15",
-        descricao: "Financiamento Imobiliário - Saldo Devedor",
+        descricao: "Financiamento Imobiliário - Banco do Brasil",
         categoria: "Dívida",
         tipo: "saida",
         valor: 287500,
@@ -244,11 +244,29 @@ serve(async (req) => {
       {
         id: "div2",
         data: "2024-01-10",
-        descricao: "Financiamento Veicular - Saldo Devedor",
+        descricao: "Financiamento Veicular - Santander",
         categoria: "Dívida",
         tipo: "saida",
         valor: 45600,
         conta: "Santander"
+      },
+      {
+        id: "div3",
+        data: "2024-01-05",
+        descricao: "Empréstimo Pessoal - Nubank",
+        categoria: "Dívida",
+        tipo: "saida",
+        valor: 18750,
+        conta: "Nubank"
+      },
+      {
+        id: "div4",
+        data: "2024-01-25",
+        descricao: "Cartão de Crédito - Itaú",
+        categoria: "Dívida",
+        tipo: "saida",
+        valor: 8500,
+        conta: "Itaú"
       }
     ];
 
