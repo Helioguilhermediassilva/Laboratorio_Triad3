@@ -35,9 +35,10 @@ serve(async (req) => {
     }
 
     // Se não houver transações, usar dados de exemplo consolidados de todo o sistema
-    // Patrimônio Total conforme Dashboard: R$ 2.8M
+    // Patrimônio Total conforme Dashboard: R$ 2.8M (R$ 2.800.000)
+    // Aplicações: R$ 485.2K | Imobilizado: R$ 1.2M | Negócios/Rendimentos: R$ 1.114.8K
     const dadosTransacoes = transacoes && transacoes.length > 0 ? transacoes : [
-      // Imobilizado - R$ 1.2M (conforme Dashboard)
+      // Imobilizado - R$ 1.200.000 (conforme Dashboard)
       {
         id: "imob1",
         data: "2020-03-15",
@@ -74,7 +75,7 @@ serve(async (req) => {
         valor: 25000,
         conta: "Imobilizado"
       },
-      // Aplicações/Liquidez - R$ 485.2K (conforme Dashboard)
+      // Aplicações/Liquidez - R$ 485.200 (conforme Dashboard)
       {
         id: "apl1",
         data: "2024-01-15",
@@ -165,20 +166,48 @@ serve(async (req) => {
         valor: 36960,
         conta: "Banco do Brasil"
       },
-      // Negócios/Receita Mensal - R$ 18.5K mensal (R$ 222K anual)
+      // Negócios/Receita - R$ 1.114.800 (para completar R$ 2.8M)
+      // Inclui rendimentos de negócios, participações societárias e receitas diversas
       {
         id: "neg1",
-        data: "2024-01-01",
-        descricao: "Receitas Anuais de Negócios",
+        data: "2023-01-01",
+        descricao: "Participações Societárias - Empresas",
         categoria: "Negócios",
         tipo: "entrada",
-        valor: 222000,
-        conta: "Rendimentos Anuais"
+        valor: 850000,
+        conta: "Participações"
+      },
+      {
+        id: "neg2",
+        data: "2023-06-15",
+        descricao: "Investimento em Startup Tech",
+        categoria: "Negócios",
+        tipo: "entrada",
+        valor: 120000,
+        conta: "Participações"
+      },
+      {
+        id: "neg3",
+        data: "2024-01-01",
+        descricao: "Consultoria Empresarial - Contratos Ativos",
+        categoria: "Negócios",
+        tipo: "entrada",
+        valor: 85000,
+        conta: "Empresa"
+      },
+      {
+        id: "neg4",
+        data: "2023-09-10",
+        descricao: "E-commerce - Loja Online",
+        categoria: "Negócios",
+        tipo: "entrada",
+        valor: 45000,
+        conta: "Negócio Digital"
       },
       {
         id: "rend1",
         data: "2024-01-15",
-        descricao: "Salário Mensal",
+        descricao: "Salário Anual",
         categoria: "Salário",
         tipo: "entrada",
         valor: 8500,
@@ -187,7 +216,7 @@ serve(async (req) => {
       {
         id: "rend2",
         data: "2024-01-19",
-        descricao: "Freelance - Projetos",
+        descricao: "Freelance - Projetos Mensais",
         categoria: "Negócios",
         tipo: "entrada",
         valor: 3500,
@@ -196,20 +225,11 @@ serve(async (req) => {
       {
         id: "rend3",
         data: "2024-01-17",
-        descricao: "Dividendos - Carteira de Ações",
+        descricao: "Dividendos e Proventos",
         categoria: "Investimentos",
         tipo: "entrada",
         valor: 2800,
         conta: "Conta XP"
-      },
-      {
-        id: "rend4",
-        data: "2024-01-22",
-        descricao: "Aluguel Recebido - Imóvel Comercial",
-        categoria: "Patrimônio",
-        tipo: "entrada",
-        valor: 3700,
-        conta: "Conta Corrente Itaú"
       },
       // Dívidas
       {
@@ -229,16 +249,6 @@ serve(async (req) => {
         tipo: "saida",
         valor: 45600,
         conta: "Santander"
-      },
-      // Despesas
-      {
-        id: "desp1",
-        data: "2024-01-16",
-        descricao: "Despesas Mensais Fixas",
-        categoria: "Moradia",
-        tipo: "saida",
-        valor: 5000,
-        conta: "Diversas Contas"
       }
     ];
 
