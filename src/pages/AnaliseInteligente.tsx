@@ -30,10 +30,12 @@ const AnaliseInteligente = () => {
       const analiseProcessada = {
         ...data,
         analise: data.analise
-          .replace(/\*\*/g, '') // Remove asteriscos duplos
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Converte **texto** em <strong>
           .replace(/R\\\$/g, 'R$') // Corrige R\$ para R$
           .replace(/\\\(/g, '(') // Remove barra invertida antes de parênteses
           .replace(/\\\)/g, ')') // Remove barra invertida depois de parênteses
+          .replace(/\n\n/g, '</p><p class="mb-4">') // Parágrafos
+          .replace(/\n/g, '<br/>') // Quebras de linha
       };
 
       setAnalise(analiseProcessada);
@@ -276,24 +278,38 @@ const AnaliseInteligente = () => {
             </Card>
 
             {/* Análise da IA */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-primary" />
+            <Card className="border-primary/10">
+              <CardHeader className="bg-gradient-to-br from-primary/5 to-transparent">
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <Sparkles className="h-6 w-6 text-primary" />
                   Análise Detalhada com IA
                 </CardTitle>
-                <CardDescription>
-                  Insights e recomendações personalizadas
+                <CardDescription className="text-base">
+                  Insights e recomendações personalizadas baseados no seu patrimônio
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="prose prose-sm max-w-none dark:prose-invert">
-                  <div className="whitespace-pre-wrap text-foreground leading-relaxed">
-                    {analise.analise}
-                  </div>
+              <CardContent className="pt-6">
+                <div className="rounded-lg bg-muted/30 p-6 border border-border/50">
+                  <div 
+                    className="text-foreground leading-relaxed space-y-4 text-base"
+                    dangerouslySetInnerHTML={{ 
+                      __html: `<p class="mb-4">${analise.analise}</p>` 
+                    }}
+                  />
                 </div>
-                <div className="mt-6 pt-6 border-t text-xs text-muted-foreground">
-                  Análise gerada em: {new Date(analise.timestamp).toLocaleString('pt-BR')}
+                <div className="mt-6 flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    Análise gerada em: {new Date(analise.timestamp).toLocaleString('pt-BR')}
+                  </span>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={gerarAnalise}
+                    className="gap-2"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Gerar Nova Análise
+                  </Button>
                 </div>
               </CardContent>
             </Card>
