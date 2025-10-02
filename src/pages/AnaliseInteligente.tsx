@@ -15,9 +15,7 @@ const AnaliseInteligente = () => {
   const gerarAnalise = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('analise-triad3', {
-        method: 'POST'
-      });
+      const { data, error } = await supabase.functions.invoke('analise-triad3');
 
       if (error) {
         console.error("Error invoking function:", error);
