@@ -35,8 +35,9 @@ serve(async (req) => {
     }
 
     // Se não houver transações, usar dados de exemplo consolidados de todo o sistema
+    // Patrimônio Total conforme Dashboard: R$ 2.8M
     const dadosTransacoes = transacoes && transacoes.length > 0 ? transacoes : [
-      // Imobilizado - Total: R$ 1.450.000
+      // Imobilizado - R$ 1.2M (conforme Dashboard)
       {
         id: "imob1",
         data: "2020-03-15",
@@ -61,19 +62,19 @@ serve(async (req) => {
         descricao: "Casa de Praia - Guarujá",
         categoria: "Patrimônio",
         tipo: "entrada",
-        valor: 850000,
+        valor: 600000,
         conta: "Imobilizado"
       },
       {
         id: "imob4",
         data: "2023-05-12",
-        descricao: "Equipamentos de Escritório",
+        descricao: "Equipamentos e Móveis",
         categoria: "Patrimônio",
         tipo: "entrada",
         valor: 25000,
         conta: "Imobilizado"
       },
-      // Aplicações/Liquidez - Total: R$ 148.240
+      // Aplicações/Liquidez - R$ 485.2K (conforme Dashboard)
       {
         id: "apl1",
         data: "2024-01-15",
@@ -128,11 +129,56 @@ serve(async (req) => {
         valor: 8640,
         conta: "Inter Investimentos"
       },
-      // Rendimentos/Negócios - Receita mensal
+      {
+        id: "apl7",
+        data: "2024-02-15",
+        descricao: "Tesouro Direto - IPCA+ 2035",
+        categoria: "Investimentos",
+        tipo: "entrada",
+        valor: 85000,
+        conta: "Tesouro Direto"
+      },
+      {
+        id: "apl8",
+        data: "2023-12-10",
+        descricao: "CDB Banco Inter - 120% CDI",
+        categoria: "Investimentos",
+        tipo: "entrada",
+        valor: 120000,
+        conta: "Banco Inter"
+      },
+      {
+        id: "apl9",
+        data: "2024-01-05",
+        descricao: "Fundos Imobiliários - Diversos",
+        categoria: "Investimentos",
+        tipo: "entrada",
+        valor: 95000,
+        conta: "XP Investimentos"
+      },
+      {
+        id: "apl10",
+        data: "2023-11-01",
+        descricao: "LCI/LCA - Carteira",
+        categoria: "Investimentos",
+        tipo: "entrada",
+        valor: 36960,
+        conta: "Banco do Brasil"
+      },
+      // Negócios/Receita Mensal - R$ 18.5K mensal (R$ 222K anual)
+      {
+        id: "neg1",
+        data: "2024-01-01",
+        descricao: "Receitas Anuais de Negócios",
+        categoria: "Negócios",
+        tipo: "entrada",
+        valor: 222000,
+        conta: "Rendimentos Anuais"
+      },
       {
         id: "rend1",
         data: "2024-01-15",
-        descricao: "Salário - Empresa XYZ",
+        descricao: "Salário Mensal",
         categoria: "Salário",
         tipo: "entrada",
         valor: 8500,
@@ -141,76 +187,58 @@ serve(async (req) => {
       {
         id: "rend2",
         data: "2024-01-19",
-        descricao: "Freelance - Design",
+        descricao: "Freelance - Projetos",
         categoria: "Negócios",
         tipo: "entrada",
-        valor: 1200,
+        valor: 3500,
         conta: "Conta Corrente Nubank"
       },
       {
         id: "rend3",
-        data: "2024-01-20",
-        descricao: "Participação Quality Carvão Florestal Ltda",
-        categoria: "Negócios",
+        data: "2024-01-17",
+        descricao: "Dividendos - Carteira de Ações",
+        categoria: "Investimentos",
         tipo: "entrada",
-        valor: 15000,
-        conta: "Conta Empresarial"
+        valor: 2800,
+        conta: "Conta XP"
       },
       {
         id: "rend4",
-        data: "2024-01-17",
-        descricao: "Dividendos PETR4",
-        categoria: "Investimentos",
-        tipo: "entrada",
-        valor: 450,
-        conta: "Conta Corrente XP"
-      },
-      {
-        id: "rend5",
         data: "2024-01-22",
         descricao: "Aluguel Recebido - Imóvel Comercial",
         categoria: "Patrimônio",
         tipo: "entrada",
-        valor: 3500,
+        valor: 3700,
         conta: "Conta Corrente Itaú"
       },
-      // Dívidas (importante para análise completa)
+      // Dívidas
       {
         id: "div1",
         data: "2024-01-15",
-        descricao: "Financiamento Imobiliário - Banco do Brasil",
+        descricao: "Financiamento Imobiliário - Saldo Devedor",
         categoria: "Dívida",
         tipo: "saida",
         valor: 287500,
-        conta: "Pendente"
+        conta: "Banco do Brasil"
       },
       {
         id: "div2",
         data: "2024-01-10",
-        descricao: "Financiamento Veicular - Santander",
+        descricao: "Financiamento Veicular - Saldo Devedor",
         categoria: "Dívida",
         tipo: "saida",
         valor: 45600,
-        conta: "Pendente"
+        conta: "Santander"
       },
-      // Despesas mensais
+      // Despesas
       {
         id: "desp1",
         data: "2024-01-16",
-        descricao: "Aluguel Apartamento",
+        descricao: "Despesas Mensais Fixas",
         categoria: "Moradia",
         tipo: "saida",
-        valor: 2200,
-        conta: "Conta Corrente Itaú"
-      },
-      {
-        id: "desp2",
-        data: "2024-01-18",
-        descricao: "Supermercado Extra",
-        categoria: "Alimentação",
-        tipo: "saida",
-        valor: 380,
-        conta: "Cartão de Crédito"
+        valor: 5000,
+        conta: "Diversas Contas"
       }
     ];
 
@@ -316,7 +344,10 @@ Analise a distribuição patrimonial atual e forneça:
    - Priorize ações de acordo com o impacto no equilíbrio Triad3
    - Estabeleça metas realistas de acordo com o perfil atual
 
-Forneça uma análise profissional, clara, acionável e personalizada para o perfil patrimonial apresentado.`;
+Forneça uma análise profissional, clara, acionável e personalizada para o perfil patrimonial apresentado.
+
+---
+**Equipe de Consultoria Financeira Triad3**`;
 
     console.log("Calling Lovable AI for analysis...");
 
