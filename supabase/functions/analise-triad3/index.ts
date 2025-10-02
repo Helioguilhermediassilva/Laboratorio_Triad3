@@ -322,7 +322,7 @@ serve(async (req) => {
 CONCEITO TRIAD3:
 O patrimônio ideal deve estar dividido em:
 - 33% em LIQUIDEZ (investimentos líquidos, ações, FIIs, conta corrente, poupança)
-- 33% em IMOBILIZADO (imóveis, veículos, bens duráveis, equipamentos)
+- 34% em IMOBILIZADO (imóveis, veículos, bens duráveis, equipamentos)
 - 33% em NEGÓCIOS (empresas, participações societárias, rendimentos de negócios, renda ativa)
 
 DADOS PATRIMONIAIS ATUAIS:
@@ -345,7 +345,7 @@ TAREFA:
 Analise a distribuição patrimonial atual e forneça:
 
 1. **Diagnóstico Executivo**: 
-   - Avalie se a distribuição está alinhada com o conceito Triad3 (33-33-33)
+   - Avalie se a distribuição está alinhada com o conceito Triad3 (33% liquidez, 34% imobilizado, 33% negócios)
    - Identifique pontos fortes e fracos da distribuição atual
 
 2. **Pontos Críticos de Atenção**: 
@@ -432,12 +432,12 @@ Forneça uma análise profissional, clara, acionável e personalizada para o per
           patrimonioLiquido,
           ideal: {
             liquidez: 33,
-            imobilizado: 33,
+            imobilizado: 34,
             negocios: 33
           },
           desvios: {
             liquidez: (parseFloat(percentuais.liquidez.toString()) - 33).toFixed(2),
-            imobilizado: (parseFloat(percentuais.imobilizado.toString()) - 33).toFixed(2),
+            imobilizado: (parseFloat(percentuais.imobilizado.toString()) - 34).toFixed(2),
             negocios: (parseFloat(percentuais.negocios.toString()) - 33).toFixed(2)
           }
         },
