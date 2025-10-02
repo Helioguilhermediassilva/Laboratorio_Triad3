@@ -109,7 +109,7 @@ const AnaliseInteligente = () => {
                 </div>
               </div>
               <div className="p-4 rounded-lg bg-card border">
-                <div className="text-2xl font-bold text-primary">33%</div>
+                <div className="text-2xl font-bold text-primary">34%</div>
                 <div className="font-semibold mt-1">Imobilizado</div>
                 <div className="text-sm text-muted-foreground mt-1">
                   Imóveis, veículos, bens duráveis
@@ -194,7 +194,7 @@ const AnaliseInteligente = () => {
                         value={parseFloat(analise.dados.percentuais.liquidez)} 
                         className="flex-1"
                       />
-                      <span className="text-xs text-muted-foreground w-16 text-right">Meta: 33%</span>
+                      <span className="text-xs text-muted-foreground w-16 text-right">Meta: 34%</span>
                     </div>
                   </div>
 
