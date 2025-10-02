@@ -65,7 +65,7 @@ const AnaliseInteligente = () => {
           <div>
             <h1 className="text-3xl font-bold text-foreground">Análise Inteligente Triad3</h1>
             <p className="text-muted-foreground mt-2">
-              Análise patrimonial baseada no conceito 33-33-33: Liquidez, Imobilizado e Negócios
+              Análise patrimonial baseada no conceito 33-34-33: Liquidez, Imobilizado e Negócios
             </p>
           </div>
           <Button 
