@@ -34,10 +34,103 @@ serve(async (req) => {
       throw transacoesError;
     }
 
-    // Se não houver transações, usar dados de exemplo
+    // Se não houver transações, usar dados de exemplo consolidados de todo o sistema
     const dadosTransacoes = transacoes && transacoes.length > 0 ? transacoes : [
+      // Imobilizado - Total: R$ 1.450.000
       {
-        id: "1",
+        id: "imob1",
+        data: "2020-03-15",
+        descricao: "Apartamento Centro - Rua das Flores, 123",
+        categoria: "Patrimônio",
+        tipo: "entrada",
+        valor: 450000,
+        conta: "Imobilizado"
+      },
+      {
+        id: "imob2",
+        data: "2022-01-10",
+        descricao: "Honda Civic 2022",
+        categoria: "Patrimônio",
+        tipo: "entrada",
+        valor: 125000,
+        conta: "Imobilizado"
+      },
+      {
+        id: "imob3",
+        data: "2019-07-20",
+        descricao: "Casa de Praia - Guarujá",
+        categoria: "Patrimônio",
+        tipo: "entrada",
+        valor: 850000,
+        conta: "Imobilizado"
+      },
+      {
+        id: "imob4",
+        data: "2023-05-12",
+        descricao: "Equipamentos de Escritório",
+        categoria: "Patrimônio",
+        tipo: "entrada",
+        valor: 25000,
+        conta: "Imobilizado"
+      },
+      // Aplicações/Liquidez - Total: R$ 148.240
+      {
+        id: "apl1",
+        data: "2024-01-15",
+        descricao: "PETR4 - 1000 ações",
+        categoria: "Investimentos",
+        tipo: "entrada",
+        valor: 35840,
+        conta: "XP Investimentos"
+      },
+      {
+        id: "apl2",
+        data: "2023-11-20",
+        descricao: "VALE3 - 850 ações",
+        categoria: "Investimentos",
+        tipo: "entrada",
+        valor: 42650,
+        conta: "Rico Investimentos"
+      },
+      {
+        id: "apl3",
+        data: "2024-02-10",
+        descricao: "HGLG11 - 120 cotas",
+        categoria: "Investimentos",
+        tipo: "entrada",
+        valor: 12480,
+        conta: "Inter Investimentos"
+      },
+      {
+        id: "apl4",
+        data: "2023-09-15",
+        descricao: "ITUB4 - 500 ações",
+        categoria: "Investimentos",
+        tipo: "entrada",
+        valor: 28750,
+        conta: "XP Investimentos"
+      },
+      {
+        id: "apl5",
+        data: "2024-03-10",
+        descricao: "BBDC4 - 800 ações",
+        categoria: "Investimentos",
+        tipo: "entrada",
+        valor: 19880,
+        conta: "Rico Investimentos"
+      },
+      {
+        id: "apl6",
+        data: "2024-01-20",
+        descricao: "MXRF11 - 80 cotas",
+        categoria: "Investimentos",
+        tipo: "entrada",
+        valor: 8640,
+        conta: "Inter Investimentos"
+      },
+      // Rendimentos/Negócios - Receita mensal
+      {
+        id: "rend1",
         data: "2024-01-15",
         descricao: "Salário - Empresa XYZ",
         categoria: "Salário",
@@ -46,16 +139,25 @@ serve(async (req) => {
         conta: "Conta Corrente Itaú"
       },
       {
-        id: "2",
-        data: "2024-01-16",
-        descricao: "Aluguel Apartamento",
-        categoria: "Moradia",
-        tipo: "saida",
-        valor: 2200,
-        conta: "Conta Corrente Itaú"
+        id: "rend2",
+        data: "2024-01-19",
+        descricao: "Freelance - Design",
+        categoria: "Negócios",
+        tipo: "entrada",
+        valor: 1200,
+        conta: "Conta Corrente Nubank"
       },
       {
-        id: "3",
+        id: "rend3",
+        data: "2024-01-20",
+        descricao: "Participação Quality Carvão Florestal Ltda",
+        categoria: "Negócios",
+        tipo: "entrada",
+        valor: 15000,
+        conta: "Conta Empresarial"
+      },
+      {
+        id: "rend4",
         data: "2024-01-17",
         descricao: "Dividendos PETR4",
         categoria: "Investimentos",
@@ -64,53 +166,55 @@ serve(async (req) => {
         conta: "Conta Corrente XP"
       },
       {
-        id: "4",
+        id: "rend5",
+        data: "2024-01-22",
+        descricao: "Aluguel Recebido - Imóvel Comercial",
+        categoria: "Patrimônio",
+        tipo: "entrada",
+        valor: 3500,
+        conta: "Conta Corrente Itaú"
+      },
+      // Dívidas (importante para análise completa)
+      {
+        id: "div1",
+        data: "2024-01-15",
+        descricao: "Financiamento Imobiliário - Banco do Brasil",
+        categoria: "Dívida",
+        tipo: "saida",
+        valor: 287500,
+        conta: "Pendente"
+      },
+      {
+        id: "div2",
+        data: "2024-01-10",
+        descricao: "Financiamento Veicular - Santander",
+        categoria: "Dívida",
+        tipo: "saida",
+        valor: 45600,
+        conta: "Pendente"
+      },
+      // Despesas mensais
+      {
+        id: "desp1",
+        data: "2024-01-16",
+        descricao: "Aluguel Apartamento",
+        categoria: "Moradia",
+        tipo: "saida",
+        valor: 2200,
+        conta: "Conta Corrente Itaú"
+      },
+      {
+        id: "desp2",
         data: "2024-01-18",
         descricao: "Supermercado Extra",
         categoria: "Alimentação",
         tipo: "saida",
         valor: 380,
         conta: "Cartão de Crédito"
-      },
-      {
-        id: "5",
-        data: "2024-01-19",
-        descricao: "Freelance - Design",
-        categoria: "Freelance",
-        tipo: "entrada",
-        valor: 1200,
-        conta: "Conta Corrente Nubank"
-      },
-      {
-        id: "6",
-        data: "2024-01-20",
-        descricao: "Participação Quality Carvão",
-        categoria: "Negócios",
-        tipo: "entrada",
-        valor: 15000,
-        conta: "Conta Empresarial"
-      },
-      {
-        id: "7",
-        data: "2024-01-21",
-        descricao: "Investimento em Fundos",
-        categoria: "Investimentos",
-        tipo: "entrada",
-        valor: 12000,
-        conta: "Conta XP Investimentos"
-      },
-      {
-        id: "8",
-        data: "2024-01-22",
-        descricao: "Imóvel - Aluguel Recebido",
-        categoria: "Patrimônio",
-        tipo: "entrada",
-        valor: 3500,
-        conta: "Conta Corrente Itaú"
       }
     ];
 
-    console.log(`Analyzing ${dadosTransacoes.length} transactions...`);
+    console.log(`Analyzing ${dadosTransacoes.length} transactions from Triad3 system...`);
 
     // Calcular totais por categoria baseado no conceito Triad3
     const totais = {
@@ -142,6 +246,13 @@ serve(async (req) => {
       }
     });
 
+    // Calcular patrimônio líquido (descontando dívidas)
+    const totalDividas = dadosTransacoes
+      ?.filter((t: any) => t.categoria === 'Dívida' && t.tipo === 'saida')
+      .reduce((sum: number, t: any) => sum + parseFloat(t.valor), 0) || 0;
+    
+    const patrimonioLiquido = totais.total - totalDividas;
+
     // Calcular percentuais
     const percentuais = {
       liquidez: totais.total > 0 ? (totais.liquidez / totais.total * 100).toFixed(2) : 0,
@@ -150,39 +261,63 @@ serve(async (req) => {
     };
 
     // Preparar prompt para análise com IA
-    const prompt = `Você é um consultor financeiro especializado no conceito Triad3 de gestão patrimonial.
+    const prompt = `Você é um consultor financeiro especializado no conceito Triad3 de gestão patrimonial, baseado no modelo do Dr. Maxuel Silva Torres.
 
 CONCEITO TRIAD3:
 O patrimônio ideal deve estar dividido em:
-- 33% em LIQUIDEZ (investimentos líquidos, conta corrente, poupança)
-- 33% em IMOBILIZADO (imóveis, veículos, bens duráveis)
+- 33% em LIQUIDEZ (investimentos líquidos, ações, FIIs, conta corrente, poupança)
+- 33% em IMOBILIZADO (imóveis, veículos, bens duráveis, equipamentos)
 - 33% em NEGÓCIOS (empresas, participações societárias, rendimentos de negócios)
 
-DADOS DO CLIENTE:
-Total de Patrimônio: R$ ${totais.total.toFixed(2)}
+CONTEXTO DO CLIENTE:
+Cliente empresário com participações em sociedades empresariais:
+- COOPERATIVA DE CRÉDITO DE LIVRE ADMISSÃO DO NOROESTE DE MINAS
+- BURITI REFLORESTAMENTO
+- QUALITY EMPREENDIMENTOS FLORESTAIS LTDA
+- QUALITY CARVÃO FLORESTAL LTDA
+- QUALITY SERVIÇOS AGROFLORESTAIS LTDA
+- MCP REFLORESTAMENTO LTDA
+
+DADOS PATRIMONIAIS ATUAIS:
+Patrimônio Bruto Total: R$ ${totais.total.toFixed(2)}
+Total de Dívidas: R$ ${totalDividas.toFixed(2)}
+Patrimônio Líquido: R$ ${patrimonioLiquido.toFixed(2)}
 
 Distribuição Atual:
-- Liquidez: R$ ${totais.liquidez.toFixed(2)} (${percentuais.liquidez}%)
-- Imobilizado: R$ ${totais.imobilizado.toFixed(2)} (${percentuais.imobilizado}%)
-- Negócios: R$ ${totais.negocios.toFixed(2)} (${percentuais.negocios}%)
+- Liquidez (Investimentos): R$ ${totais.liquidez.toFixed(2)} (${percentuais.liquidez}%)
+- Imobilizado (Bens): R$ ${totais.imobilizado.toFixed(2)} (${percentuais.imobilizado}%)
+- Negócios (Rendimentos): R$ ${totais.negocios.toFixed(2)} (${percentuais.negocios}%)
 
-Últimas ${dadosTransacoes?.length || 0} transações analisadas.
-${dadosTransacoes && dadosTransacoes.length > 0 && !transacoes?.length ? '\n(Análise baseada em dados de exemplo - adicione suas transações reais no Livro Caixa)' : ''}
+Total de ${dadosTransacoes?.length || 0} transações analisadas incluindo:
+- ${dadosTransacoes?.filter((t: any) => t.categoria === 'Patrimônio').length || 0} bens imobilizados
+- ${dadosTransacoes?.filter((t: any) => t.categoria === 'Investimentos').length || 0} aplicações financeiras
+- ${dadosTransacoes?.filter((t: any) => t.categoria === 'Dívida').length || 0} dívidas em aberto
+${dadosTransacoes && dadosTransacoes.length > 0 && !transacoes?.length ? '\n(Análise baseada em dados de exemplo do sistema)' : ''}
 
 TAREFA:
 Analise a distribuição patrimonial atual e forneça:
 
-1. **Diagnóstico**: Avalie se a distribuição está alinhada com o conceito Triad3 (33-33-33)
+1. **Diagnóstico Executivo**: Avalie se a distribuição está alinhada com o conceito Triad3 (33-33-33) e o contexto empresarial do cliente
 
-2. **Pontos de Atenção**: Identifique desequilíbrios significativos e seus riscos
+2. **Pontos Críticos de Atenção**: 
+   - Identifique desequilíbrios significativos e seus riscos específicos
+   - Analise o impacto das dívidas no patrimônio líquido
+   - Avalie a diversificação dos investimentos
 
-3. **Recomendações Específicas**: Forneça 3-5 ações práticas para melhorar o equilíbrio patrimonial
+3. **Recomendações Estratégicas**: Forneça 4-6 ações práticas e específicas para:
+   - Melhorar o equilíbrio patrimonial conforme Triad3
+   - Otimizar a gestão das dívidas existentes
+   - Aumentar participação em áreas deficitárias
+   - Maximizar retorno dos ativos existentes
 
-4. **Padrões de Gastos**: Analise tendências nas transações recentes
+4. **Análise de Liquidez e Risco**: 
+   - Avalie a capacidade de honrar compromissos
+   - Analise a proporção patrimônio/dívida
+   - Identifique riscos de concentração
 
-5. **Metas de Curto Prazo**: Sugira objetivos para os próximos 3-6 meses
+5. **Plano de Ação 6 Meses**: Sugira objetivos tangíveis e mensuráveis para os próximos 6 meses
 
-Forneça uma análise profissional, clara e acionável, considerando o perfil empresarial do cliente.`;
+Forneça uma análise profissional, clara, acionável e contextualizada ao perfil empresarial e às participações societárias do cliente.`;
 
     console.log("Calling Lovable AI for analysis...");
 
@@ -235,6 +370,8 @@ Forneça uma análise profissional, clara e acionável, considerando o perfil em
         dados: {
           totais,
           percentuais,
+          dividas: totalDividas,
+          patrimonioLiquido,
           ideal: {
             liquidez: 33,
             imobilizado: 33,
