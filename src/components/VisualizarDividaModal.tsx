@@ -1,8 +1,13 @@
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CalendarDays, DollarSign, Percent, Receipt, Building, Calendar } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { CalendarDays, DollarSign, Percent, Receipt, Building, Calendar, Wallet } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface Divida {
   id: number;
@@ -23,9 +28,14 @@ interface Divida {
 interface VisualizarDividaModalProps {
   children: React.ReactNode;
   divida: Divida;
+  onPagamentoRegistrado?: (dividaId: number, valorPago: number, categoria: string) => void;
 }
 
-export default function VisualizarDividaModal({ children, divida }: VisualizarDividaModalProps) {
+export default function VisualizarDividaModal({ children, divida, onPagamentoRegistrado }: VisualizarDividaModalProps) {
+  const [showPagamentoForm, setShowPagamentoForm] = useState(false);
+  const [valorPagamento, setValorPagamento] = useState("");
+  const { toast } = useToast();
+  
   const percentualPago = (divida.parcelasPagas / divida.parcelas) * 100;
   const valorPago = divida.valorTotal - divida.valorPendente;
   const parcelasRestantes = divida.parcelas - divida.parcelasPagas;
@@ -46,6 +56,49 @@ export default function VisualizarDividaModal({ children, divida }: VisualizarDi
       case "Vencido": return "destructive";
       default: return "outline";
     }
+  };
+
+  const handleRegistrarPagamento = () => {
+    const valor = parseFloat(valorPagamento);
+    
+    if (!valor || valor <= 0) {
+      toast({
+        title: "Valor inválido",
+        description: "Por favor, insira um valor válido para o pagamento.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (valor > divida.valorPendente) {
+      toast({
+        title: "Valor excede o pendente",
+        description: "O valor do pagamento não pode ser maior que o valor pendente.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Chama o callback para atualizar a dívida e o patrimônio
+    if (onPagamentoRegistrado) {
+      onPagamentoRegistrado(divida.id, valor, divida.categoria);
+    }
+
+    toast({
+      title: "Pagamento registrado!",
+      description: `Pagamento de ${valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} registrado com sucesso.`,
+    });
+
+    // Se for dívida de Imóvel ou Veículo, informa sobre atualização do patrimônio
+    if (divida.categoria === "Imóvel" || divida.categoria === "Veículo") {
+      toast({
+        title: "Patrimônio atualizado!",
+        description: `O valor pago foi adicionado ao seu patrimônio imobilizado.`,
+      });
+    }
+
+    setValorPagamento("");
+    setShowPagamentoForm(false);
   };
 
   return (
@@ -206,6 +259,72 @@ export default function VisualizarDividaModal({ children, divida }: VisualizarDi
                   </p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Registrar Pagamento */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center">
+                <Wallet className="w-5 h-5 mr-2" />
+                Registrar Pagamento
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!showPagamentoForm ? (
+                <Button 
+                  onClick={() => setShowPagamentoForm(true)}
+                  className="w-full"
+                >
+                  <Wallet className="w-4 h-4 mr-2" />
+                  Registrar Pagamento
+                </Button>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="valorPagamento">Valor do Pagamento</Label>
+                    <Input
+                      id="valorPagamento"
+                      type="number"
+                      placeholder="0.00"
+                      value={valorPagamento}
+                      onChange={(e) => setValorPagamento(e.target.value)}
+                      step="0.01"
+                      min="0"
+                      max={divida.valorPendente}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Valor pendente: {divida.valorPendente.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </p>
+                  </div>
+                  
+                  {(divida.categoria === "Imóvel" || divida.categoria === "Veículo") && (
+                    <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
+                      <p className="text-sm text-blue-800 dark:text-blue-200">
+                        💡 Ao pagar esta dívida, o valor será automaticamente adicionado ao seu patrimônio imobilizado.
+                      </p>
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={handleRegistrarPagamento}
+                      className="flex-1"
+                    >
+                      Confirmar Pagamento
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
+                        setShowPagamentoForm(false);
+                        setValorPagamento("");
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

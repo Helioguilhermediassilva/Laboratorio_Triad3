@@ -78,9 +78,10 @@ interface DebtCardProps {
   divida: typeof mockDividas[0];
   onView: (id: number) => void;
   onDelete: (id: number) => void;
+  onPagamentoRegistrado: (dividaId: number, valorPago: number, categoria: string) => void;
 }
 
-function DebtCard({ divida, onView, onDelete }: DebtCardProps) {
+function DebtCard({ divida, onView, onDelete, onPagamentoRegistrado }: DebtCardProps) {
   const percentualPago = (divida.parcelasPagas / divida.parcelas) * 100;
   
   const getStatusColor = (status: string) => {
@@ -157,7 +158,10 @@ function DebtCard({ divida, onView, onDelete }: DebtCardProps) {
         </div>
 
         <div className="flex space-x-2 pt-2">
-          <VisualizarDividaModal divida={divida}>
+          <VisualizarDividaModal 
+            divida={divida}
+            onPagamentoRegistrado={onPagamentoRegistrado}
+          >
             <Button
               size="sm"
               variant="outline"
@@ -186,6 +190,28 @@ export default function Dividas() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [dividaToDelete, setDividaToDelete] = useState<number | null>(null);
   const { toast } = useToast();
+
+  const handlePagamentoRegistrado = (dividaId: number, valorPago: number, categoria: string) => {
+    // Atualiza a dívida
+    setDividas(prev => prev.map(divida => {
+      if (divida.id === dividaId) {
+        const novoPendente = divida.valorPendente - valorPago;
+        const parcelasPagasAdicionais = Math.floor(valorPago / divida.valorPrestacao);
+        
+        return {
+          ...divida,
+          valorPendente: Math.max(0, novoPendente),
+          parcelasPagas: Math.min(divida.parcelas, divida.parcelasPagas + parcelasPagasAdicionais),
+          status: novoPendente <= 0 ? "Quitado" : divida.status
+        };
+      }
+      return divida;
+    }));
+
+    // Se for imóvel ou veículo, a lógica para atualizar o patrimônio imobilizado
+    // seria implementada aqui através de uma API ou contexto global
+    // Por ora, apenas mostramos um toast informativo
+  };
 
   const handleView = (id: number) => {
     console.log("Visualizar dívida:", id);
@@ -295,6 +321,7 @@ export default function Dividas() {
               divida={divida}
               onView={handleView}
               onDelete={handleDelete}
+              onPagamentoRegistrado={handlePagamentoRegistrado}
             />
           ))}
         </div>
