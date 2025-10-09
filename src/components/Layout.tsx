@@ -13,6 +13,7 @@ import {
   ScrollText,
   Settings,
   Sparkles,
+  GraduationCap,
   Menu,
   X
 } from "lucide-react";
@@ -37,6 +38,7 @@ const navigation = [
   { name: "Relatórios", href: "/relatorios", icon: BarChart3 },
   { name: "Plano do Milhão", href: "/plano-do-milhao", icon: TrendingUp },
   { name: "Análise Inteligente", href: "/analise-inteligente", icon: Sparkles },
+  { name: "Educação Financeira", href: "/educacao-financeira", icon: GraduationCap },
   { name: "Testamento", href: "/testamento", icon: ScrollText },
   { name: "Configurações", href: "/configuracoes", icon: Settings },
 ];
