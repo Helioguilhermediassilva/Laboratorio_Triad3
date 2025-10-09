@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import NovaTransacaoModal from "@/components/NovaTransacaoModal";
 import ImportarLivroCaixaModal from "@/components/ImportarLivroCaixaModal";
+import ImportarExtratoModal from "@/components/ImportarExtratoModal";
 
 // Dados de exemplo - Livro Caixa
 const transacoesExemplo = [
@@ -112,6 +113,7 @@ export default function LivroCaixa() {
   const [loading, setLoading] = useState(false);
   const [novaTransacaoOpen, setNovaTransacaoOpen] = useState(false);
   const [importarOpen, setImportarOpen] = useState(false);
+  const [importarExtratoOpen, setImportarExtratoOpen] = useState(false);
   const { toast } = useToast();
 
   const handleTransacaoAdded = () => {
@@ -125,6 +127,13 @@ export default function LivroCaixa() {
     toast({
       title: "Transações importadas!",
       description: "As transações foram importadas com sucesso."
+    });
+  };
+
+  const handleExtratoImportado = () => {
+    toast({
+      title: "Extrato importado!",
+      description: "As transações do extrato foram importadas com sucesso."
     });
   };
 
@@ -279,6 +288,10 @@ export default function LivroCaixa() {
                 <Upload className="h-4 w-4 mr-2" />
                 Importar Livro Caixa
               </Button>
+              <Button variant="outline" onClick={() => setImportarExtratoOpen(true)}>
+                <Upload className="h-4 w-4 mr-2" />
+                Importar Extrato Bancário
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -382,6 +395,13 @@ export default function LivroCaixa() {
           open={importarOpen}
           onOpenChange={setImportarOpen}
           onTransacoesImported={handleTransacoesImported}
+        />
+        
+        <ImportarExtratoModal 
+          open={importarExtratoOpen}
+          onOpenChange={setImportarExtratoOpen}
+          conta={{ banco: "Conta Selecionada" }}
+          onExtratoImportado={handleExtratoImportado}
         />
       </div>
     </Layout>
