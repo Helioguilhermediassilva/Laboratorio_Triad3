@@ -13,6 +13,7 @@ import ImpostoRenda from "./pages/ImpostoRenda";
 import ContasBancarias from "./pages/ContasBancarias";
 import Dividas from "./pages/Dividas";
 import Relatorios from "./pages/Relatorios";
+import PlanoDoMilhao from "./pages/PlanoDoMilhao";
 import Testamento from "./pages/Testamento";
 import Configuracoes from "./pages/Configuracoes";
 import AnaliseInteligente from "./pages/AnaliseInteligente";
@@ -37,6 +38,7 @@ const App = () => (
           <Route path="/contas-bancarias" element={<ContasBancarias />} />
           <Route path="/dividas" element={<Dividas />} />
           <Route path="/relatorios" element={<Relatorios />} />
+          <Route path="/plano-do-milhao" element={<PlanoDoMilhao />} />
           <Route path="/testamento" element={<Testamento />} />
           <Route path="/analise-inteligente" element={<AnaliseInteligente />} />
           <Route path="/configuracoes" element={<Configuracoes />} />
