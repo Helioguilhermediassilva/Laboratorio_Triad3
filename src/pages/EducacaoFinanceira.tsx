@@ -37,15 +37,6 @@ export default function EducacaoFinanceira() {
       conteudo: "Descubra por que a diversificação é essencial para proteger seu patrimônio e como o método 33-34-33 pode ajudar você a manter um portfólio equilibrado.",
       icone: BookOpen,
       destaque: false
-    },
-    {
-      id: 4,
-      titulo: "Atualização: Integração com bancos",
-      data: "2023-12-28",
-      categoria: "Produto",
-      conteudo: "Agora você pode importar extratos bancários diretamente de suas contas. Suporte para os principais bancos brasileiros já está disponível.",
-      icone: TrendingUp,
-      destaque: false
     }
   ];
 
