@@ -455,13 +455,6 @@ Retorne APENAS este JSON (sem \`\`\`json):
       }
     }
 
-      if (!dividasError) {
-        dividasCount = dividasToInsert.length;
-      } else {
-        console.error('Dívidas insert error:', dividasError);
-      }
-    }
-
     console.log('Declaration processed successfully');
     console.log(`Inserted: ${rendimentosCount} rendimentos, ${bensImobilizadosCount} bens imobilizados, ${aplicacoesCount} aplicações, ${previdenciaCount} previdência, ${contasBancariasCount} contas, ${dividasCount} dívidas`);
 
