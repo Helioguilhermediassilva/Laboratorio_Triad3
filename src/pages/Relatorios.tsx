@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { TrendingUp, TrendingDown, BarChart3, PieChart, FileText } from "lucide-react";
 import Layout from "@/components/Layout";
 import StatsCard from "@/components/StatsCard";
@@ -6,29 +7,35 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from 'jspdf';
-
-// Mock data for reports
-const performanceData = [
-  { month: "Jan", value: 425000, growth: 8.2 },
-  { month: "Fev", value: 438000, growth: 3.1 },
-  { month: "Mar", value: 465000, growth: 6.2 },
-  { month: "Abr", value: 452000, growth: -2.8 },
-  { month: "Mai", value: 485200, growth: 7.3 },
-  { month: "Jun", value: 495600, growth: 2.1 }
-];
-
-const categoryDistribution = [
-  { category: "Ações", value: 298560, percentage: 60.2 },
-  { category: "FIIs", value: 99520, percentage: 20.1 },
-  { category: "Renda Fixa", value: 74640, percentage: 15.1 },
-  { category: "ETFs", value: 22880, percentage: 4.6 }
-];
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Relatorios() {
   const { toast } = useToast();
-  const totalValue = 495600;
-  const monthlyGrowth = 2.1;
-  const yearlyGrowth = 18.7;
+  const [performanceData, setPerformanceData] = useState<any[]>([]);
+  const [categoryDistribution, setCategoryDistribution] = useState<any[]>([]);
+  const [totalValue, setTotalValue] = useState(0);
+  const [monthlyGrowth, setMonthlyGrowth] = useState(0);
+  const [yearlyGrowth, setYearlyGrowth] = useState(0);
+
+  useEffect(() => {
+    loadReportData();
+  }, []);
+
+  const loadReportData = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Load aplicações data
+    const { data: aplicacoes, error } = await supabase
+      .from('aplicacoes')
+      .select('*')
+      .eq('user_id', user.id);
+
+    if (!error && aplicacoes) {
+      const total = aplicacoes.reduce((sum, a) => sum + Number(a.valor_atual), 0);
+      setTotalValue(total);
+    }
+  };
 
   const exportToPDF = () => {
     try {

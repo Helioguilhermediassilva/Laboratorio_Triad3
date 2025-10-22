@@ -11,60 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import NovaTransacaoModal from "@/components/NovaTransacaoModal";
 import ImportarLivroCaixaModal from "@/components/ImportarLivroCaixaModal";
 import ImportarExtratoModal from "@/components/ImportarExtratoModal";
-
-// Dados de exemplo - Livro Caixa
-const transacoesExemplo = [
-  {
-    id: "1",
-    data: "2024-01-15",
-    descricao: "Salário - Empresa XYZ",
-    categoria: "Salário",
-    tipo: "entrada" as const,
-    valor: 8500,
-    conta: "Conta Corrente Itaú",
-    observacoes: "Salário mensal"
-  },
-  {
-    id: "2",
-    data: "2024-01-16",
-    descricao: "Aluguel Apartamento",
-    categoria: "Moradia",
-    tipo: "saida" as const,
-    valor: 2200,
-    conta: "Conta Corrente Itaú",
-    observacoes: "Aluguel mensal do apartamento"
-  },
-  {
-    id: "3",
-    data: "2024-01-17",
-    descricao: "Dividendos PETR4",
-    categoria: "Investimentos",
-    tipo: "entrada" as const,
-    valor: 450,
-    conta: "Conta Corrente XP",
-    observacoes: "Dividendos ações Petrobras"
-  },
-  {
-    id: "4",
-    data: "2024-01-18",
-    descricao: "Supermercado Extra",
-    categoria: "Alimentação",
-    tipo: "saida" as const,
-    valor: 380,
-    conta: "Cartão de Crédito",
-    observacoes: "Compras mensais"
-  },
-  {
-    id: "5",
-    data: "2024-01-19",
-    descricao: "Freelance - Design",
-    categoria: "Freelance",
-    tipo: "entrada" as const,
-    valor: 1200,
-    conta: "Conta Corrente Nubank",
-    observacoes: "Projeto de identidade visual"
-  }
-];
+import { supabase } from "@/integrations/supabase/client";
 
 type Transacao = {
   id: string;
@@ -109,14 +56,42 @@ export default function LivroCaixa() {
   const [filtroConta, setFiltroConta] = useState("Todas");
   const [filtroTipo, setFiltroTipo] = useState("todos");
   const [termoBusca, setTermoBusca] = useState("");
-  const [transacoes, setTransacoes] = useState<Transacao[]>(transacoesExemplo);
-  const [loading, setLoading] = useState(false);
+  const [transacoes, setTransacoes] = useState<Transacao[]>([]);
+  const [loading, setLoading] = useState(true);
   const [novaTransacaoOpen, setNovaTransacaoOpen] = useState(false);
   const [importarOpen, setImportarOpen] = useState(false);
   const [importarExtratoOpen, setImportarExtratoOpen] = useState(false);
   const { toast } = useToast();
 
+  useEffect(() => {
+    loadTransacoes();
+  }, []);
+
+  const loadTransacoes = async () => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('transacoes')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('data', { ascending: false });
+
+      if (error) {
+        console.error('Error loading transacoes:', error);
+        return;
+      }
+
+      setTransacoes(data || []);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleTransacaoAdded = () => {
+    loadTransacoes();
     toast({
       title: "Transação adicionada!",
       description: "A transação foi adicionada com sucesso."
@@ -124,6 +99,7 @@ export default function LivroCaixa() {
   };
 
   const handleTransacoesImported = () => {
+    loadTransacoes();
     toast({
       title: "Transações importadas!",
       description: "As transações foram importadas com sucesso."
@@ -131,6 +107,7 @@ export default function LivroCaixa() {
   };
 
   const handleExtratoImportado = () => {
+    loadTransacoes();
     toast({
       title: "Extrato importado!",
       description: "As transações do extrato foram importadas com sucesso."
