@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Calculator, TrendingUp, TrendingDown, DollarSign, Target, Plus } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,81 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import NovoOrcamentoModal from "@/components/NovoOrcamentoModal";
 import NovaMetaModal from "@/components/NovaMetaModal";
-
-// Mock data - Orçamentos iniciais
-const orcamentosIniciais = [
-  {
-    id: "1",
-    nome: "Orçamento Familiar 2024",
-    periodo: "Anual",
-    totalPrevisto: 180000,
-    totalRealizado: 142500,
-    categorias: [
-      { nome: "Moradia", previsto: 48000, realizado: 45200, cor: "#3b82f6" },
-      { nome: "Alimentação", previsto: 24000, realizado: 26800, cor: "#ef4444" },
-      { nome: "Transporte", previsto: 18000, realizado: 15600, cor: "#10b981" },
-      { nome: "Saúde", previsto: 15000, realizado: 12300, cor: "#f59e0b" },
-      { nome: "Educação", previsto: 12000, realizado: 11800, cor: "#8b5cf6" },
-      { nome: "Lazer", previsto: 9600, realizado: 8400, cor: "#ec4899" },
-      { nome: "Investimentos", previsto: 36000, realizado: 22400, cor: "#06b6d4" },
-      { nome: "Outros", previsto: 17400, realizado: 15000, cor: "#84cc16" }
-    ]
-  }
-];
-
-const metasIniciais = [
-  { id: "1", nome: "Reserva de Emergência", valorMeta: 50000, valorAtual: 38000, prazo: "Dez 2024" },
-  { id: "2", nome: "Viagem Europa", valorMeta: 25000, valorAtual: 12000, prazo: "Jun 2025" },
-  { id: "3", nome: "Carro Novo", valorMeta: 80000, valorAtual: 45000, prazo: "Mar 2025" },
-  { id: "4", nome: "Aposentadoria", valorMeta: 1000000, valorAtual: 285000, prazo: "2040" }
-];
-
-const OrcamentoCard = ({ categoria }: { categoria: any }) => {
-  const percentualRealizado = (categoria.realizado / categoria.previsto) * 100;
-  const isOver = categoria.realizado > categoria.previsto;
-  
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-medium">{categoria.nome}</h3>
-          <Badge variant={isOver ? "destructive" : "secondary"}>
-            {percentualRealizado.toFixed(1)}%
-          </Badge>
-        </div>
-        
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Previsto</span>
-            <span>{categoria.previsto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-          </div>
-          
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Realizado</span>
-            <span className={isOver ? "text-red-600" : "text-foreground"}>
-              {categoria.realizado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            </span>
-          </div>
-          
-          <Progress 
-            value={Math.min(percentualRealizado, 100)} 
-            className="h-2"
-            style={{
-              backgroundColor: `${categoria.cor}20`,
-            }}
-          />
-          
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>Saldo</span>
-            <span className={isOver ? "text-red-600" : "text-green-600"}>
-              {(categoria.previsto - categoria.realizado).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            </span>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
+import { supabase } from "@/integrations/supabase/client";
 
 const MetaCard = ({ meta }: { meta: any }) => {
   const percentual = (meta.valorAtual / meta.valorMeta) * 100;
@@ -122,18 +48,58 @@ const MetaCard = ({ meta }: { meta: any }) => {
 };
 
 export default function Orcamentos() {
-  const [orcamentos, setOrcamentos] = useState(orcamentosIniciais);
-  const [metas, setMetas] = useState(metasIniciais);
+  const [orcamentos, setOrcamentos] = useState<any[]>([]);
+  const [metas, setMetas] = useState<any[]>([]);
   const [novoOrcamentoOpen, setNovoOrcamentoOpen] = useState(false);
   const [novaMetaOpen, setNovaMetaOpen] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    loadOrcamentos();
+    loadMetas();
+  }, []);
+
+  const loadOrcamentos = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('orcamentos')
+      .select('*')
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('Error loading orcamentos:', error);
+      return;
+    }
+
+    setOrcamentos(data || []);
+  };
+
+  const loadMetas = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('metas_financeiras')
+      .select('*')
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('Error loading metas:', error);
+      return;
+    }
+
+    setMetas(data || []);
+  };
   
-  const orcamento = orcamentos[0];
-  const percentualGeral = (orcamento.totalRealizado / orcamento.totalPrevisto) * 100;
-  const saldoGeral = orcamento.totalPrevisto - orcamento.totalRealizado;
+  const totalPrevisto = orcamentos.reduce((sum, o) => sum + Number(o.valor_planejado), 0);
+  const totalRealizado = orcamentos.reduce((sum, o) => sum + Number(o.valor_gasto), 0);
+  const percentualGeral = totalPrevisto > 0 ? (totalRealizado / totalPrevisto) * 100 : 0;
+  const saldoGeral = totalPrevisto - totalRealizado;
 
   const handleOrcamentoAdicionado = (novoOrcamento: any) => {
-    setOrcamentos(prev => [...prev, novoOrcamento]);
+    loadOrcamentos();
     toast({
       title: "Orçamento criado!",
       description: "O orçamento foi criado com sucesso."
@@ -141,7 +107,7 @@ export default function Orcamentos() {
   };
 
   const handleMetaAdicionada = (novaMeta: any) => {
-    setMetas(prev => [...prev, novaMeta]);
+    loadMetas();
     toast({
       title: "Meta criada!",
       description: "A meta foi criada com sucesso."
@@ -172,7 +138,7 @@ export default function Orcamentos() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {orcamento.totalPrevisto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                {totalPrevisto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </div>
             </CardContent>
           </Card>
@@ -186,7 +152,7 @@ export default function Orcamentos() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {orcamento.totalRealizado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                {totalRealizado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </div>
               <div className="text-sm text-muted-foreground">
                 {percentualGeral.toFixed(1)}% do previsto
@@ -239,11 +205,32 @@ export default function Orcamentos() {
               </Button>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {orcamento.categorias.map((categoria, index) => (
-                <OrcamentoCard key={index} categoria={categoria} />
-              ))}
-            </div>
+            {orcamentos.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                Nenhum orçamento cadastrado ainda
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {orcamentos.map((orcamento) => (
+                  <Card key={orcamento.id}>
+                    <CardContent className="p-4">
+                      <h3 className="font-medium mb-2">{orcamento.categoria}</h3>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Planejado</span>
+                          <span>{Number(orcamento.valor_planejado).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Gasto</span>
+                          <span>{Number(orcamento.valor_gasto).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                        </div>
+                        <Progress value={(Number(orcamento.valor_gasto) / Number(orcamento.valor_planejado)) * 100} className="h-2" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="metas" className="space-y-6">
@@ -255,11 +242,23 @@ export default function Orcamentos() {
               </Button>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {metas.map((meta, index) => (
-                <MetaCard key={index} meta={meta} />
-              ))}
-            </div>
+            {metas.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                Nenhuma meta financeira cadastrada ainda
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {metas.map((meta) => {
+                  const metaFormatted = {
+                    nome: meta.titulo,
+                    valorMeta: Number(meta.valor_objetivo),
+                    valorAtual: Number(meta.valor_atual),
+                    prazo: new Date(meta.data_objetivo).toLocaleDateString('pt-BR')
+                  };
+                  return <MetaCard key={meta.id} meta={metaFormatted} />;
+                })}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
 

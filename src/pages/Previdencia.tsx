@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Shield, Plus, Eye, Trash2, Calendar, DollarSign, TrendingUp, Clock } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,109 +9,32 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import NovoPlanoPrevidenciaModal from "@/components/NovoPlanoPrevidenciaModal";
 import VisualizarPlanoModal from "@/components/VisualizarPlanoModal";
-
-// Mock data for pension plans
-const mockPrevidencia = [
-  {
-    id: 1,
-    tipo: "PGBL",
-    produto: "Brasilprev Exclusivo",
-    instituicao: "Banco do Brasil",
-    valorAcumulado: 125000,
-    aportesMensais: 2500,
-    dataContratacao: "15/03/2019",
-    proximaContribuicao: "15/02/2024",
-    rentabilidadeAno: 12.8,
-    taxaAdministracao: 1.2,
-    taxaCarregamento: 2.0,
-    beneficiarioIdeal: 65,
-    idadeAtual: 45,
-    status: "Ativo",
-    categoria: "PGBL"
-  },
-  {
-    id: 2,
-    tipo: "VGBL",
-    produto: "Itaú Personalité Prev",
-    instituicao: "Itaú Unibanco",
-    valorAcumulado: 89500,
-    aportesMensais: 1800,
-    dataContratacao: "10/08/2020",
-    proximaContribuicao: "10/02/2024",
-    rentabilidadeAno: 10.5,
-    taxaAdministracao: 1.5,
-    taxaCarregamento: 1.5,
-    beneficiarioIdeal: 60,
-    idadeAtual: 45,
-    status: "Ativo",
-    categoria: "VGBL"
-  },
-  {
-    id: 3,
-    tipo: "FAPI",
-    produto: "Santander Prev",
-    instituicao: "Santander",
-    valorAcumulado: 45600,
-    aportesMensais: 1200,
-    dataContratacao: "22/01/2022",
-    proximaContribuicao: "22/02/2024",
-    rentabilidadeAno: 9.2,
-    taxaAdministracao: 2.0,
-    taxaCarregamento: 3.0,
-    beneficiarioIdeal: 65,
-    idadeAtual: 45,
-    status: "Ativo",
-    categoria: "FAPI"
-  },
-  {
-    id: 4,
-    tipo: "PGBL",
-    produto: "Caixa Prev",
-    instituicao: "Caixa Econômica",
-    valorAcumulado: 15800,
-    aportesMensais: 0,
-    dataContratacao: "05/06/2021",
-    proximaContribuicao: "-",
-    rentabilidadeAno: 8.1,
-    taxaAdministracao: 1.8,
-    taxaCarregamento: 2.5,
-    beneficiarioIdeal: 65,
-    idadeAtual: 45,
-    status: "Suspenso",
-    categoria: "PGBL"
-  }
-];
+import { supabase } from "@/integrations/supabase/client";
 
 interface PensionCardProps {
-  plano: typeof mockPrevidencia[0];
-  onView: (id: number) => void;
-  onDelete: (id: number) => void;
+  plano: any;
+  onView: (id: string) => void;
+  onDelete: (id: string) => void;
 }
 
 function PensionCard({ plano, onView, onDelete }: PensionCardProps) {
-  const anosParaBeneficio = plano.beneficiarioIdeal - plano.idadeAtual;
-  const progressoIdade = (plano.idadeAtual / plano.beneficiarioIdeal) * 100;
+  const idadeAtual = 45; // Default age
+  const beneficiarioIdeal = plano.idade_resgate || 65;
+  const anosParaBeneficio = beneficiarioIdeal - idadeAtual;
+  const progressoIdade = (idadeAtual / beneficiarioIdeal) * 100;
   
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Ativo": return "bg-green-500";
-      case "Suspenso": return "bg-yellow-500";
-      case "Resgatado": return "bg-gray-500";
-      default: return "bg-gray-500";
-    }
+  const status = plano.ativo ? "Ativo" : "Suspenso";
+  
+  const getStatusColor = (ativo: boolean) => {
+    return ativo ? "bg-green-500" : "bg-yellow-500";
   };
 
-  const getStatusVariant = (status: string) => {
-    switch (status) {
-      case "Ativo": return "default";
-      case "Suspenso": return "secondary";
-      case "Resgatado": return "outline";
-      default: return "outline";
-    }
+  const getStatusVariant = (ativo: boolean) => {
+    return ativo ? "default" : "secondary";
   };
 
-  const getCategoryColor = (categoria: string) => {
-    switch (categoria) {
+  const getCategoryColor = (tipo: string) => {
+    switch (tipo) {
       case "PGBL": return "bg-blue-100 text-blue-800";
       case "VGBL": return "bg-green-100 text-green-800";
       case "FAPI": return "bg-purple-100 text-purple-800";
@@ -124,18 +47,18 @@ function PensionCard({ plano, onView, onDelete }: PensionCardProps) {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className={`w-4 h-4 rounded-full ${getStatusColor(plano.status)}`} />
+            <div className={`w-4 h-4 rounded-full ${getStatusColor(plano.ativo)}`} />
             <div>
-              <CardTitle className="text-lg">{plano.produto}</CardTitle>
+              <CardTitle className="text-lg">{plano.nome}</CardTitle>
               <p className="text-sm text-muted-foreground">{plano.instituicao}</p>
             </div>
           </div>
           <div className="flex space-x-2">
-            <Badge className={getCategoryColor(plano.categoria)}>
+            <Badge className={getCategoryColor(plano.tipo)}>
               {plano.tipo}
             </Badge>
-            <Badge variant={getStatusVariant(plano.status)}>
-              {plano.status}
+            <Badge variant={getStatusVariant(plano.ativo)}>
+              {status}
             </Badge>
           </div>
         </div>
@@ -146,14 +69,14 @@ function PensionCard({ plano, onView, onDelete }: PensionCardProps) {
           <div>
             <p className="text-muted-foreground">Valor Acumulado</p>
             <p className="font-semibold text-green-600 text-lg">
-              {plano.valorAcumulado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              {Number(plano.valor_acumulado).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>
           </div>
           <div>
             <p className="text-muted-foreground">Aporte Mensal</p>
             <p className="font-semibold">
-              {plano.aportesMensais > 0 
-                ? plano.aportesMensais.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+              {plano.contribuicao_mensal > 0 
+                ? Number(plano.contribuicao_mensal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
                 : "Suspenso"
               }
             </p>
@@ -163,7 +86,7 @@ function PensionCard({ plano, onView, onDelete }: PensionCardProps) {
         <div>
           <div className="flex justify-between text-sm mb-2">
             <span className="text-muted-foreground">Progresso para benefício</span>
-            <span>{plano.idadeAtual} / {plano.beneficiarioIdeal} anos</span>
+            <span>{idadeAtual} / {beneficiarioIdeal} anos</span>
           </div>
           <Progress value={progressoIdade} className="h-2" />
           <p className="text-xs text-muted-foreground mt-1">
@@ -174,22 +97,22 @@ function PensionCard({ plano, onView, onDelete }: PensionCardProps) {
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <p className="text-muted-foreground">Rentabilidade (Ano)</p>
-            <p className="font-medium text-green-600">+{plano.rentabilidadeAno}%</p>
+            <p className="font-medium text-green-600">+{Number(plano.rentabilidade_acumulada || 0).toFixed(1)}%</p>
           </div>
           <div>
             <p className="text-muted-foreground">Taxa Admin.</p>
-            <p className="font-medium">{plano.taxaAdministracao}% a.a.</p>
+            <p className="font-medium">{Number(plano.taxa_administracao || 0).toFixed(1)}% a.a.</p>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <p className="text-muted-foreground">Data Contratação</p>
-            <p className="font-medium">{plano.dataContratacao}</p>
+            <p className="font-medium">{new Date(plano.data_inicio).toLocaleDateString('pt-BR')}</p>
           </div>
           <div>
             <p className="text-muted-foreground">Próxima Contribuição</p>
-            <p className="font-medium">{plano.proximaContribuicao}</p>
+            <p className="font-medium">{plano.ativo ? new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString('pt-BR') : '-'}</p>
           </div>
         </div>
 
@@ -219,41 +142,69 @@ function PensionCard({ plano, onView, onDelete }: PensionCardProps) {
 }
 
 export default function Previdencia() {
-  const [planos, setPlanos] = useState(mockPrevidencia);
+  const [planos, setPlanos] = useState<any[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [planoToDelete, setPlanoToDelete] = useState<number | null>(null);
+  const [planoToDelete, setPlanoToDelete] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const handleView = (id: number) => {
+  useEffect(() => {
+    loadPlanos();
+  }, []);
+
+  const loadPlanos = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('planos_previdencia')
+      .select('*')
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('Error loading planos:', error);
+      return;
+    }
+
+    setPlanos(data || []);
+  };
+
+  const handleView = (id: string) => {
     console.log("Visualizar plano:", id);
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = (id: string) => {
     setPlanoToDelete(id);
     setDeleteDialogOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (planoToDelete) {
-      setPlanos(prev => prev.filter(p => p.id !== planoToDelete));
-      toast({
-        title: "Plano excluído",
-        description: "O plano previdenciário foi removido com sucesso.",
-      });
+      const { error } = await supabase
+        .from('planos_previdencia')
+        .delete()
+        .eq('id', planoToDelete);
+
+      if (!error) {
+        setPlanos(prev => prev.filter(p => p.id !== planoToDelete));
+        toast({
+          title: "Plano excluído",
+          description: "O plano previdenciário foi removido com sucesso.",
+        });
+      }
     }
     setDeleteDialogOpen(false);
     setPlanoToDelete(null);
   };
 
   const handleAddPlan = (novoPlano: any) => {
-    setPlanos(prev => [...prev, novoPlano]);
+    loadPlanos();
   };
 
   // Calculations
-  const totalAcumulado = planos.reduce((sum, plano) => sum + plano.valorAcumulado, 0);
-  const totalAportesMensais = planos.reduce((sum, plano) => sum + plano.aportesMensais, 0);
-  const planosAtivos = planos.filter(p => p.status === "Ativo").length;
-  const mediaRentabilidade = planos.reduce((sum, plano) => sum + plano.rentabilidadeAno, 0) / planos.length;
+  const totalAcumulado = planos.reduce((sum, plano) => sum + Number(plano.valor_acumulado), 0);
+  const totalAportesMensais = planos.reduce((sum, plano) => sum + Number(plano.contribuicao_mensal), 0);
+  const planosAtivos = planos.filter(p => p.ativo).length;
+  const mediaRentabilidade = planos.length > 0 ? planos.reduce((sum, plano) => sum + Number(plano.rentabilidade_acumulada || 0), 0) / planos.length : 0;
 
   return (
     <Layout>

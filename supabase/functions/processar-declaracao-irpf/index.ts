@@ -92,65 +92,96 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `Você é um especialista em análise de declarações de IRPF brasileiras. Extraia TODOS os dados estruturados encontrados no documento. Retorne APENAS um JSON válido, sem markdown.`
+            content: `Você é um especialista em análise de declarações de IRPF brasileiras. Extraia TODOS os dados estruturados do documento e categorize automaticamente em: rendimentos, bens imobilizados, aplicações financeiras, previdência, contas bancárias e dívidas. Retorne APENAS um JSON válido, sem markdown.`
           },
           {
             role: 'user',
-            content: `Analise esta declaração de IRPF em PDF (base64) e extraia TODOS os dados encontrados.
+            content: `Analise esta declaração de IRPF em PDF (base64) e extraia TODOS os dados, categorizando-os corretamente.
 
 IMPORTANTE: 
-- Extraia TODOS os rendimentos listados, não deixe nenhum de fora
-- Extraia TODOS os bens e direitos, incluindo veículos, imóveis, contas bancárias, aplicações
-- Extraia TODAS as dívidas se houver
-- Use os valores EXATOS que aparecem no documento
-- Se não encontrar alguma informação, use valores vazios mas SEMPRE retorne o JSON completo
+- Extraia TODOS os rendimentos (salários, pró-labore, dividendos, etc)
+- Categorize bens e direitos em: imóveis (imobilizado), ações/fundos (aplicações), previdência privada, contas bancárias
+- Extraia TODAS as dívidas
+- Use valores EXATOS do documento
+- Para aplicações: identifique tipo (Ação, FII, CDB, etc), instituição, ticker se houver
+- Para previdência: identifique PGBL, VGBL, instituição
+- Para contas: identifique banco, agência, número da conta, tipo
 
 Arquivo em base64: ${base64.substring(0, 100000)}
 
 Retorne um JSON com esta estrutura:
 {
   "contribuinte": {
-    "nome": "string (nome completo do contribuinte)",
-    "cpf": "string (CPF com pontos e traço)"
+    "nome": "string",
+    "cpf": "string"
   },
   "declaracao": {
-    "ano": number (ano da declaração),
+    "ano": number,
     "status": "Importada",
-    "recibo": "string ou null (número do recibo se houver)"
+    "recibo": "string ou null"
   },
   "rendimentos": [
     {
-      "fonte_pagadora": "string (nome da empresa)",
-      "cnpj": "string (CNPJ formatado)",
-      "tipo": "Salário" ou "Pró-labore" ou "Dividendos" ou "Outros",
-      "valor": number (valor total recebido),
-      "irrf": number (imposto retido na fonte),
+      "fonte_pagadora": "string",
+      "cnpj": "string",
+      "tipo": "Salário|Pró-labore|Dividendos|Outros",
+      "valor": number,
+      "irrf": number,
       "contribuicao_previdenciaria": number,
       "decimo_terceiro": number
     }
   ],
-  "bens_direitos": [
+  "bens_imobilizados": [
     {
-      "codigo": "string (código do bem, ex: 02, 04, 06)",
-      "discriminacao": "string (descrição completa do bem)",
-      "situacao_ano_anterior": number (valor em 31/12 ano anterior),
-      "situacao_ano_atual": number (valor em 31/12 ano atual),
-      "categoria": "Imóvel" ou "Veículo" ou "Aplicação Financeira" ou "Outro"
+      "nome": "string (nome do bem)",
+      "categoria": "Imóvel|Veículo|Outro",
+      "descricao": "string (descrição detalhada)",
+      "valor_aquisicao": number,
+      "valor_atual": number,
+      "localizacao": "string (endereço ou localização)"
+    }
+  ],
+  "aplicacoes": [
+    {
+      "nome": "string (nome da aplicação/ticker)",
+      "tipo": "Ação|FII|CDB|Tesouro Direto|Fundo|Outro",
+      "instituicao": "string (corretora/banco)",
+      "valor_aplicado": number,
+      "valor_atual": number
+    }
+  ],
+  "previdencia": [
+    {
+      "nome": "string (nome do plano)",
+      "tipo": "PGBL|VGBL|FAPI",
+      "instituicao": "string",
+      "valor_acumulado": number,
+      "contribuicao_mensal": number
+    }
+  ],
+  "contas_bancarias": [
+    {
+      "banco": "string",
+      "agencia": "string",
+      "numero_conta": "string",
+      "tipo_conta": "Conta Corrente|Poupança|Conta Investimento",
+      "saldo_atual": number
     }
   ],
   "dividas": [
     {
-      "discriminacao": "string (descrição da dívida)",
-      "valor_ano_anterior": number,
-      "valor_ano_atual": number,
-      "credor": "string (nome do credor)"
+      "nome": "string (descrição da dívida)",
+      "tipo": "Financiamento|Empréstimo|Cartão de Crédito|Outro",
+      "credor": "string",
+      "valor_original": number,
+      "saldo_devedor": number
     }
   ]
 }`
           }
         ],
         temperature: 0.1,
-        max_tokens: 4000
+        max_tokens: 6000
       }),
     });
 
@@ -203,7 +234,10 @@ Retorne um JSON com esta estrutura:
     }
 
     let rendimentosCount = 0;
-    let bensCount = 0;
+    let bensImobilizadosCount = 0;
+    let aplicacoesCount = 0;
+    let previdenciaCount = 0;
+    let contasBancariasCount = 0;
     let dividasCount = 0;
 
     // Insert rendimentos
@@ -232,60 +266,144 @@ Retorne um JSON com esta estrutura:
       }
     }
 
-    // Insert bens e direitos
-    if (extractedData.bens_direitos && extractedData.bens_direitos.length > 0) {
-      const bensToInsert = extractedData.bens_direitos.map((b: any) => ({
+    // Insert bens imobilizados
+    if (extractedData.bens_imobilizados && extractedData.bens_imobilizados.length > 0) {
+      const dataAquisicao = new Date().toISOString().split('T')[0];
+      const bensToInsert = extractedData.bens_imobilizados.map((b: any) => ({
         user_id: user.id,
-        declaracao_id: declaracao.id,
-        codigo: b.codigo,
-        discriminacao: b.discriminacao,
-        situacao_ano_anterior: b.situacao_ano_anterior || 0,
-        situacao_ano_atual: b.situacao_ano_atual,
-        categoria: b.categoria
+        nome: b.nome,
+        categoria: b.categoria,
+        descricao: b.descricao,
+        valor_aquisicao: b.valor_aquisicao,
+        valor_atual: b.valor_atual,
+        data_aquisicao: dataAquisicao,
+        localizacao: b.localizacao || null,
+        status: 'Ativo'
       }));
 
       const { error: bensError } = await supabaseClient
-        .from('bens_direitos_irpf')
+        .from('bens_imobilizados')
         .insert(bensToInsert);
 
       if (!bensError) {
-        bensCount = bensToInsert.length;
+        bensImobilizadosCount = bensToInsert.length;
       } else {
-        console.error('Bens insert error:', bensError);
+        console.error('Bens imobilizados insert error:', bensError);
+      }
+    }
+
+    // Insert aplicações
+    if (extractedData.aplicacoes && extractedData.aplicacoes.length > 0) {
+      const dataAplicacao = new Date().toISOString().split('T')[0];
+      const aplicacoesToInsert = extractedData.aplicacoes.map((a: any) => ({
+        user_id: user.id,
+        nome: a.nome,
+        tipo: a.tipo,
+        instituicao: a.instituicao,
+        valor_aplicado: a.valor_aplicado,
+        valor_atual: a.valor_atual,
+        data_aplicacao: dataAplicacao
+      }));
+
+      const { error: aplicacoesError } = await supabaseClient
+        .from('aplicacoes')
+        .insert(aplicacoesToInsert);
+
+      if (!aplicacoesError) {
+        aplicacoesCount = aplicacoesToInsert.length;
+      } else {
+        console.error('Aplicações insert error:', aplicacoesError);
+      }
+    }
+
+    // Insert previdência
+    if (extractedData.previdencia && extractedData.previdencia.length > 0) {
+      const dataInicio = new Date().toISOString().split('T')[0];
+      const previdenciaToInsert = extractedData.previdencia.map((p: any) => ({
+        user_id: user.id,
+        nome: p.nome,
+        tipo: p.tipo,
+        instituicao: p.instituicao,
+        valor_acumulado: p.valor_acumulado,
+        contribuicao_mensal: p.contribuicao_mensal || 0,
+        data_inicio: dataInicio,
+        ativo: true
+      }));
+
+      const { error: previdenciaError } = await supabaseClient
+        .from('planos_previdencia')
+        .insert(previdenciaToInsert);
+
+      if (!previdenciaError) {
+        previdenciaCount = previdenciaToInsert.length;
+      } else {
+        console.error('Previdência insert error:', previdenciaError);
+      }
+    }
+
+    // Insert contas bancárias
+    if (extractedData.contas_bancarias && extractedData.contas_bancarias.length > 0) {
+      const contasToInsert = extractedData.contas_bancarias.map((c: any) => ({
+        user_id: user.id,
+        banco: c.banco,
+        agencia: c.agencia,
+        numero_conta: c.numero_conta,
+        tipo_conta: c.tipo_conta,
+        saldo_atual: c.saldo_atual,
+        ativo: true
+      }));
+
+      const { error: contasError } = await supabaseClient
+        .from('contas_bancarias')
+        .insert(contasToInsert);
+
+      if (!contasError) {
+        contasBancariasCount = contasToInsert.length;
+      } else {
+        console.error('Contas bancárias insert error:', contasError);
       }
     }
 
     // Insert dívidas
     if (extractedData.dividas && extractedData.dividas.length > 0) {
+      const dataContratacao = new Date().toISOString().split('T')[0];
       const dividasToInsert = extractedData.dividas.map((d: any) => ({
         user_id: user.id,
-        declaracao_id: declaracao.id,
-        discriminacao: d.discriminacao,
-        valor_ano_anterior: d.valor_ano_anterior || 0,
-        valor_ano_atual: d.valor_ano_atual,
-        credor: d.credor
+        nome: d.nome,
+        tipo: d.tipo,
+        credor: d.credor,
+        valor_original: d.valor_original,
+        saldo_devedor: d.saldo_devedor,
+        valor_parcela: d.saldo_devedor,
+        numero_parcelas: 1,
+        parcelas_pagas: 0,
+        data_contratacao: dataContratacao,
+        status: 'Ativo'
       }));
 
       const { error: dividasError } = await supabaseClient
-        .from('dividas_irpf')
+        .from('dividas')
         .insert(dividasToInsert);
 
       if (!dividasError) {
         dividasCount = dividasToInsert.length;
       } else {
-        console.error('Dividas insert error:', dividasError);
+        console.error('Dívidas insert error:', dividasError);
       }
     }
 
     console.log('Declaration processed successfully');
-    console.log(`Inserted: ${rendimentosCount} rendimentos, ${bensCount} bens, ${dividasCount} dividas`);
+    console.log(`Inserted: ${rendimentosCount} rendimentos, ${bensImobilizadosCount} bens imobilizados, ${aplicacoesCount} aplicações, ${previdenciaCount} previdência, ${contasBancariasCount} contas, ${dividasCount} dívidas`);
 
     return new Response(JSON.stringify({
       success: true,
       declaracao_id: declaracao.id,
       dados_extraidos: {
         rendimentos: rendimentosCount,
-        bens: bensCount,
+        bens_imobilizados: bensImobilizadosCount,
+        aplicacoes: aplicacoesCount,
+        previdencia: previdenciaCount,
+        contas_bancarias: contasBancariasCount,
         dividas: dividasCount
       }
     }), {

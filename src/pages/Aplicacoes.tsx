@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Filter, TrendingUp, TrendingDown } from "lucide-react";
 import Layout from "@/components/Layout";
 import AssetCard from "@/components/AssetCard";
@@ -9,98 +9,53 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import VisualizarAplicacaoModal from "@/components/VisualizarAplicacaoModal";
 import EditarAplicacaoModal from "@/components/EditarAplicacaoModal";
-
-// Mock data - Financial Assets
-const portfolioAssets = [
-  {
-    id: "1",
-    name: "PETR4",
-    category: "Ação",
-    location: "XP Investimentos",
-    value: 35840,
-    purchaseDate: "2024-01-15",
-    status: "active" as const,
-    condition: "excellent" as const,
-    ticker: "PETR4",
-    quantity: 1000,
-    currentPrice: 35.84
-  },
-  {
-    id: "2", 
-    name: "VALE3",
-    category: "Ação",
-    location: "Rico Investimentos", 
-    value: 42650,
-    purchaseDate: "2023-11-20",
-    status: "active" as const,
-    condition: "good" as const,
-    ticker: "VALE3",
-    quantity: 850,
-    currentPrice: 50.18
-  },
-  {
-    id: "3",
-    name: "HGLG11",
-    category: "FII",
-    location: "Inter Investimentos",
-    value: 12480,
-    purchaseDate: "2024-02-10", 
-    status: "active" as const,
-    condition: "excellent" as const,
-    ticker: "HGLG11",
-    quantity: 120,
-    currentPrice: 104.00
-  },
-  {
-    id: "4",
-    name: "ITUB4",
-    category: "Ação",
-    location: "XP Investimentos",
-    value: 28750,
-    purchaseDate: "2023-09-15",
-    status: "active" as const,
-    condition: "good" as const,
-    ticker: "ITUB4",
-    quantity: 500,
-    currentPrice: 57.50
-  },
-  {
-    id: "5",
-    name: "BBDC4",
-    category: "Ação",
-    location: "Rico Investimentos",
-    value: 19880,
-    purchaseDate: "2024-03-10",
-    status: "active" as const,
-    condition: "fair" as const,
-    ticker: "BBDC4",
-    quantity: 800,
-    currentPrice: 24.85
-  },
-  {
-    id: "6",
-    name: "MXRF11",
-    category: "FII",
-    location: "Inter Investimentos",
-    value: 8640,
-    purchaseDate: "2024-01-20",
-    status: "active" as const,
-    condition: "excellent" as const,
-    ticker: "MXRF11",
-    quantity: 80,
-    currentPrice: 108.00
-  }
-];
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Carteira() {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [sortBy, setSortBy] = useState("value");
-  const [assets, setAssets] = useState(portfolioAssets);
+  const [assets, setAssets] = useState<any[]>([]);
   const [visualizarAplicacaoOpen, setVisualizarAplicacaoOpen] = useState(false);
   const [editarAplicacaoOpen, setEditarAplicacaoOpen] = useState(false);
   const [aplicacaoSelecionada, setAplicacaoSelecionada] = useState<any>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    loadAplicacoes();
+  }, []);
+
+  const loadAplicacoes = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('aplicacoes')
+      .select('*')
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('Error loading aplicações:', error);
+      return;
+    }
+
+    // Transform data to match expected format
+    const transformedData = (data || []).map((item: any) => ({
+      id: item.id,
+      name: item.nome,
+      category: item.tipo,
+      location: item.instituicao,
+      value: Number(item.valor_atual),
+      purchaseDate: item.data_aplicacao,
+      status: "active" as const,
+      condition: "excellent" as const,
+      ticker: item.nome,
+      quantity: 0,
+      currentPrice: Number(item.valor_atual)
+    }));
+
+    setAssets(transformedData);
+  };
 
   const filteredAssets = assets
     .filter(asset => {
