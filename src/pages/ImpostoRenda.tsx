@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import NovaDeclaracaoModal from "@/components/NovaDeclaracaoModal";
 import AdicionarRendimentoModal from "@/components/AdicionarRendimentoModal";
@@ -76,7 +77,9 @@ export default function ImpostoRenda() {
   const [editarRendimentoOpen, setEditarRendimentoOpen] = useState(false);
   const [visualizarReciboOpen, setVisualizarReciboOpen] = useState(false);
   const [importarDeclaracaoOpen, setImportarDeclaracaoOpen] = useState(false);
+  const [deleteDeclarationDialogOpen, setDeleteDeclarationDialogOpen] = useState(false);
   const [declaracaoSelecionada, setDeclaracaoSelecionada] = useState<any>(null);
+  const [declarationToDelete, setDeclarationToDelete] = useState<any>(null);
   const [rendimentoSelecionado, setRendimentoSelecionado] = useState<any>(null);
   const [rendimentoIndex, setRendimentoIndex] = useState(-1);
   const [declaracoesList, setDeclaracoesList] = useState<any[]>([]);
@@ -218,32 +221,73 @@ export default function ImpostoRenda() {
     });
   };
 
-  const handleDeletarDeclaracao = async (declaracao: any) => {
-    if (!confirm(`Tem certeza que deseja deletar a declaração de ${declaracao.ano}?`)) {
-      return;
-    }
+  const handleDeletarDeclaracao = (declaracao: any) => {
+    setDeclarationToDelete(declaracao);
+    setDeleteDeclarationDialogOpen(true);
+  };
+
+  const confirmDeleteDeclaration = async () => {
+    if (!declarationToDelete) return;
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Delete all related data for this user
+      // 1. Delete rendimentos related to this declaration
+      await supabase
+        .from('rendimentos_irpf')
+        .delete()
+        .eq('declaracao_id', declarationToDelete.id);
+
+      // 2. Delete bens e direitos related to this declaration
+      await supabase
+        .from('bens_direitos_irpf')
+        .delete()
+        .eq('declaracao_id', declarationToDelete.id);
+
+      // 3. Delete dividas related to this declaration
+      await supabase
+        .from('dividas_irpf')
+        .delete()
+        .eq('declaracao_id', declarationToDelete.id);
+
+      // 4. Delete all user financial data (from extraction)
+      await supabase.from('bens_imobilizados').delete().eq('user_id', user.id);
+      await supabase.from('aplicacoes').delete().eq('user_id', user.id);
+      await supabase.from('planos_previdencia').delete().eq('user_id', user.id);
+      await supabase.from('contas_bancarias').delete().eq('user_id', user.id);
+      await supabase.from('dividas').delete().eq('user_id', user.id);
+
+      // 5. Finally delete the declaration
       const { error } = await supabase
         .from('declaracoes_irpf')
         .delete()
-        .eq('id', declaracao.id);
+        .eq('id', declarationToDelete.id);
 
       if (error) throw error;
 
-      setDeclaracoesList(prev => prev.filter(d => d.id !== declaracao.id));
+      setDeclaracoesList(prev => prev.filter(d => d.id !== declarationToDelete.id));
       
       toast({
-        title: "Declaração deletada!",
-        description: "A declaração foi removida com sucesso."
+        title: "Declaração removida com sucesso!",
+        description: "Todos os dados financeiros relacionados foram excluídos da Triad3."
       });
+
+      // Reload page data to reflect changes
+      await loadDeclaracoes();
+      await loadRendimentos();
+      
     } catch (error) {
       console.error('Error deleting declaration:', error);
       toast({
         title: "Erro ao deletar",
-        description: "Não foi possível deletar a declaração.",
+        description: "Não foi possível deletar a declaração e seus dados.",
         variant: "destructive"
       });
+    } finally {
+      setDeleteDeclarationDialogOpen(false);
+      setDeclarationToDelete(null);
     }
   };
 
@@ -674,6 +718,43 @@ export default function ImpostoRenda() {
           onOpenChange={setImportarDeclaracaoOpen}
           onDeclaracaoImportada={handleDeclaracaoImportada}
         />
+
+        {/* Delete Declaration Confirmation Dialog */}
+        <AlertDialog open={deleteDeclarationDialogOpen} onOpenChange={setDeleteDeclarationDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remover Declaração e Dados Financeiros?</AlertDialogTitle>
+              <AlertDialogDescription className="space-y-3">
+                <p>
+                  Você está prestes a remover a declaração de <strong>{declarationToDelete?.ano}</strong> e <strong>todos os dados financeiros</strong> relacionados a ela na Triad3.
+                </p>
+                <p className="text-destructive font-medium">
+                  Esta ação irá excluir permanentemente:
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-sm">
+                  <li>Rendimentos declarados</li>
+                  <li>Bens imobilizados cadastrados</li>
+                  <li>Aplicações financeiras</li>
+                  <li>Planos de previdência</li>
+                  <li>Contas bancárias</li>
+                  <li>Dívidas e ônus reais</li>
+                </ul>
+                <p className="font-medium pt-2">
+                  Tem certeza que deseja continuar? Esta ação não pode ser desfeita.
+                </p>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={confirmDeleteDeclaration}
+                className="bg-destructive hover:bg-destructive/90"
+              >
+                Sim, remover tudo
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </Layout>
   );
