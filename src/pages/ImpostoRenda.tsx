@@ -18,67 +18,6 @@ import EditarRendimentoModal from "@/components/EditarRendimentoModal";
 import ImportarDeclaracaoModal from "@/components/ImportarDeclaracaoModal";
 import { supabase } from "@/integrations/supabase/client";
 
-// Mock data - Imposto de Renda
-const declaracoes = [
-  {
-    id: "1",
-    ano: 2024,
-    status: "Em Andamento",
-    prazoLimite: "2024-04-30",
-    recibo: null,
-    valorPagar: 2840,
-    valorRestituir: 0
-  },
-  {
-    id: "2",
-    ano: 2023,
-    status: "Entregue",
-    prazoLimite: "2023-04-28",
-    recibo: "000123456789",
-    valorPagar: 0,
-    valorRestituir: 1250
-  },
-  {
-    id: "3",
-    ano: 2022,
-    status: "Entregue",
-    prazoLimite: "2022-04-29",
-    recibo: "000987654321",
-    valorPagar: 890,
-    valorRestituir: 0
-  }
-];
-
-const rendimentos = [
-  {
-    id: "1",
-    fonte: "Empresa XYZ Ltda",
-    cnpj: "12.345.678/0001-90",
-    tipo: "Salário",
-    valor: 102000,
-    irrf: 8500,
-    ano: 2024
-  },
-  {
-    id: "2",
-    fonte: "Freelance - Diversos",
-    cnpj: "Pessoa Física",
-    tipo: "Serviços",
-    valor: 14400,
-    irrf: 0,
-    ano: 2024
-  },
-  {
-    id: "3",
-    fonte: "Dividendos - PETR4",
-    cnpj: "33.000.167/0001-01",
-    tipo: "Dividendos",
-    valor: 5400,
-    irrf: 0,
-    ano: 2024
-  }
-];
-
 const despesasDedutivel = [
   {
     categoria: "Saúde",
@@ -140,8 +79,8 @@ export default function ImpostoRenda() {
   const [declaracaoSelecionada, setDeclaracaoSelecionada] = useState<any>(null);
   const [rendimentoSelecionado, setRendimentoSelecionado] = useState<any>(null);
   const [rendimentoIndex, setRendimentoIndex] = useState(-1);
-  const [declaracoesList, setDeclaracoesList] = useState(declaracoes);
-  const [rendimentosList, setRendimentosList] = useState(rendimentos);
+  const [declaracoesList, setDeclaracoesList] = useState<any[]>([]);
+  const [rendimentosList, setRendimentosList] = useState<any[]>([]);
   const [prazosList, setPrazosList] = useState(prazosInitial);
   const [carregandoDados, setCarregandoDados] = useState(false);
   const { toast } = useToast();
@@ -176,7 +115,7 @@ export default function ImpostoRenda() {
           valorRestituir: Number(d.valor_restituir || 0),
           arquivoOriginal: d.arquivo_original
         }));
-        setDeclaracoesList([...formattedDeclaracoes, ...declaracoes]);
+        setDeclaracoesList(formattedDeclaracoes);
       }
     } catch (error) {
       console.error('Error loading declarations:', error);
@@ -205,14 +144,16 @@ export default function ImpostoRenda() {
           irrf: Number(r.irrf || 0),
           ano: r.ano
         }));
-        setRendimentosList([...formattedRendimentos, ...rendimentos]);
+        setRendimentosList(formattedRendimentos);
       }
     } catch (error) {
       console.error('Error loading rendimentos:', error);
     }
   };
   
-  const declaracaoAtual = declaracoesList.find(d => d.ano === anoSelecionado) || declaracoesList[0];
+  const declaracaoAtual = declaracoesList.length > 0 
+    ? (declaracoesList.find(d => d.ano === anoSelecionado) || declaracoesList[0])
+    : { ano: anoSelecionado, status: 'Pendente', prazoLimite: `${anoSelecionado}-04-30`, valorPagar: 0, valorRestituir: 0 };
   const rendimentosAno = rendimentosList.filter(r => r.ano === anoSelecionado);
   const totalRendimentos = rendimentosAno.reduce((sum, r) => sum + r.valor, 0);
   const totalIRRF = rendimentosAno.reduce((sum, r) => sum + r.irrf, 0);
