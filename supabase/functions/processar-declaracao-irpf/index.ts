@@ -230,14 +230,42 @@ Se você NÃO vê um valor, NÃO invente "25400" ou "120000"!
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
       console.error('AI API error:', aiResponse.status, errorText);
-      return new Response(JSON.stringify({ error: 'Failed to process with AI' }), {
+      return new Response(JSON.stringify({ 
+        error: 'Falha ao processar o PDF com IA. Por favor, tente novamente.',
+        details: errorText 
+      }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const aiResult = await aiResponse.json();
-    console.log('AI response received');
+    // Get response text first to handle empty responses
+    const responseText = await aiResponse.text();
+    console.log('AI response received, length:', responseText.length);
+    
+    if (!responseText || responseText.trim().length === 0) {
+      console.error('Empty AI response');
+      return new Response(JSON.stringify({ 
+        error: 'A IA retornou uma resposta vazia. Por favor, tente novamente com um arquivo PDF diferente ou verifique se o arquivo não está corrompido.' 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    let aiResult;
+    try {
+      aiResult = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('Failed to parse AI response as JSON:', parseError);
+      console.error('Response text:', responseText.substring(0, 500));
+      return new Response(JSON.stringify({ 
+        error: 'Falha ao processar a resposta da IA. Por favor, tente novamente.' 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
     
     let extractedData;
     try {
