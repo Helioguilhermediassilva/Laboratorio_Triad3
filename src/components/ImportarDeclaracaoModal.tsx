@@ -150,6 +150,7 @@ export default function ImportarDeclaracaoModal({
         description: (
           <div className="space-y-2">
             <p>Declaração de {anoDeclaracao} processada com sucesso.</p>
+            <p className="text-amber-500 font-semibold text-sm">⚠️ IMPORTANTE: Confira TODOS os dados importados! A IA pode ter extraído dados incorretos ou inventados.</p>
             <ul className="text-sm space-y-1">
               <li>✓ {dadosExtraidos.rendimentos} rendimentos extraídos</li>
               <li>✓ {dadosExtraidos.bens} bens e direitos cadastrados</li>
@@ -157,7 +158,7 @@ export default function ImportarDeclaracaoModal({
             </ul>
           </div>
         ),
-        duration: 5000
+        duration: 10000
       });
 
       // Notify parent component

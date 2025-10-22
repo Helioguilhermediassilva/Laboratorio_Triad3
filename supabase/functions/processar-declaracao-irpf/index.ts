@@ -243,13 +243,16 @@ Se esqueceu algo, VOLTE e extraia!`
             role: 'user',
             content: `TAREFA: Leia este PDF de declaração de IRPF e extraia APENAS os dados que REALMENTE EXISTEM no documento.
 
-⚠️ ADVERTÊNCIA CRÍTICA: 
-- VOCÊ ESTÁ SENDO MONITORADO - NÃO INVENTE DADOS
+⚠️ ADVERTÊNCIA CRÍTICA - SISTEMA ANTI-ALUCINAÇÃO ATIVO:
+- VOCÊ ESTÁ SENDO MONITORADO POR VALIDADORES AUTOMÁTICOS
 - Se não encontrar dados de uma categoria, retorne array VAZIO []
-- Cada item que você retornar PRECISA existir literalmente no PDF
-- VALORES devem ser EXATAMENTE como estão escritos no PDF
-- NOMES devem ser EXATAMENTE como aparecem no PDF
-- Se você INVENTAR dados, sua resposta será REJEITADA
+- Cada item que você retornar PRECISA existir LITERALMENTE no PDF
+- VALORES devem ser EXATAMENTE como estão escritos no PDF (sem aproximações)
+- NOMES, ENDEREÇOS, PLACAS devem ser EXATAMENTE como aparecem no PDF
+- NÃO use exemplos genéricos como "Rua das Flores", "Honda Civic 2021" etc
+- NÃO invente CNPJs, CPFs, números de conta ou agências
+- Se você INVENTAR qualquer dado, sua resposta será REJEITADA e reportada
+- CADA dado será validado contra o PDF original
 
 🔍 COMO TRABALHAR:
 1. Leia o PDF linha por linha
@@ -557,11 +560,19 @@ FORMATO FINAL: Retorne apenas o objeto JSON começando com { e terminando com },
         ...(extractedData.dividas || []).map((d: any) => d.nome || '')
       ].map(n => n.toUpperCase());
       
-      // Padrões que indicam dados inventados/genéricos
+      // Padrões que indicam dados inventados/genéricos (expandido para detectar dados realistas)
       const suspiciousPatterns = [
         'GENERICO', 'EXEMPLO', 'TESTE', 'PADRAO', 'DEFAULT',
         'SAMPLE', 'PLACEHOLDER', 'N/A', 'NAO INFORMADO',
-        'SEM INFORMACAO', 'A DEFINIR', 'INDEFINIDO'
+        'SEM INFORMACAO', 'A DEFINIR', 'INDEFINIDO',
+        // Endereços genéricos comuns que a IA inventa
+        'RUA DAS FLORES', 'RUA DAS ROSAS', 'RUA DO COMERCIO',
+        'RUA PRINCIPAL', 'AVENIDA CENTRAL', 'RUA A', 'RUA B',
+        // Veículos genéricos sem detalhes específicos
+        'HONDA CIVIC 2021', 'HONDA CIVIC 2022', 'HONDA CIVIC 2023',
+        'FIAT UNO', 'VOLKSWAGEN GOL', 'FORD KA',
+        // Nomes muito genéricos
+        'APARTAMENTO', 'CASA', 'VEICULO', 'CARRO', 'MOTO'
       ];
       
       const allDescriptions = [
