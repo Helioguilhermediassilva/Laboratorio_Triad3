@@ -246,31 +246,19 @@ Se você NÃO vê um valor, NÃO invente "25400" ou "120000"!
       extractedData = JSON.parse(jsonText);
       console.log('Extracted data:', JSON.stringify(extractedData, null, 2));
       
-      // Validação rigorosa contra dados inventados
-      const mockIndicators = [
-        // Nomes genéricos
-        'JOÃO DA SILVA', 'MARIA DA SILVA', 'JOSÉ DA SILVA', 'EMPRESA MODELO', 'EXEMPLO', 'TESTE',
-        // Veículos genéricos suspeitos
-        'FORD KA', 'FIAT UNO', 'VW GOL', 'CHEVROLET ONIX', 'TOYOTA COROLLA',
-        // Bancos/instituições genéricas
-        'BANCO EXEMPLO', 'CORRETORA XYZ'
-      ];
-      
-      const contribuinte = extractedData.contribuinte?.nome?.toUpperCase() || '';
+      // Validação básica: verificar se dados estruturais fazem sentido
+      // Removemos validações muito restritivas que podem bloquear PDFs legítimos
       const bensNomes = (extractedData.bens_imobilizados || []).map((b: any) => b.nome?.toUpperCase() || '');
-      const instituicoes = [
-        ...(extractedData.aplicacoes || []).map((a: any) => a.instituicao?.toUpperCase() || ''),
-        ...(extractedData.contas_bancarias || []).map((c: any) => c.banco?.toUpperCase() || '')
-      ];
       
-      // Verificar se há dados suspeitos
-      const allTexts = [contribuinte, ...bensNomes, ...instituicoes];
-      for (const text of allTexts) {
-        for (const mockIndicator of mockIndicators) {
-          if (text.includes(mockIndicator)) {
-            console.error('Detected generic/mock data:', { text, mockIndicator });
+      // Verificar apenas padrões claramente suspeitos (veículos genéricos muito comuns que indicam dados inventados)
+      const suspiciousVehicles = ['CARRO GENERICO', 'VEICULO EXEMPLO', 'AUTOMOVEL TESTE'];
+      
+      for (const bens of bensNomes) {
+        for (const suspicious of suspiciousVehicles) {
+          if (bens.includes(suspicious)) {
+            console.error('Detected clearly fabricated data:', { bens, suspicious });
             return new Response(JSON.stringify({ 
-              error: 'Dados genéricos detectados na extração. A IA não conseguiu ler dados reais do PDF. Verifique se o arquivo é um PDF válido da Receita Federal e está legível.' 
+              error: 'A IA não conseguiu extrair dados reais do PDF. Verifique se o arquivo está legível.' 
             }), {
               status: 400,
               headers: { ...corsHeaders, 'Content-Type': 'application/json' },
