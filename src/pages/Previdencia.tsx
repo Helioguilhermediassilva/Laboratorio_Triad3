@@ -25,6 +25,25 @@ function PensionCard({ plano, onView, onDelete }: PensionCardProps) {
   
   const status = plano.ativo ? "Ativo" : "Suspenso";
   
+  // Transform database data to modal format
+  const planoFormatado = {
+    id: plano.id,
+    tipo: plano.tipo || '',
+    produto: plano.nome || '',
+    instituicao: plano.instituicao || '',
+    valorAcumulado: Number(plano.valor_acumulado) || 0,
+    aportesMensais: Number(plano.contribuicao_mensal) || 0,
+    dataContratacao: new Date(plano.data_inicio).toLocaleDateString('pt-BR'),
+    proximaContribuicao: plano.ativo ? new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString('pt-BR') : '-',
+    rentabilidadeAno: Number(plano.rentabilidade_acumulada) || 0,
+    taxaAdministracao: Number(plano.taxa_administracao) || 0,
+    taxaCarregamento: 0, // Not available in database
+    beneficiarioIdeal: beneficiarioIdeal,
+    idadeAtual: idadeAtual,
+    status: status,
+    categoria: plano.tipo || ''
+  };
+  
   const getStatusColor = (ativo: boolean) => {
     return ativo ? "bg-green-500" : "bg-yellow-500";
   };
@@ -117,7 +136,7 @@ function PensionCard({ plano, onView, onDelete }: PensionCardProps) {
         </div>
 
         <div className="flex space-x-2 pt-2">
-          <VisualizarPlanoModal plano={plano}>
+          <VisualizarPlanoModal plano={planoFormatado}>
             <Button
               size="sm"
               variant="outline"
