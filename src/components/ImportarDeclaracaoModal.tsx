@@ -5,9 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, FileText, AlertCircle } from "lucide-react";
+import { Upload, FileText, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { supabase } from "@/integrations/supabase/client";
+import { Progress } from "@/components/ui/progress";
 
 interface ImportarDeclaracaoModalProps {
   open: boolean;
@@ -25,6 +27,8 @@ export default function ImportarDeclaracaoModal({
   const [anoDeclaracao, setAnoDeclaracao] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [carregando, setCarregando] = useState(false);
+  const [progresso, setProgresso] = useState(0);
+  const [etapaAtual, setEtapaAtual] = useState("");
   const { toast } = useToast();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -54,30 +58,73 @@ export default function ImportarDeclaracaoModal({
     }
 
     setCarregando(true);
+    setProgresso(0);
+    setEtapaAtual("Enviando arquivo...");
 
     try {
-      // Simular processamento do arquivo
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Check authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("Você precisa estar autenticado para importar declarações");
+      }
 
-      // Dados mockados baseados no arquivo importado
-      const declaracaoImportada = {
-        id: Date.now().toString(),
-        ano: parseInt(anoDeclaracao),
-        status: "Importada",
-        prazoLimite: `${anoDeclaracao}-04-30`,
-        recibo: tipoArquivo === "recibo" ? `${Date.now()}` : null,
-        valorPagar: Math.random() > 0.5 ? Math.floor(Math.random() * 5000) : 0,
-        valorRestituir: Math.random() > 0.5 ? Math.floor(Math.random() * 3000) : 0,
-        arquivoOriginal: arquivo.name,
-        dataImportacao: new Date().toISOString(),
-        observacoes
-      };
+      setProgresso(20);
+      setEtapaAtual("Processando documento com OCR...");
 
-      onDeclaracaoImportada(declaracaoImportada);
+      // Prepare form data
+      const formData = new FormData();
+      formData.append('file', arquivo);
+      formData.append('ano', anoDeclaracao);
+
+      setProgresso(40);
+      setEtapaAtual("Extraindo dados financeiros...");
+
+      // Call edge function to process the declaration
+      const { data, error } = await supabase.functions.invoke('processar-declaracao-irpf', {
+        body: formData,
+      });
+
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Erro ao processar declaração');
+      }
+
+      setProgresso(80);
+      setEtapaAtual("Categorizando e salvando dados...");
+
+      if (!data.success) {
+        throw new Error('Falha ao processar a declaração');
+      }
+
+      setProgresso(100);
+      setEtapaAtual("Concluído!");
+
+      const dadosExtraidos = data.dados_extraidos;
       
       toast({
         title: "Declaração importada com sucesso!",
-        description: `Declaração de ${anoDeclaracao} foi importada e está disponível no histórico.`
+        description: (
+          <div className="space-y-2">
+            <p>Declaração de {anoDeclaracao} processada com sucesso.</p>
+            <ul className="text-sm space-y-1">
+              <li>✓ {dadosExtraidos.rendimentos} rendimentos extraídos</li>
+              <li>✓ {dadosExtraidos.bens} bens e direitos cadastrados</li>
+              <li>✓ {dadosExtraidos.dividas} dívidas registradas</li>
+            </ul>
+          </div>
+        ),
+        duration: 5000
+      });
+
+      // Notify parent component
+      onDeclaracaoImportada({
+        id: data.declaracao_id,
+        ano: parseInt(anoDeclaracao),
+        status: "Importada",
+        prazoLimite: `${anoDeclaracao}-04-30`,
+        arquivoOriginal: arquivo.name,
+        dataImportacao: new Date().toISOString(),
+        observacoes
       });
 
       // Reset form
@@ -85,12 +132,15 @@ export default function ImportarDeclaracaoModal({
       setTipoArquivo("");
       setAnoDeclaracao("");
       setObservacoes("");
+      setProgresso(0);
+      setEtapaAtual("");
       onOpenChange(false);
 
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Import error:', error);
       toast({
         title: "Erro na importação",
-        description: "Não foi possível importar a declaração. Verifique o arquivo e tente novamente.",
+        description: error.message || "Não foi possível importar a declaração. Verifique o arquivo e tente novamente.",
         variant: "destructive"
       });
     } finally {
@@ -124,9 +174,19 @@ export default function ImportarDeclaracaoModal({
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Importe declarações já realizadas do programa IRPF da Receita Federal ou arquivos de backup.
+              Importe declarações em PDF. O sistema extrairá automaticamente os dados usando OCR e categorizará rendimentos, bens, dívidas e aplicações.
             </AlertDescription>
           </Alert>
+
+          {carregando && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                {etapaAtual}
+              </div>
+              <Progress value={progresso} className="w-full" />
+            </div>
+          )}
 
           <div className="space-y-4">
             <div>

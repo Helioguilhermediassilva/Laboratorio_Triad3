@@ -2,3 +2,6 @@ project_id = "qtbhxnstepeybybvtaxk"
 
 [functions.analise-triad3]
 verify_jwt = false
+
+[functions.processar-declaracao-irpf]
+verify_jwt = true

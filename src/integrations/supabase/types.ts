@@ -14,6 +14,189 @@ export type Database = {
   }
   public: {
     Tables: {
+      bens_direitos_irpf: {
+        Row: {
+          categoria: string | null
+          codigo: string | null
+          created_at: string
+          declaracao_id: string | null
+          discriminacao: string
+          id: string
+          situacao_ano_anterior: number | null
+          situacao_ano_atual: number
+          user_id: string
+        }
+        Insert: {
+          categoria?: string | null
+          codigo?: string | null
+          created_at?: string
+          declaracao_id?: string | null
+          discriminacao: string
+          id?: string
+          situacao_ano_anterior?: number | null
+          situacao_ano_atual: number
+          user_id: string
+        }
+        Update: {
+          categoria?: string | null
+          codigo?: string | null
+          created_at?: string
+          declaracao_id?: string | null
+          discriminacao?: string
+          id?: string
+          situacao_ano_anterior?: number | null
+          situacao_ano_atual?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bens_direitos_irpf_declaracao_id_fkey"
+            columns: ["declaracao_id"]
+            isOneToOne: false
+            referencedRelation: "declaracoes_irpf"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      declaracoes_irpf: {
+        Row: {
+          ano: number
+          arquivo_original: string | null
+          created_at: string
+          dados_brutos: Json | null
+          id: string
+          prazo_limite: string | null
+          recibo: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          valor_pagar: number | null
+          valor_restituir: number | null
+        }
+        Insert: {
+          ano: number
+          arquivo_original?: string | null
+          created_at?: string
+          dados_brutos?: Json | null
+          id?: string
+          prazo_limite?: string | null
+          recibo?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          valor_pagar?: number | null
+          valor_restituir?: number | null
+        }
+        Update: {
+          ano?: number
+          arquivo_original?: string | null
+          created_at?: string
+          dados_brutos?: Json | null
+          id?: string
+          prazo_limite?: string | null
+          recibo?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          valor_pagar?: number | null
+          valor_restituir?: number | null
+        }
+        Relationships: []
+      }
+      dividas_irpf: {
+        Row: {
+          created_at: string
+          credor: string | null
+          declaracao_id: string | null
+          discriminacao: string
+          id: string
+          user_id: string
+          valor_ano_anterior: number | null
+          valor_ano_atual: number
+        }
+        Insert: {
+          created_at?: string
+          credor?: string | null
+          declaracao_id?: string | null
+          discriminacao: string
+          id?: string
+          user_id: string
+          valor_ano_anterior?: number | null
+          valor_ano_atual: number
+        }
+        Update: {
+          created_at?: string
+          credor?: string | null
+          declaracao_id?: string | null
+          discriminacao?: string
+          id?: string
+          user_id?: string
+          valor_ano_anterior?: number | null
+          valor_ano_atual?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dividas_irpf_declaracao_id_fkey"
+            columns: ["declaracao_id"]
+            isOneToOne: false
+            referencedRelation: "declaracoes_irpf"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rendimentos_irpf: {
+        Row: {
+          ano: number
+          cnpj: string | null
+          contribuicao_previdenciaria: number | null
+          created_at: string
+          decimo_terceiro: number | null
+          declaracao_id: string | null
+          fonte_pagadora: string
+          id: string
+          irrf: number | null
+          tipo: string
+          user_id: string
+          valor: number
+        }
+        Insert: {
+          ano: number
+          cnpj?: string | null
+          contribuicao_previdenciaria?: number | null
+          created_at?: string
+          decimo_terceiro?: number | null
+          declaracao_id?: string | null
+          fonte_pagadora: string
+          id?: string
+          irrf?: number | null
+          tipo: string
+          user_id: string
+          valor: number
+        }
+        Update: {
+          ano?: number
+          cnpj?: string | null
+          contribuicao_previdenciaria?: number | null
+          created_at?: string
+          decimo_terceiro?: number | null
+          declaracao_id?: string | null
+          fonte_pagadora?: string
+          id?: string
+          irrf?: number | null
+          tipo?: string
+          user_id?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rendimentos_irpf_declaracao_id_fkey"
+            columns: ["declaracao_id"]
+            isOneToOne: false
+            referencedRelation: "declaracoes_irpf"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transacoes: {
         Row: {
           categoria: string
