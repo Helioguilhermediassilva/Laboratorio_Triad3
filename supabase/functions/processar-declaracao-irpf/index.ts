@@ -92,62 +92,135 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `Você é um especialista em leitura de declarações de IRPF brasileiras em PDF. 
+            content: `Você é um leitor de PDF especializado em declarações de IRPF. Sua ÚNICA função é extrair texto que você VÊ no PDF.
 
-⚠️ REGRAS ABSOLUTAS - VIOLAÇÃO RESULTA EM ERRO:
-1. EXTRAIA APENAS dados que você LÊ EXPLICITAMENTE no PDF
-2. Se não conseguir ler ou identificar algo com 100% de certeza, retorne array vazio []
-3. NUNCA, sob NENHUMA circunstância, invente, estime ou gere dados de exemplo
-4. NUNCA use nomes genéricos como "Ford KA", "Fiat Uno", "Honda Civic" a menos que estejam EXATAMENTE assim no PDF
-5. Se o PDF estiver ilegível, corrompido ou você não conseguir extrair dados confiáveis, retorne arrays vazios para TODAS as categorias
+🚫 PROIBIÇÕES ABSOLUTAS:
+- NUNCA invente, estime ou gere dados de exemplo
+- NUNCA use informações genéricas ou de memória
+- NUNCA coloque marcas/modelos de veículos que não estejam ESCRITOS no PDF
+- NUNCA aproxime valores - use EXATAMENTE o que está escrito
+- Se não conseguir ler algo com 100% de certeza, retorne array vazio []
 
-VALIDAÇÃO DE QUALIDADE:
-- Se você não vê o texto exato "Honda" ou "Ford" no PDF, NÃO escreva "Honda" ou "Ford"
-- Se você não vê um valor exato, NÃO invente um valor aproximado
-- Se não vê uma marca/modelo específico de veículo, deixe no array vazio
-- Valores devem ser EXATAMENTE como aparecem no PDF
+✅ O QUE FAZER:
+- Leia APENAS o texto visível no PDF
+- Copie valores EXATAMENTE como aparecem
+- Se encontrar "HONDA CIVIC 2020", escreva exatamente isso
+- Se encontrar "R$ 230.000,00", converta para 230000
+- Se o PDF estiver ilegível ou não houver dados, retorne arrays vazios
 
-TIPOS PERMITIDOS (use EXATAMENTE):
-- planos_previdencia.tipo: "PGBL", "VGBL" ou "FAPI"
-- dividas.tipo: "Financiamento Imobiliário", "Financiamento Veículo", "Empréstimo Pessoal", "Cartão de Crédito", "Outro"
-- aplicacoes.tipo: "CDB", "LCI", "LCA", "Tesouro Direto", "Fundo", "Ações", "Outro"
-- contas_bancarias.tipo_conta: "Corrente", "Poupança", "Salário", "Investimento"
-- rendimentos.tipo: "Trabalho Assalariado", "Trabalho Autônomo", "Aluguel", "Pensão", "Aposentadoria", "Outros"
+📋 CATEGORIZAÇÃO AUTOMÁTICA:
+Ao encontrar um bem/direito no PDF, verifique o CÓDIGO e categorize:
+- Código 01-09 = IMÓVEIS → bens_imobilizados (categoria: "Imóvel")
+- Código 11-19 = VEÍCULOS → bens_imobilizados (categoria: "Veículo")
+- Código 21-29 = EMBARCAÇÕES/AERONAVES → bens_imobilizados (categoria: "Outro")
+- Código 31-39 = AÇÕES/QUOTAS → aplicacoes (tipo: "Ações")
+- Código 41-49 = FUNDOS/CLUBES → aplicacoes (tipo: "Fundo")
+- Código 45 = CRIPTOMOEDAS → aplicacoes (tipo: "Outro")
+- Código 51-59 = DEPÓSITOS → contas_bancarias
+- Código 61-69 = TÍTULOS/CDB/RDB → aplicacoes (tipo: "CDB")
+- Código 71 = VGBL → previdencia (tipo: "VGBL")
+- Código 72 = PGBL → previdencia (tipo: "PGBL")
+- Código 73 = FAPI → previdencia (tipo: "FAPI")
 
-CAMPOS OBRIGATÓRIOS:
-- dividas: valor_original é OBRIGATÓRIO. Se não souber, NÃO inclua o item
-- Todos os valores numéricos devem ser numbers, não strings`
+🔍 VALIDAÇÃO DE QUALIDADE:
+Antes de retornar, pergunte-se:
+- "Eu realmente VI este texto no PDF?"
+- "Este é um dado específico ou genérico?"
+- "Este valor/nome está EXATAMENTE como aparece no documento?"
+
+Se a resposta for NÃO para qualquer pergunta, remova o item.`
+
           },
           {
             role: 'user',
-            content: `Analise este PDF de declaração de IRPF e extraia APENAS os dados que você consegue LER com 100% de certeza.
+            content: `TAREFA: Leia este PDF de declaração de IRPF e extraia APENAS o texto que você consegue VER e LER claramente.
 
-⚠️ IMPORTANTE: 
-- Se não conseguir ler algo claramente, retorne array vazio []
-- NÃO invente marcas de veículos (ex: se não vê "Honda" escrito, não escreva "Honda")
-- NÃO estime valores (use apenas valores que você LÊ no PDF)
-- Se o PDF estiver ilegível, retorne todos os arrays vazios
+⚠️ CRITICAL: Se você não conseguir ler o PDF ou os dados parecerem ilegíveis, retorne TODOS os arrays vazios. É melhor não retornar nada do que inventar dados.
 
-MAPEAMENTO DE CÓDIGOS (use estes códigos para categorizar):
-- Código 01-09: bens_imobilizados categoria "Imóvel"
-- Código 11-19: bens_imobilizados categoria "Veículo" 
-- Código 31-49: aplicacoes (ações, fundos, títulos)
-- Código 51-69: contas_bancarias
-- Código 71-72: previdencia
+📄 PDF (base64): ${base64.substring(0, 200000)}
 
-PDF em base64: ${base64.substring(0, 200000)}
+EXEMPLO DE BOA EXTRAÇÃO (baseado no que está NO PDF):
+Se você VÊ no PDF:
+"Bem: HONDA CIVIC 2020 - Código 11
+Situação 31/12/2022: 230.000,00
+Situação 31/12/2023: 230.000,00"
 
-Retorne APENAS JSON válido (sem markdown):
+Você retorna:
 {
-  "contribuinte": { "nome": "NOME EXATO DO PDF", "cpf": "CPF DO PDF" },
-  "declaracao": { "ano": 2024, "status": "Importada", "recibo": "numero ou null" },
-  "rendimentos": [ /* apenas se conseguir ler claramente */ ],
-  "bens_imobilizados": [ /* nome, categoria, descricao, valor_aquisicao, valor_atual, localizacao */ ],
-  "aplicacoes": [ /* nome, tipo, instituicao, valor_aplicado, valor_atual */ ],
-  "previdencia": [ /* nome, tipo (PGBL/VGBL/FAPI), instituicao, valor_acumulado, contribuicao_mensal */ ],
-  "contas_bancarias": [ /* banco, agencia, numero_conta, tipo_conta, saldo_atual */ ],
-  "dividas": [ /* nome, tipo, credor, valor_original (obrigatório), saldo_devedor */ ]
-}`
+  "nome": "HONDA CIVIC 2020",
+  "categoria": "Veículo",
+  "descricao": "HONDA CIVIC 2020",
+  "valor_aquisicao": 230000,
+  "valor_atual": 230000,
+  "localizacao": "Brasil"
+}
+
+EXEMPLO DE MÁ EXTRAÇÃO (NUNCA FAÇA ISSO):
+Se você NÃO vê marca/modelo no PDF, NÃO invente "Ford KA" ou "Fiat Uno"!
+Se você NÃO vê um valor, NÃO invente "25400" ou "120000"!
+
+📤 FORMATO DE RETORNO (JSON puro, sem markdown):
+{
+  "contribuinte": {
+    "nome": "NOME COMPLETO DO PDF",
+    "cpf": "000.000.000-00"
+  },
+  "declaracao": {
+    "ano": 2024,
+    "status": "Importada",
+    "recibo": "número do recibo ou null"
+  },
+  "rendimentos": [],
+  "bens_imobilizados": [
+    {
+      "nome": "descrição curta do bem",
+      "categoria": "Imóvel | Veículo | Outro",
+      "descricao": "descrição completa do PDF",
+      "valor_aquisicao": 0,
+      "valor_atual": 0,
+      "localizacao": "endereço ou localização"
+    }
+  ],
+  "aplicacoes": [
+    {
+      "nome": "nome da aplicação",
+      "tipo": "CDB | LCI | LCA | Tesouro Direto | Fundo | Ações | Outro",
+      "instituicao": "banco/corretora",
+      "valor_aplicado": 0,
+      "valor_atual": 0
+    }
+  ],
+  "previdencia": [
+    {
+      "nome": "nome do plano",
+      "tipo": "PGBL | VGBL | FAPI",
+      "instituicao": "seguradora",
+      "valor_acumulado": 0,
+      "contribuicao_mensal": 0
+    }
+  ],
+  "contas_bancarias": [
+    {
+      "banco": "nome banco",
+      "agencia": "0000",
+      "numero_conta": "00000-0",
+      "tipo_conta": "Corrente | Poupança | Salário | Investimento",
+      "saldo_atual": 0
+    }
+  ],
+  "dividas": [
+    {
+      "nome": "descrição",
+      "tipo": "Financiamento Imobiliário | Financiamento Veículo | Empréstimo Pessoal | Cartão de Crédito | Outro",
+      "credor": "nome credor",
+      "valor_original": 0,
+      "saldo_devedor": 0
+    }
+  ]
+}
+
+🔍 LEMBRE-SE: Você está LENDO um PDF, não gerando dados de exemplo. Se não conseguir ler, retorne arrays vazios!`
+
           }
         ],
         max_completion_tokens: 8000
@@ -173,25 +246,62 @@ Retorne APENAS JSON válido (sem markdown):
       extractedData = JSON.parse(jsonText);
       console.log('Extracted data:', JSON.stringify(extractedData, null, 2));
       
-      // Validar se não são dados mockados/genéricos
+      // Validação rigorosa contra dados inventados
       const mockIndicators = [
-        'JOÃO DA SILVA', 'MARIA DA SILVA', 'EMPRESA MODELO', 'EXEMPLO',
-        'FORD KA', 'FIAT UNO', 'VW GOL 1.0' // Marcas/modelos genéricos suspeitos
+        // Nomes genéricos
+        'JOÃO DA SILVA', 'MARIA DA SILVA', 'JOSÉ DA SILVA', 'EMPRESA MODELO', 'EXEMPLO', 'TESTE',
+        // Veículos genéricos suspeitos
+        'FORD KA', 'FIAT UNO', 'VW GOL', 'CHEVROLET ONIX', 'TOYOTA COROLLA',
+        // Bancos/instituições genéricas
+        'BANCO EXEMPLO', 'CORRETORA XYZ'
       ];
-      const contribuinte = extractedData.contribuinte?.nome?.toUpperCase() || '';
-      const bensNomes = extractedData.bens_imobilizados?.map((b: any) => b.nome?.toUpperCase()) || [];
       
-      for (const mockName of mockIndicators) {
-        if (contribuinte.includes(mockName) || bensNomes.some((nome: string) => nome?.includes(mockName))) {
-          console.error('Detected mock/generic data in extraction:', { contribuinte, bensNomes });
-          return new Response(JSON.stringify({ 
-            error: 'A IA não conseguiu extrair dados reais do PDF. O documento pode estar ilegível, corrompido ou em formato não suportado. Por favor, verifique se o arquivo é um PDF válido da Receita Federal e tente novamente.' 
-          }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
+      const contribuinte = extractedData.contribuinte?.nome?.toUpperCase() || '';
+      const bensNomes = (extractedData.bens_imobilizados || []).map((b: any) => b.nome?.toUpperCase() || '');
+      const instituicoes = [
+        ...(extractedData.aplicacoes || []).map((a: any) => a.instituicao?.toUpperCase() || ''),
+        ...(extractedData.contas_bancarias || []).map((c: any) => c.banco?.toUpperCase() || '')
+      ];
+      
+      // Verificar se há dados suspeitos
+      const allTexts = [contribuinte, ...bensNomes, ...instituicoes];
+      for (const text of allTexts) {
+        for (const mockIndicator of mockIndicators) {
+          if (text.includes(mockIndicator)) {
+            console.error('Detected generic/mock data:', { text, mockIndicator });
+            return new Response(JSON.stringify({ 
+              error: 'Dados genéricos detectados na extração. A IA não conseguiu ler dados reais do PDF. Verifique se o arquivo é um PDF válido da Receita Federal e está legível.' 
+            }), {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
         }
       }
+      
+      // Validar se há dados reais extraídos (não arrays vazios em tudo)
+      const totalItems = 
+        (extractedData.rendimentos?.length || 0) +
+        (extractedData.bens_imobilizados?.length || 0) +
+        (extractedData.aplicacoes?.length || 0) +
+        (extractedData.previdencia?.length || 0) +
+        (extractedData.contas_bancarias?.length || 0) +
+        (extractedData.dividas?.length || 0);
+      
+      if (totalItems === 0 && !extractedData.contribuinte?.nome) {
+        console.error('No data extracted from PDF');
+        return new Response(JSON.stringify({ 
+          error: 'Nenhum dado foi extraído do PDF. O arquivo pode estar corrompido, protegido por senha, ou em formato não suportado. Por favor, verifique o arquivo e tente novamente.' 
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      console.log('Validation passed - Real data detected:', { 
+        contribuinte: extractedData.contribuinte?.nome,
+        totalItems 
+      });
     } catch (parseError) {
       console.error('Failed to parse AI response:', parseError);
       return new Response(JSON.stringify({ error: 'Failed to parse extracted data' }), {
