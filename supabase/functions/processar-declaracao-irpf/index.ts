@@ -482,16 +482,16 @@ FORMATO FINAL: Retorne apenas o objeto JSON começando com { e terminando com },
       // Remove markdown code blocks
       let jsonText = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       
+      // CRITICAL: Normalize curly/smart quotes to straight quotes
+      // This is a common issue with AI-generated JSON
+      jsonText = jsonText
+        .replace(/[""]/g, '"')  // Replace curly double quotes
+        .replace(/['']/g, "'")  // Replace curly single quotes
+        .replace(/…/g, '...');   // Replace ellipsis
+      
       // Try to fix common JSON issues before parsing
       // Remove any trailing commas before closing braces/brackets
       jsonText = jsonText.replace(/,(\s*[}\]])/g, '$1');
-      
-      // Try to fix common newline issues in strings (replace internal newlines with spaces)
-      jsonText = jsonText.replace(/"\s*\n\s*([^"{}[\],:])/g, '" $1');
-      
-      // Fix unescaped quotes inside strings (basic attempt)
-      // This is tricky, but we can try to catch some common cases
-      jsonText = jsonText.replace(/([^\\])"([^,:}\]]+)"/g, '$1\\"$2\\"');
       
       console.log('=== CLEANED JSON (first 1000 chars) ===');
       console.log(jsonText.substring(0, 1000));
