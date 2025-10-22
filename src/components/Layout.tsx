@@ -15,11 +15,14 @@ import {
   Sparkles,
   GraduationCap,
   Menu,
-  X
+  X,
+  LogOut
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -46,6 +49,28 @@ const navigation = [
 export default function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      toast({
+        title: "Logout realizado",
+        description: "Você foi desconectado com sucesso."
+      });
+      
+      navigate("/auth");
+    } catch (error: any) {
+      toast({
+        title: "Erro ao sair",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
 
   return (
     <div className="flex h-screen bg-background">
@@ -105,6 +130,18 @@ export default function Layout({ children }: LayoutProps) {
               </NavLink>
             ))}
           </nav>
+          
+          {/* Logout Button */}
+          <div className="px-4 pb-6">
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={handleLogout}
+            >
+              <LogOut className="mr-3 h-5 w-5" />
+              Sair
+            </Button>
+          </div>
         </div>
       </div>
 

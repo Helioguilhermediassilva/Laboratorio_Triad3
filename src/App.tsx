@@ -3,6 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import AuthGuard from "./components/AuthGuard";
+import Auth from "./pages/Auth";
 import Index from "./pages/Index";
 import Imobilizado from "./pages/Imobilizado";
 import Aplicacoes from "./pages/Aplicacoes";
@@ -29,21 +31,22 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/imobilizado" element={<Imobilizado />} />
-          <Route path="/aplicacoes" element={<Aplicacoes />} />
-          <Route path="/previdencia" element={<Previdencia />} />
-          <Route path="/orcamentos" element={<Orcamentos />} />
-          <Route path="/livro-caixa" element={<LivroCaixa />} />
-          <Route path="/imposto-renda" element={<ImpostoRenda />} />
-          <Route path="/contas-bancarias" element={<ContasBancarias />} />
-          <Route path="/dividas" element={<Dividas />} />
-          <Route path="/relatorios" element={<Relatorios />} />
-          <Route path="/plano-do-milhao" element={<PlanoDoMilhao />} />
-          <Route path="/testamento" element={<Testamento />} />
-          <Route path="/analise-inteligente" element={<AnaliseInteligente />} />
-          <Route path="/educacao-financeira" element={<EducacaoFinanceira />} />
-          <Route path="/configuracoes" element={<Configuracoes />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/" element={<AuthGuard><Index /></AuthGuard>} />
+          <Route path="/imobilizado" element={<AuthGuard><Imobilizado /></AuthGuard>} />
+          <Route path="/aplicacoes" element={<AuthGuard><Aplicacoes /></AuthGuard>} />
+          <Route path="/previdencia" element={<AuthGuard><Previdencia /></AuthGuard>} />
+          <Route path="/orcamentos" element={<AuthGuard><Orcamentos /></AuthGuard>} />
+          <Route path="/livro-caixa" element={<AuthGuard><LivroCaixa /></AuthGuard>} />
+          <Route path="/imposto-renda" element={<AuthGuard><ImpostoRenda /></AuthGuard>} />
+          <Route path="/contas-bancarias" element={<AuthGuard><ContasBancarias /></AuthGuard>} />
+          <Route path="/dividas" element={<AuthGuard><Dividas /></AuthGuard>} />
+          <Route path="/relatorios" element={<AuthGuard><Relatorios /></AuthGuard>} />
+          <Route path="/plano-do-milhao" element={<AuthGuard><PlanoDoMilhao /></AuthGuard>} />
+          <Route path="/testamento" element={<AuthGuard><Testamento /></AuthGuard>} />
+          <Route path="/analise-inteligente" element={<AuthGuard><AnaliseInteligente /></AuthGuard>} />
+          <Route path="/educacao-financeira" element={<AuthGuard><EducacaoFinanceira /></AuthGuard>} />
+          <Route path="/configuracoes" element={<AuthGuard><Configuracoes /></AuthGuard>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
