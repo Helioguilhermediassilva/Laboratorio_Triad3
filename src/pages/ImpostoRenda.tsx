@@ -19,27 +19,6 @@ import EditarRendimentoModal from "@/components/EditarRendimentoModal";
 import ImportarDeclaracaoModal from "@/components/ImportarDeclaracaoModal";
 import { supabase } from "@/integrations/supabase/client";
 
-const prazosInitial = [
-  {
-    evento: "Entrega da Declaração IRPF 2024",
-    data: "2024-04-30",
-    status: "Pendente",
-    diasRestantes: 45
-  },
-  {
-    evento: "Primeira parcela DARF 2024",
-    data: "2024-04-30",
-    status: "Pendente",
-    diasRestantes: 45
-  },
-  {
-    evento: "Carnê-Leão Março 2024",
-    data: "2024-04-15",
-    status: "Pendente",
-    diasRestantes: 30
-  }
-];
-
 export default function ImpostoRenda() {
   const [anoSelecionado, setAnoSelecionado] = useState(2024);
   const [novaDeclaracaoOpen, setNovaDeclaracaoOpen] = useState(false);
@@ -57,7 +36,7 @@ export default function ImpostoRenda() {
   const [rendimentoIndex, setRendimentoIndex] = useState(-1);
   const [declaracoesList, setDeclaracoesList] = useState<any[]>([]);
   const [rendimentosList, setRendimentosList] = useState<any[]>([]);
-  const [prazosList, setPrazosList] = useState(prazosInitial);
+  const [prazosList, setPrazosList] = useState<any[]>([]);
   const [carregandoDados, setCarregandoDados] = useState(false);
   const { toast } = useToast();
 
