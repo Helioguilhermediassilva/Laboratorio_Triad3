@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FileText, Calculator, Calendar, TrendingUp, AlertTriangle, Download, Upload } from "lucide-react";
+import { FileText, Calculator, Calendar, TrendingUp, AlertTriangle, Download, Upload, Trash2 } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -218,6 +218,35 @@ export default function ImpostoRenda() {
     });
   };
 
+  const handleDeletarDeclaracao = async (declaracao: any) => {
+    if (!confirm(`Tem certeza que deseja deletar a declaração de ${declaracao.ano}?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('declaracoes_irpf')
+        .delete()
+        .eq('id', declaracao.id);
+
+      if (error) throw error;
+
+      setDeclaracoesList(prev => prev.filter(d => d.id !== declaracao.id));
+      
+      toast({
+        title: "Declaração deletada!",
+        description: "A declaração foi removida com sucesso."
+      });
+    } catch (error) {
+      console.error('Error deleting declaration:', error);
+      toast({
+        title: "Erro ao deletar",
+        description: "Não foi possível deletar a declaração.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const formatCurrency = (valor: number) => {
     return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   };
@@ -424,6 +453,13 @@ export default function ImpostoRenda() {
                             Recibo
                           </Button>
                         )}
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={() => handleDeletarDeclaracao(declaracao)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
