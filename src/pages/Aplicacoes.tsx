@@ -73,6 +73,9 @@ export default function Carteira() {
 
   const totalValue = assets.reduce((sum, asset) => sum + asset.value, 0);
   const totalAssets = assets.length;
+  const melhorAtivo = assets.length > 0 
+    ? assets.reduce((max, asset) => asset.value > max.value ? asset : max, assets[0])
+    : null;
 
   const handleVisualizarAplicacao = (aplicacao: any) => {
     setAplicacaoSelecionada(aplicacao);
@@ -124,10 +127,15 @@ export default function Carteira() {
                   currency: 'BRL' 
                 })}
               </div>
-              <div className="flex items-center text-sm text-success mt-1">
-                <TrendingUp className="h-4 w-4 mr-1" />
-                +12.5% este mês
-              </div>
+              {totalValue > 0 ? (
+                <div className="text-sm text-muted-foreground mt-1">
+                  Patrimônio em aplicações
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground mt-1">
+                  Sem aplicações cadastradas
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -154,13 +162,20 @@ export default function Carteira() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-foreground">
-                VALE3
-              </div>
-              <div className="flex items-center text-sm text-success mt-1">
-                <TrendingUp className="h-4 w-4 mr-1" />
-                +18.7%
-              </div>
+              {melhorAtivo ? (
+                <>
+                  <div className="text-2xl font-bold text-foreground">
+                    {melhorAtivo.ticker}
+                  </div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    {melhorAtivo.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </div>
+                </>
+              ) : (
+                <div className="text-2xl font-bold text-muted-foreground">
+                  Nenhum
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
