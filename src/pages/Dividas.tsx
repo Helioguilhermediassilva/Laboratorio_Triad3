@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Receipt, Plus, Eye, Trash2, Calendar, DollarSign } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,73 +9,10 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import NovaDividaModal from "@/components/NovaDividaModal";
 import VisualizarDividaModal from "@/components/VisualizarDividaModal";
-
-// Mock data for debts
-const mockDividas = [
-  {
-    id: 1,
-    tipo: "Financiamento Imobiliário",
-    credor: "Banco do Brasil",
-    valorTotal: 350000,
-    valorPendente: 287500,
-    valorPrestacao: 2890,
-    vencimento: "15/02/2024",
-    proximoVencimento: "15/01/2024",
-    parcelas: 120,
-    parcelasPagas: 32,
-    juros: 8.5,
-    status: "Em dia",
-    categoria: "Imóvel"
-  },
-  {
-    id: 2,
-    tipo: "Financiamento Veicular",
-    credor: "Santander",
-    valorTotal: 85000,
-    valorPendente: 45600,
-    valorPrestacao: 1245,
-    vencimento: "10/02/2024",
-    proximoVencimento: "10/01/2024",
-    parcelas: 60,
-    parcelasPagas: 36,
-    juros: 12.3,
-    status: "Em dia",
-    categoria: "Veículo"
-  },
-  {
-    id: 3,
-    tipo: "Empréstimo Pessoal",
-    credor: "Nubank",
-    valorTotal: 25000,
-    valorPendente: 18750,
-    valorPrestacao: 890,
-    vencimento: "05/02/2024",
-    proximoVencimento: "05/01/2024",
-    parcelas: 36,
-    parcelasPagas: 12,
-    juros: 15.2,
-    status: "Atrasado",
-    categoria: "Pessoal"
-  },
-  {
-    id: 4,
-    tipo: "Cartão de Crédito",
-    credor: "Itaú",
-    valorTotal: 8500,
-    valorPendente: 8500,
-    valorPrestacao: 850,
-    vencimento: "25/01/2024",
-    proximoVencimento: "25/01/2024",
-    parcelas: 12,
-    parcelasPagas: 2,
-    juros: 18.9,
-    status: "Vencido",
-    categoria: "Cartão"
-  }
-];
+import { supabase } from "@/integrations/supabase/client";
 
 interface DebtCardProps {
-  divida: typeof mockDividas[0];
+  divida: any;
   onView: (id: number) => void;
   onDelete: (id: number) => void;
   onPagamentoRegistrado: (dividaId: number, valorPago: number, categoria: string) => void;
@@ -186,10 +123,80 @@ function DebtCard({ divida, onView, onDelete, onPagamentoRegistrado }: DebtCardP
 }
 
 export default function Dividas() {
-  const [dividas, setDividas] = useState(mockDividas);
+  const [dividas, setDividas] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [dividaToDelete, setDividaToDelete] = useState<number | null>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    loadDividas();
+  }, []);
+
+  const loadDividas = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Busca dívidas da tabela principal
+      const { data: dividasData, error: dividasError } = await supabase
+        .from('dividas')
+        .select('*')
+        .eq('user_id', user.id);
+
+      // Busca dívidas da declaração de IRPF
+      const { data: dividasIRPF, error: irpfError } = await supabase
+        .from('dividas_irpf')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (dividasError || irpfError) {
+        console.error('Error loading dividas:', dividasError || irpfError);
+        setLoading(false);
+        return;
+      }
+
+      // Combina e formata os dados
+      const dividasCombinadas = [
+        ...(dividasData || []).map(d => ({
+          id: d.id,
+          tipo: d.tipo,
+          credor: d.credor,
+          valorTotal: Number(d.valor_original),
+          valorPendente: Number(d.saldo_devedor),
+          valorPrestacao: Number(d.valor_parcela),
+          vencimento: d.data_vencimento || 'Não informado',
+          proximoVencimento: d.data_vencimento || 'Não informado',
+          parcelas: d.numero_parcelas,
+          parcelasPagas: d.parcelas_pagas,
+          juros: Number(d.taxa_juros) || 0,
+          status: d.status,
+          categoria: d.tipo
+        })),
+        ...(dividasIRPF || []).map(d => ({
+          id: d.id,
+          tipo: 'Dívida Importada IRPF',
+          credor: d.credor,
+          valorTotal: Number(d.valor_ano_atual),
+          valorPendente: Number(d.valor_ano_atual),
+          valorPrestacao: 0,
+          vencimento: 'Não informado',
+          proximoVencimento: 'Não informado',
+          parcelas: 1,
+          parcelasPagas: 0,
+          juros: 0,
+          status: 'Ativo',
+          categoria: 'Outro'
+        }))
+      ];
+
+      setDividas(dividasCombinadas);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error loading dividas:', error);
+      setLoading(false);
+    }
+  };
 
   const handlePagamentoRegistrado = (dividaId: number, valorPago: number, categoria: string) => {
     // Atualiza a dívida
