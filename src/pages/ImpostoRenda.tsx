@@ -19,33 +19,6 @@ import EditarRendimentoModal from "@/components/EditarRendimentoModal";
 import ImportarDeclaracaoModal from "@/components/ImportarDeclaracaoModal";
 import { supabase } from "@/integrations/supabase/client";
 
-const despesasDedutivel = [
-  {
-    categoria: "Saúde",
-    descricao: "Plano de Saúde",
-    valor: 4800,
-    comprovantes: 12
-  },
-  {
-    categoria: "Educação",
-    descricao: "Curso Superior",
-    valor: 12000,
-    comprovantes: 10
-  },
-  {
-    categoria: "Previdência",
-    descricao: "INSS",
-    valor: 7200,
-    comprovantes: 12
-  },
-  {
-    categoria: "Dependentes",
-    descricao: "Filho menor",
-    valor: 2275.08,
-    comprovantes: 1
-  }
-];
-
 const prazosInitial = [
   {
     evento: "Entrega da Declaração IRPF 2024",
@@ -160,7 +133,7 @@ export default function ImpostoRenda() {
   const rendimentosAno = rendimentosList.filter(r => r.ano === anoSelecionado);
   const totalRendimentos = rendimentosAno.reduce((sum, r) => sum + r.valor, 0);
   const totalIRRF = rendimentosAno.reduce((sum, r) => sum + r.irrf, 0);
-  const totalDeducoes = despesasDedutivel.reduce((sum, d) => sum + d.valor, 0);
+  const totalDeducoes = 0;
 
   const handleEditarDeclaracao = (declaracao: any) => {
     setDeclaracaoSelecionada(declaracao);
@@ -572,34 +545,17 @@ export default function ImpostoRenda() {
               </Button>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {despesasDedutivel.map((despesa, index) => (
-                <Card key={index}>
-                  <CardContent className="p-4">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-medium">{despesa.categoria}</h3>
-                        <Badge variant="outline">{despesa.comprovantes} docs</Badge>
-                      </div>
-                      
-                      <p className="text-sm text-muted-foreground">{despesa.descricao}</p>
-                      
-                      <div className="flex justify-between items-center">
-                        <span className="text-2xl font-bold text-green-600">
-                          {formatCurrency(despesa.valor)}
-                        </span>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleEditarItem('despesa', despesa)}
-                        >
-                          Editar
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+            <div className="text-center py-12">
+              <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
+              <h3 className="mt-2 text-sm font-semibold text-foreground">Nenhuma despesa cadastrada</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Comece adicionando despesas dedutíveis para sua declaração.
+              </p>
+              <div className="mt-6">
+                <Button onClick={() => setAdicionarDespesaOpen(true)}>
+                  Adicionar Despesa
+                </Button>
+              </div>
             </div>
           </TabsContent>
 
