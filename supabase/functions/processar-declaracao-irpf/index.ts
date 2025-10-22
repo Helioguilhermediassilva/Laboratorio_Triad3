@@ -272,14 +272,16 @@ Se esqueceu algo, VOLTE e extraia!`
             role: 'user',
             content: `LEIA O PDF E COPIE OS DADOS EXATOS.
 
-🔴 DADOS PROIBIDOS (são invenções da sua imaginação):
-• "João da Silva", "Maria Santos" → INVENTADOS
-• "Rua das Flores", "Avenida Central" → INVENTADOS  
-• "Honda Civic 2021", "Fiat Uno" → INVENTADOS
-• "Empresa Modelo LTDA" → INVENTADO
+🟢 O QUE FAZER:
+• Copiar palavra por palavra o que REALMENTE está no PDF.
+• Se faltar informação (ex: nome da instituição), deixe o campo NULL ou VAZIO
+• NUNCA use "NAO INFORMADO", "N/A" ou termos genéricos
 
-✅ SEU TRABALHO:
-Copiar palavra por palavra o que REALMENTE está no PDF.
+❌ NUNCA ESCREVA:
+• "NAO INFORMADO"
+• "N/A"  
+• "SEM INFORMACAO"
+• Se não sabe → deixe vazio ou null
 
 📄 PDF: ${base64.substring(0, 200000)}
 
@@ -619,7 +621,7 @@ FORMATO FINAL: Retorne apenas o objeto JSON começando com { e terminando com },
       const suspiciousPatterns = [
         // Palavras de teste/exemplo
         'GENERICO', 'EXEMPLO', 'TESTE', 'PADRAO', 'DEFAULT', 'SAMPLE', 
-        'PLACEHOLDER', 'A DEFINIR', 'INDEFINIDO', 'N/A', 'NAO INFORMADO',
+        'PLACEHOLDER', 'A DEFINIR', 'INDEFINIDO',
         
         // Endereços fictícios comuns
         'RUA DAS FLORES', 'RUA DAS ROSAS', 'RUA PRINCIPAL', 'AVENIDA CENTRAL',
@@ -839,15 +841,27 @@ ${suspiciousItems.map((item, idx) => `${idx + 1}. ${item}`).join('\n')}
     console.log('Bens imobilizados data from AI:', JSON.stringify(extractedData.bens_imobilizados || []));
     if (extractedData.bens_imobilizados && extractedData.bens_imobilizados.length > 0) {
       const dataAquisicao = new Date().toISOString().split('T')[0];
+      
+      // Função para limpar campos com valores genéricos
+      const cleanField = (value: any): any => {
+        if (typeof value === 'string') {
+          const cleaned = value.toUpperCase().trim();
+          if (cleaned === 'NAO INFORMADO' || cleaned === 'N/A' || cleaned === 'SEM INFORMACAO' || cleaned === 'INDEFINIDO') {
+            return null;
+          }
+        }
+        return value;
+      };
+      
       const bensToInsert = extractedData.bens_imobilizados.map((b: any) => ({
         user_id: user.id,
         nome: b.nome,
         categoria: b.categoria,
-        descricao: b.descricao,
+        descricao: cleanField(b.descricao) || b.nome,
         valor_aquisicao: b.valor_aquisicao,
         valor_atual: b.valor_atual,
         data_aquisicao: dataAquisicao,
-        localizacao: b.localizacao || null,
+        localizacao: cleanField(b.localizacao) || 'Brasil',
         status: 'Ativo'
       }));
 
@@ -885,11 +899,22 @@ ${suspiciousItems.map((item, idx) => `${idx + 1}. ${item}`).join('\n')}
           return true;
         })
         .map((a: any) => {
+          // Limpar campos que podem ter "NAO INFORMADO", "N/A", etc
+          const cleanField = (value: any): any => {
+            if (typeof value === 'string') {
+              const cleaned = value.toUpperCase().trim();
+              if (cleaned === 'NAO INFORMADO' || cleaned === 'N/A' || cleaned === 'SEM INFORMACAO') {
+                return null;
+              }
+            }
+            return value;
+          };
+
           const record: any = {
             user_id: user.id,
             nome: a.nome,
             tipo: a.tipo,
-            instituicao: a.instituicao,
+            instituicao: cleanField(a.instituicao) || 'Instituição não informada',
             valor_aplicado: a.valor_aplicado,
             valor_atual: a.valor_atual,
             data_aplicacao: dataAplicacao
