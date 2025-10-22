@@ -435,11 +435,23 @@ FORMATO FINAL: Retorne apenas o objeto JSON começando com { e terminando com },
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
       console.error('AI API error:', aiResponse.status, errorText);
+      
+      let userMessage = 'Falha ao processar o PDF com IA. Por favor, tente novamente.';
+      
+      // Provide specific error messages based on status code
+      if (aiResponse.status === 402) {
+        userMessage = '⚠️ Créditos insuficientes na Lovable AI. Por favor, adicione créditos em Settings → Workspace → Usage no painel da Lovable e tente novamente.';
+      } else if (aiResponse.status === 429) {
+        userMessage = 'Limite de requisições atingido. Por favor, aguarde alguns instantes e tente novamente.';
+      } else if (aiResponse.status === 401) {
+        userMessage = 'Erro de autenticação com a API. Por favor, contate o suporte.';
+      }
+      
       return new Response(JSON.stringify({ 
-        error: 'Falha ao processar o PDF com IA. Por favor, tente novamente.',
+        error: userMessage,
         details: errorText 
       }), {
-        status: 500,
+        status: aiResponse.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -482,12 +494,14 @@ FORMATO FINAL: Retorne apenas o objeto JSON começando com { e terminando com },
       // Remove markdown code blocks
       let jsonText = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       
-      // CRITICAL: Normalize curly/smart quotes to straight quotes
+      // CRITICAL: Normalize ALL types of curly/smart quotes to straight quotes
       // This is a common issue with AI-generated JSON
+      // Using comprehensive Unicode ranges for all quote variations
       jsonText = jsonText
-        .replace(/[""]/g, '"')  // Replace curly double quotes
-        .replace(/['']/g, "'")  // Replace curly single quotes
-        .replace(/…/g, '...');   // Replace ellipsis
+        .replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"')  // All curly double quotes variants
+        .replace(/[\u2018\u2019\u201A\u201B\u2032\u2035]/g, "'")  // All curly single quotes variants
+        .replace(/[\u2026]/g, '...')   // Ellipsis
+        .replace(/[\u2013\u2014]/g, '-'); // En-dash and em-dash
       
       // Try to fix common JSON issues before parsing
       // Remove any trailing commas before closing braces/brackets

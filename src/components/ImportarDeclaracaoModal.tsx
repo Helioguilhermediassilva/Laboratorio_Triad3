@@ -116,15 +116,28 @@ export default function ImportarDeclaracaoModal({
 
       if (error) {
         console.error('Edge function error:', error);
-        throw new Error(error.message || 'Erro ao processar declaração');
+        clearInterval(progressInterval);
+        
+        // Try to get more details from the response
+        let errorMessage = 'Erro ao processar declaração';
+        if (error.message) {
+          errorMessage = error.message;
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      if (data?.error) {
+        clearInterval(progressInterval);
+        throw new Error(data.error);
       }
 
       setProgresso(80);
       setEtapaAtual("Categorizando e salvando dados...");
       setTempoEstimado("");
 
-      if (!data.success) {
-        throw new Error('Falha ao processar a declaração');
+      if (!data?.success) {
+        throw new Error(data?.error || 'Falha ao processar a declaração');
       }
 
       setProgresso(100);
@@ -169,10 +182,29 @@ export default function ImportarDeclaracaoModal({
 
     } catch (error: any) {
       console.error('Import error:', error);
+      
+      // Provide more descriptive error messages
+      let errorMessage = "Não foi possível importar a declaração. Verifique o arquivo e tente novamente.";
+      let errorTitle = "Erro na importação";
+      
+      if (error.message) {
+        errorMessage = error.message;
+        
+        // Special handling for payment/credit errors
+        if (error.message.includes('Créditos insuficientes') || error.message.includes('credits')) {
+          errorTitle = "⚠️ Créditos insuficientes";
+          errorMessage = "Você precisa adicionar créditos na Lovable AI para usar esta funcionalidade. Acesse Settings → Workspace → Usage no painel da Lovable.";
+        } else if (error.message.includes('Rate limit') || error.message.includes('429')) {
+          errorTitle = "⏱️ Limite atingido";
+          errorMessage = "Você atingiu o limite de requisições. Por favor, aguarde alguns minutos e tente novamente.";
+        }
+      }
+      
       toast({
-        title: "Erro na importação",
-        description: error.message || "Não foi possível importar a declaração. Verifique o arquivo e tente novamente.",
-        variant: "destructive"
+        title: errorTitle,
+        description: errorMessage,
+        variant: "destructive",
+        duration: 7000
       });
     } finally {
       setCarregando(false);
