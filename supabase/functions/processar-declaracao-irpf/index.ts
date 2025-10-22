@@ -277,11 +277,53 @@ Se esqueceu algo, VOLTE e extraia!`
 • Se faltar informação (ex: nome da instituição), deixe o campo NULL ou VAZIO
 • NUNCA use "NAO INFORMADO", "N/A" ou termos genéricos
 
-⚠️ ATENÇÃO ESPECIAL - BENS E DIREITOS:
-• Na declaração de IRPF, "Bens e Direitos" inclui IMÓVEIS, VEÍCULOS, APLICAÇÕES FINANCEIRAS
-• Se você vê no PDF: apartamentos, casas, terrenos, carros, motos → são "bens_imobilizados"
-• Se você vê: CDB, LCI, poupança, fundos, ações → são "aplicacoes"
-• NUNCA deixe "bens_imobilizados" vazio se houver imóveis ou veículos no PDF!
+⚠️ ATENÇÃO ESPECIAL - DECLARAÇÃO DE IRPF BRASILEIRA:
+
+📋 SEÇÃO "BENS E DIREITOS" (Ficha de Bens e Direitos):
+Esta seção contém TODOS os bens do contribuinte. Você DEVE extrair TODOS os itens listados:
+
+1. IMÓVEIS (códigos 11-19) → "bens_imobilizados"
+   - Apartamentos, casas, terrenos, salas comerciais, galpões, etc.
+   - Extrair: discriminação completa, localização, valores
+
+2. VEÍCULOS (códigos 21-29) → "bens_imobilizados"
+   - Carros, motos, caminhões, aeronaves, embarcações
+   - Extrair: marca, modelo, ano, placa, valores
+
+3. APLICAÇÕES FINANCEIRAS (códigos 41-49, 51-52, 61-69, 71-79) → "aplicacoes"
+   - CDB, RDB, LCI, LCA, Debêntures (código 45)
+   - Caderneta de Poupança (código 41)
+   - Fundos de Investimento (código 71-79)
+   - Ações (código 31)
+   - Criptomoedas (código 81-82)
+   - Extrair: discriminação, instituição financeira, CNPJ, valores
+
+4. PREVIDÊNCIA (código 97) → "previdencia"
+   - PGBL, VGBL, Previdência Complementar
+   - Extrair: tipo, instituição, valores acumulados
+
+5. CONTAS BANCÁRIAS (código 61) → "contas_bancarias"
+   - Contas correntes, contas poupança
+   - Extrair: banco, agência, conta, valores
+
+📋 SEÇÃO "DÍVIDAS E ÔNUS REAIS" → "dividas"
+- Empréstimos bancários
+- Financiamentos (imóveis, veículos)
+- Cartões de crédito
+- Dívidas diversas
+- Extrair: discriminação, credor, valores ano anterior e atual
+
+📋 SEÇÃO "RENDIMENTOS" → "rendimentos"
+- Rendimentos Tributáveis Recebidos de PJ (informe de rendimentos)
+- Salários, pró-labore, aposentadorias
+- Extrair: fonte pagadora, CNPJ, valores, IRRF, 13º salário
+
+🎯 REGRAS CRÍTICAS:
+• Para CADA item na seção "Bens e Direitos", você DEVE classificar em uma das categorias acima
+• Se um item tem "Situação em 31/12/ANO-1" e "Situação em 31/12/ANO", extraia ambos valores
+• Use "situacao_ano_anterior" e "situacao_ano_atual" para bens_direitos_irpf
+• Use "valor_ano_anterior" e "valor_ano_atual" para dívidas
+• NUNCA deixe arrays vazios se houver dados no PDF
 
 ❌ NUNCA ESCREVA:
 • "NAO INFORMADO"
