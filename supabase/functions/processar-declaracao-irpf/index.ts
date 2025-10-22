@@ -88,7 +88,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
+        model: 'google/gemini-2.5-pro',
         messages: [
           {
             role: 'system',
@@ -222,7 +222,6 @@ Retorne APENAS este JSON (sem \`\`\`json):
 }`
           }
         ],
-        temperature: 0.1,
         max_completion_tokens: 8000
       }),
     });
