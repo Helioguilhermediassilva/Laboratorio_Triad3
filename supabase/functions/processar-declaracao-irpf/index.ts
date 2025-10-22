@@ -92,21 +92,16 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `Você é um especialista em análise de declarações de IRPF brasileiras. Sua missão é extrair TODOS os dados estruturados do PDF da declaração com MÁXIMA PRECISÃO, incluindo:
-
-- TODOS os rendimentos com valores exatos
-- TODOS os bens e direitos, categorizando corretamente
-- TODAS as aplicações financeiras (ações, fundos, títulos)
-- TODOS os planos de previdência (PGBL, VGBL)
-- TODAS as contas bancárias com saldos
-- TODAS as dívidas e ônus reais
+            content: `Você é um especialista em análise de declarações de IRPF brasileiras. Sua missão é extrair TODOS os dados REAIS estruturados do PDF da declaração com MÁXIMA PRECISÃO.
 
 REGRAS CRÍTICAS:
-1. Use APENAS os valores permitidos para cada campo tipo
-2. Extraia valores EXATOS do PDF, sem arredondamentos
-3. Categorize corretamente cada item
-4. Não invente ou omita dados
-5. Retorne APENAS JSON válido, sem markdown ou comentários`
+1. EXTRAIA APENAS DADOS REAIS DO PDF - NUNCA invente ou use dados de exemplo
+2. Se não conseguir ler alguma informação, retorne arrays vazios [] para aquela categoria
+3. Use APENAS os valores permitidos para cada campo tipo (veja lista abaixo)
+4. Extraia valores EXATOS do PDF, sem arredondamentos
+5. Retorne APENAS JSON válido, sem markdown ou comentários
+6. Se o PDF estiver ilegível ou corrompido, retorne arrays vazios para todas as categorias
+7. NUNCA use nomes como "JOÃO DA SILVA", "EMPRESA MODELO", "BANCO INTER" ou outros dados genéricos - extraia os nomes REAIS do PDF`
           },
           {
             role: 'user',
@@ -244,6 +239,22 @@ Retorne APENAS este JSON (sem \`\`\`json):
       const jsonText = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       extractedData = JSON.parse(jsonText);
       console.log('Extracted data:', JSON.stringify(extractedData, null, 2));
+      
+      // Validar se não são dados mockados/genéricos
+      const mockNames = ['JOÃO DA SILVA', 'MARIA DA SILVA', 'EMPRESA MODELO', 'BANCO INTER', 'EXEMPLO'];
+      const contribuinte = extractedData.contribuinte?.nome?.toUpperCase() || '';
+      
+      for (const mockName of mockNames) {
+        if (contribuinte.includes(mockName)) {
+          console.error('Detected mock data in extraction:', contribuinte);
+          return new Response(JSON.stringify({ 
+            error: 'Não foi possível extrair dados reais do PDF. O documento pode estar ilegível, corrompido ou em formato não suportado. Por favor, verifique se o PDF está legível e tente novamente.' 
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
     } catch (parseError) {
       console.error('Failed to parse AI response:', parseError);
       return new Response(JSON.stringify({ error: 'Failed to parse extracted data' }), {
