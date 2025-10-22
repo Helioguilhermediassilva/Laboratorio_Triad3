@@ -14,6 +14,98 @@ export type Database = {
   }
   public: {
     Tables: {
+      aplicacoes: {
+        Row: {
+          created_at: string
+          data_aplicacao: string
+          data_vencimento: string | null
+          id: string
+          instituicao: string
+          liquidez: string | null
+          nome: string
+          rentabilidade_tipo: string | null
+          taxa_rentabilidade: number | null
+          tipo: string
+          updated_at: string
+          user_id: string
+          valor_aplicado: number
+          valor_atual: number
+        }
+        Insert: {
+          created_at?: string
+          data_aplicacao: string
+          data_vencimento?: string | null
+          id?: string
+          instituicao: string
+          liquidez?: string | null
+          nome: string
+          rentabilidade_tipo?: string | null
+          taxa_rentabilidade?: number | null
+          tipo: string
+          updated_at?: string
+          user_id: string
+          valor_aplicado: number
+          valor_atual: number
+        }
+        Update: {
+          created_at?: string
+          data_aplicacao?: string
+          data_vencimento?: string | null
+          id?: string
+          instituicao?: string
+          liquidez?: string | null
+          nome?: string
+          rentabilidade_tipo?: string | null
+          taxa_rentabilidade?: number | null
+          tipo?: string
+          updated_at?: string
+          user_id?: string
+          valor_aplicado?: number
+          valor_atual?: number
+        }
+        Relationships: []
+      }
+      beneficiarios_testamento: {
+        Row: {
+          cpf: string
+          created_at: string
+          id: string
+          nome: string
+          observacoes: string | null
+          parentesco: string | null
+          percentual_heranca: number | null
+          testamento_id: string
+        }
+        Insert: {
+          cpf: string
+          created_at?: string
+          id?: string
+          nome: string
+          observacoes?: string | null
+          parentesco?: string | null
+          percentual_heranca?: number | null
+          testamento_id: string
+        }
+        Update: {
+          cpf?: string
+          created_at?: string
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          parentesco?: string | null
+          percentual_heranca?: number | null
+          testamento_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "beneficiarios_testamento_testamento_id_fkey"
+            columns: ["testamento_id"]
+            isOneToOne: false
+            referencedRelation: "testamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bens_direitos_irpf: {
         Row: {
           categoria: string | null
@@ -57,6 +149,93 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      bens_imobilizados: {
+        Row: {
+          categoria: string
+          created_at: string
+          data_aquisicao: string
+          descricao: string | null
+          id: string
+          localizacao: string | null
+          nome: string
+          status: string
+          updated_at: string
+          user_id: string
+          valor_aquisicao: number
+          valor_atual: number
+        }
+        Insert: {
+          categoria: string
+          created_at?: string
+          data_aquisicao: string
+          descricao?: string | null
+          id?: string
+          localizacao?: string | null
+          nome: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          valor_aquisicao: number
+          valor_atual: number
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          data_aquisicao?: string
+          descricao?: string | null
+          id?: string
+          localizacao?: string | null
+          nome?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          valor_aquisicao?: number
+          valor_atual?: number
+        }
+        Relationships: []
+      }
+      contas_bancarias: {
+        Row: {
+          agencia: string | null
+          ativo: boolean
+          banco: string
+          created_at: string
+          id: string
+          limite_credito: number | null
+          numero_conta: string
+          saldo_atual: number
+          tipo_conta: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agencia?: string | null
+          ativo?: boolean
+          banco: string
+          created_at?: string
+          id?: string
+          limite_credito?: number | null
+          numero_conta: string
+          saldo_atual?: number
+          tipo_conta: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agencia?: string | null
+          ativo?: boolean
+          banco?: string
+          created_at?: string
+          id?: string
+          limite_credito?: number | null
+          numero_conta?: string
+          saldo_atual?: number
+          tipo_conta?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       declaracoes_irpf: {
         Row: {
@@ -103,6 +282,63 @@ export type Database = {
         }
         Relationships: []
       }
+      dividas: {
+        Row: {
+          created_at: string
+          credor: string
+          data_contratacao: string
+          data_vencimento: string | null
+          id: string
+          nome: string
+          numero_parcelas: number
+          parcelas_pagas: number
+          saldo_devedor: number
+          status: string
+          taxa_juros: number | null
+          tipo: string
+          updated_at: string
+          user_id: string
+          valor_original: number
+          valor_parcela: number
+        }
+        Insert: {
+          created_at?: string
+          credor: string
+          data_contratacao: string
+          data_vencimento?: string | null
+          id?: string
+          nome: string
+          numero_parcelas: number
+          parcelas_pagas?: number
+          saldo_devedor: number
+          status?: string
+          taxa_juros?: number | null
+          tipo: string
+          updated_at?: string
+          user_id: string
+          valor_original: number
+          valor_parcela: number
+        }
+        Update: {
+          created_at?: string
+          credor?: string
+          data_contratacao?: string
+          data_vencimento?: string | null
+          id?: string
+          nome?: string
+          numero_parcelas?: number
+          parcelas_pagas?: number
+          saldo_devedor?: number
+          status?: string
+          taxa_juros?: number | null
+          tipo?: string
+          updated_at?: string
+          user_id?: string
+          valor_original?: number
+          valor_parcela?: number
+        }
+        Relationships: []
+      }
       dividas_irpf: {
         Row: {
           created_at: string
@@ -143,6 +379,213 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      lembretes: {
+        Row: {
+          categoria: string
+          created_at: string
+          data_vencimento: string
+          descricao: string | null
+          id: string
+          notificar_dias_antes: number | null
+          prioridade: string
+          status: string
+          titulo: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          categoria: string
+          created_at?: string
+          data_vencimento: string
+          descricao?: string | null
+          id?: string
+          notificar_dias_antes?: number | null
+          prioridade?: string
+          status?: string
+          titulo: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          data_vencimento?: string
+          descricao?: string | null
+          id?: string
+          notificar_dias_antes?: number | null
+          prioridade?: string
+          status?: string
+          titulo?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      metas_financeiras: {
+        Row: {
+          categoria: string | null
+          created_at: string
+          data_inicio: string
+          data_objetivo: string
+          descricao: string | null
+          id: string
+          status: string
+          titulo: string
+          updated_at: string
+          user_id: string
+          valor_atual: number
+          valor_objetivo: number
+        }
+        Insert: {
+          categoria?: string | null
+          created_at?: string
+          data_inicio: string
+          data_objetivo: string
+          descricao?: string | null
+          id?: string
+          status?: string
+          titulo: string
+          updated_at?: string
+          user_id: string
+          valor_atual?: number
+          valor_objetivo: number
+        }
+        Update: {
+          categoria?: string | null
+          created_at?: string
+          data_inicio?: string
+          data_objetivo?: string
+          descricao?: string | null
+          id?: string
+          status?: string
+          titulo?: string
+          updated_at?: string
+          user_id?: string
+          valor_atual?: number
+          valor_objetivo?: number
+        }
+        Relationships: []
+      }
+      orcamentos: {
+        Row: {
+          categoria: string
+          created_at: string
+          id: string
+          mes_referencia: string
+          tipo: string
+          updated_at: string
+          user_id: string
+          valor_gasto: number
+          valor_planejado: number
+        }
+        Insert: {
+          categoria: string
+          created_at?: string
+          id?: string
+          mes_referencia: string
+          tipo?: string
+          updated_at?: string
+          user_id: string
+          valor_gasto?: number
+          valor_planejado: number
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          id?: string
+          mes_referencia?: string
+          tipo?: string
+          updated_at?: string
+          user_id?: string
+          valor_gasto?: number
+          valor_planejado?: number
+        }
+        Relationships: []
+      }
+      planos_previdencia: {
+        Row: {
+          ativo: boolean
+          contribuicao_mensal: number
+          created_at: string
+          data_inicio: string
+          id: string
+          idade_resgate: number | null
+          instituicao: string
+          nome: string
+          rentabilidade_acumulada: number | null
+          taxa_administracao: number | null
+          tipo: string
+          updated_at: string
+          user_id: string
+          valor_acumulado: number
+        }
+        Insert: {
+          ativo?: boolean
+          contribuicao_mensal: number
+          created_at?: string
+          data_inicio: string
+          id?: string
+          idade_resgate?: number | null
+          instituicao: string
+          nome: string
+          rentabilidade_acumulada?: number | null
+          taxa_administracao?: number | null
+          tipo: string
+          updated_at?: string
+          user_id: string
+          valor_acumulado?: number
+        }
+        Update: {
+          ativo?: boolean
+          contribuicao_mensal?: number
+          created_at?: string
+          data_inicio?: string
+          id?: string
+          idade_resgate?: number | null
+          instituicao?: string
+          nome?: string
+          rentabilidade_acumulada?: number | null
+          taxa_administracao?: number | null
+          tipo?: string
+          updated_at?: string
+          user_id?: string
+          valor_acumulado?: number
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          cpf: string | null
+          created_at: string
+          data_nascimento: string | null
+          id: string
+          nome_completo: string | null
+          telefone: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          cpf?: string | null
+          created_at?: string
+          data_nascimento?: string | null
+          id: string
+          nome_completo?: string | null
+          telefone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          cpf?: string | null
+          created_at?: string
+          data_nascimento?: string | null
+          id?: string
+          nome_completo?: string | null
+          telefone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       rendimentos_irpf: {
         Row: {
@@ -196,6 +639,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      testamentos: {
+        Row: {
+          cartorio: string | null
+          created_at: string
+          data_elaboracao: string
+          documento_url: string | null
+          folha_numero: string | null
+          id: string
+          livro_numero: string | null
+          observacoes: string | null
+          status: string
+          tipo: string
+          titulo: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cartorio?: string | null
+          created_at?: string
+          data_elaboracao: string
+          documento_url?: string | null
+          folha_numero?: string | null
+          id?: string
+          livro_numero?: string | null
+          observacoes?: string | null
+          status?: string
+          tipo: string
+          titulo: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cartorio?: string | null
+          created_at?: string
+          data_elaboracao?: string
+          documento_url?: string | null
+          folha_numero?: string | null
+          id?: string
+          livro_numero?: string | null
+          observacoes?: string | null
+          status?: string
+          tipo?: string
+          titulo?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       transacoes: {
         Row: {
