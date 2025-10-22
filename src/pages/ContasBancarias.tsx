@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CreditCard, TrendingUp, TrendingDown, Eye, EyeOff, MoreHorizontal, Plus, Upload } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,126 +10,32 @@ import { useToast } from "@/hooks/use-toast";
 import NovaContaModal from "@/components/NovaContaModal";
 import ExtratoModal from "@/components/ExtratoModal";
 import ImportarExtratoModal from "@/components/ImportarExtratoModal";
-
-
-// Mock data - Contas Bancárias iniciais
-const contasIniciais = [
-  {
-    id: "1",
-    banco: "Itaú",
-    nome: "Conta Corrente",
-    numero: "12345-6",
-    agencia: "0001",
-    tipo: "Conta Corrente",
-    saldo: 15420.50,
-    limite: 5000,
-    cor: "#FF6B35"
-  },
-  {
-    id: "2",
-    banco: "Nubank",
-    nome: "Conta Digital",
-    numero: "98765-4",
-    agencia: "0001",
-    tipo: "Conta Corrente",
-    saldo: 8340.75,
-    limite: 2000,
-    cor: "#8A2BE2"
-  },
-  {
-    id: "3",
-    banco: "XP Investimentos",
-    nome: "Conta Investimentos",
-    numero: "55555-5",
-    agencia: "0001",
-    tipo: "Conta Investimento",
-    saldo: 45280.30,
-    limite: 0,
-    cor: "#000000"
-  },
-  {
-    id: "4",
-    banco: "Inter",
-    nome: "Conta Poupança",
-    numero: "77777-7",
-    agencia: "0001",
-    tipo: "Poupança",
-    saldo: 12500.00,
-    limite: 0,
-    cor: "#FF8C00"
-  }
-];
-
-const transacoesRecentes = [
-  {
-    id: "1",
-    conta: "Itaú - Conta Corrente",
-    descricao: "TED Recebida - Salário",
-    tipo: "entrada",
-    valor: 8500.00,
-    data: "2024-01-15",
-    categoria: "Salário"
-  },
-  {
-    id: "2",
-    conta: "Nubank - Conta Digital",
-    descricao: "PIX Enviado - Aluguel",
-    tipo: "saida",
-    valor: 2200.00,
-    data: "2024-01-16",
-    categoria: "Moradia"
-  },
-  {
-    id: "3",
-    conta: "XP Investimentos",
-    descricao: "Aplicação CDB",
-    tipo: "saida",
-    valor: 5000.00,
-    data: "2024-01-17",
-    categoria: "Investimento"
-  },
-  {
-    id: "4",
-    conta: "Inter - Conta Poupança",
-    descricao: "Transferência Recebida",
-    tipo: "entrada",
-    valor: 1500.00,
-    data: "2024-01-18",
-    categoria: "Transferência"
-  },
-  {
-    id: "5",
-    conta: "Itaú - Conta Corrente",
-    descricao: "Débito Automático - Financiamento",
-    tipo: "saida",
-    valor: 890.50,
-    data: "2024-01-19",
-    categoria: "Financiamento"
-  }
-];
+import { supabase } from "@/integrations/supabase/client";
 
 const CartaoConta = ({ 
   conta, 
   onExtrato, 
   onImportarExtrato
 }: { 
-  conta: typeof contasIniciais[0];
+  conta: any;
   onExtrato: (conta: any) => void;
   onImportarExtrato: (conta: any) => void;
 }) => {
+  const cores = ["#FF6B35", "#8A2BE2", "#000000", "#FF8C00"];
+  const cor = cores[Math.floor(Math.random() * cores.length)];
   return (
     <Card className="relative overflow-hidden">
       <div 
         className="absolute top-0 left-0 w-full h-2"
-        style={{ backgroundColor: conta.cor }}
+        style={{ backgroundColor: cor }}
       />
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-lg">{conta.banco}</CardTitle>
-            <p className="text-sm text-muted-foreground">{conta.nome}</p>
+            <p className="text-sm text-muted-foreground">{conta.tipo_conta}</p>
           </div>
-          <Badge variant="outline">{conta.tipo}</Badge>
+          <Badge variant="outline">{conta.tipo_conta}</Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -140,7 +46,7 @@ const CartaoConta = ({
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Conta</span>
-            <span>{conta.numero}</span>
+            <span>{conta.numero_conta}</span>
           </div>
         </div>
         
@@ -148,15 +54,15 @@ const CartaoConta = ({
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground">Saldo Atual</span>
             <span className="text-2xl font-bold">
-              {conta.saldo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              {Number(conta.saldo_atual).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </span>
           </div>
           
-          {conta.limite > 0 && (
+          {conta.limite_credito > 0 && (
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Limite Disponível</span>
               <span className="text-green-600">
-                {conta.limite.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                {Number(conta.limite_credito).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </span>
             </div>
           )}
@@ -187,7 +93,7 @@ const CartaoConta = ({
 };
 
 export default function ContasBancarias() {
-  const [contas, setContas] = useState(contasIniciais);
+  const [contas, setContas] = useState<any[]>([]);
   const [novaContaOpen, setNovaContaOpen] = useState(false);
   const [extratoOpen, setExtratoOpen] = useState(false);
   const [importarExtratoOpen, setImportarExtratoOpen] = useState(false);
@@ -195,11 +101,33 @@ export default function ContasBancarias() {
   const [contaSelecionada, setContaSelecionada] = useState<any>(null);
   const { toast } = useToast();
 
-  const saldoTotal = contas.reduce((sum, conta) => sum + conta.saldo, 0);
-  const limiteTotal = contas.reduce((sum, conta) => sum + conta.limite, 0);
+  useEffect(() => {
+    loadContas();
+  }, []);
+
+  const loadContas = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('contas_bancarias')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('ativo', true);
+
+    if (error) {
+      console.error('Error loading contas:', error);
+      return;
+    }
+
+    setContas(data || []);
+  };
+
+  const saldoTotal = contas.reduce((sum, conta) => sum + Number(conta.saldo_atual), 0);
+  const limiteTotal = contas.reduce((sum, conta) => sum + Number(conta.limite_credito || 0), 0);
 
   const handleContaAdicionada = (novaConta: any) => {
-    setContas(prev => [...prev, novaConta]);
+    loadContas();
     toast({
       title: "Conta adicionada!",
       description: "A conta foi adicionada com sucesso."
@@ -314,68 +242,6 @@ export default function ContasBancarias() {
           </div>
         </div>
 
-        {/* Recent Transactions */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Transações Recentes</CardTitle>
-              <Button variant="outline" size="sm">
-                Ver Todas
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Conta</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead>Categoria</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
-                  <TableHead></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {transacoesRecentes.map((transacao) => (
-                  <TableRow key={transacao.id}>
-                    <TableCell>{formatDate(transacao.data)}</TableCell>
-                    <TableCell className="font-medium">{transacao.conta}</TableCell>
-                    <TableCell>{transacao.descricao}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{transacao.categoria}</Badge>
-                    </TableCell>
-                    <TableCell className={`text-right font-medium ${
-                      transacao.tipo === "entrada" ? "text-green-600" : "text-red-600"
-                    }`}>
-                      {transacao.tipo === "entrada" ? (
-                        <TrendingUp className="h-4 w-4 inline mr-1" />
-                      ) : (
-                        <TrendingDown className="h-4 w-4 inline mr-1" />
-                      )}
-                      {transacao.tipo === "entrada" ? "+" : "-"}
-                      {formatCurrency(transacao.valor)}
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>Ver Detalhes</DropdownMenuItem>
-                          <DropdownMenuItem>Editar</DropdownMenuItem>
-                          <DropdownMenuItem>Categorizar</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
 
         {/* Modals */}
         <NovaContaModal 
