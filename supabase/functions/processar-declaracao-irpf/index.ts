@@ -593,34 +593,25 @@ FORMATO FINAL: Retorne apenas o objeto JSON começando com { e terminando com },
         ...(extractedData.aplicacoes || []).map((a: any) => a.instituicao || '')
       ].map(d => d.toUpperCase());
       
-      // LISTA EXPANDIDA de padrões suspeitos (dados que a IA tipicamente inventa)
+      // LISTA FOCADA de padrões suspeitos (apenas combinações obviamente inventadas)
       const suspiciousPatterns = [
-        // Palavras genéricas óbvias
+        // Palavras de exemplo/teste óbvias
         'GENERICO', 'EXEMPLO', 'TESTE', 'PADRAO', 'DEFAULT', 'SAMPLE', 
-        'PLACEHOLDER', 'N/A', 'NAO INFORMADO', 'SEM INFORMACAO', 
-        'A DEFINIR', 'INDEFINIDO', 'SEM DADOS', 'INDISPONIVEL',
+        'PLACEHOLDER', 'A DEFINIR', 'INDEFINIDO',
         
-        // Endereços genéricos que a IA usa
-        'RUA DAS FLORES', 'RUA DAS ROSAS', 'RUA DO COMERCIO', 'RUA DO SOL',
-        'RUA PRINCIPAL', 'AVENIDA CENTRAL', 'AVENIDA PRINCIPAL',
-        'RUA A, ', 'RUA B, ', 'RUA C, ', 'RUA 1, ', 'RUA 2, ',
+        // Endereços genéricos completos que a IA inventa
+        'RUA DAS FLORES', 'RUA DAS ROSAS', 'RUA PRINCIPAL', 'AVENIDA CENTRAL',
+        'RUA A,', 'RUA B,', 'RUA C,', 'RUA EXEMPLO', 'CIDADE MODELO',
         
-        // Veículos genéricos (marca + modelo + ano sem placa)
-        'HONDA CIVIC 2020', 'HONDA CIVIC 2021', 'HONDA CIVIC 2022', 'HONDA CIVIC 2023',
+        // Veículos sem placa específica (marca + modelo + ano SEM mais detalhes)
+        'HONDA CIVIC 2020/2021', 'HONDA CIVIC 2021/2022', 'HONDA CIVIC 2022/2023',
         'FIAT UNO 20', 'VOLKSWAGEN GOL 20', 'FORD KA 20',
-        'CHEVROLET ONIX 20', 'TOYOTA COROLLA 20', 'HYUNDAI HB20 20',
         
-        // Nomes muito genéricos sem especificação
-        'APARTAMENTO ', 'CASA ', 'VEICULO ', 'CARRO ', 'MOTO ',
-        'IMOVEL ', 'TERRENO ', 'APLICACAO ', 'INVESTIMENTO ',
+        // Bancos/instituições ficcionais
+        'BANCO X', 'INSTITUICAO Y', 'BANCO EXEMPLO',
         
-        // Bancos/instituições genéricas
-        'BANCO X', 'INSTITUICAO Y', 'BANCO DO BRASIL (sem mais detalhes)',
-        'CAIXA ECONOMICA (sem mais detalhes)',
-        
-        // Valores/contas genéricas
-        'CONTA CORRENTE (sem banco)', 'POUPANCA (sem banco)',
-        'AGENCIA 0001', 'AGENCIA 1234', 'CONTA 00000'
+        // Valores/contas obviamente genéricos
+        'AGENCIA 0001', 'AGENCIA 1234', 'CONTA 00000-', 'CONTA 12345-'
       ];
       
       // Verificar nomes contra padrões suspeitos
