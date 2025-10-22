@@ -92,130 +92,61 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `Você é um especialista em análise de declarações de IRPF brasileiras. EXTRAIA APENAS DADOS REAIS DO PDF - NUNCA invente dados.
+            content: `Você é um especialista em leitura de declarações de IRPF brasileiras em PDF. 
 
-REGRAS CRÍTICAS:
-1. EXTRAIA APENAS o que está EXPLICITAMENTE no PDF - se não encontrar, retorne array vazio []
-2. NUNCA invente nomes, valores ou informações genéricas
-3. Para planos_previdencia, tipo deve ser EXATAMENTE: "PGBL", "VGBL" ou "FAPI"
-4. Para dividas, valor_original é OBRIGATÓRIO - se não souber, NÃO inclua o item
-5. Para rendimentos, tipo deve ser: "Trabalho Assalariado", "Trabalho Autônomo", "Aluguel", "Pensão", "Aposentadoria" ou "Outros"
-6. Para aplicacoes, tipo deve ser: "Poupança", "CDB", "LCI/LCA", "Tesouro Direto", "Fundos", "Ações" ou "Outro"
-7. Para contas_bancarias, tipo_conta deve ser: "Corrente", "Poupança" ou "Investimento"
-8. Extraia valores EXATOS sem arredondamentos
-9. Retorne APENAS JSON válido sem markdown`
+⚠️ REGRAS ABSOLUTAS - VIOLAÇÃO RESULTA EM ERRO:
+1. EXTRAIA APENAS dados que você LÊ EXPLICITAMENTE no PDF
+2. Se não conseguir ler ou identificar algo com 100% de certeza, retorne array vazio []
+3. NUNCA, sob NENHUMA circunstância, invente, estime ou gere dados de exemplo
+4. NUNCA use nomes genéricos como "Ford KA", "Fiat Uno", "Honda Civic" a menos que estejam EXATAMENTE assim no PDF
+5. Se o PDF estiver ilegível, corrompido ou você não conseguir extrair dados confiáveis, retorne arrays vazios para TODAS as categorias
+
+VALIDAÇÃO DE QUALIDADE:
+- Se você não vê o texto exato "Honda" ou "Ford" no PDF, NÃO escreva "Honda" ou "Ford"
+- Se você não vê um valor exato, NÃO invente um valor aproximado
+- Se não vê uma marca/modelo específico de veículo, deixe no array vazio
+- Valores devem ser EXATAMENTE como aparecem no PDF
+
+TIPOS PERMITIDOS (use EXATAMENTE):
+- planos_previdencia.tipo: "PGBL", "VGBL" ou "FAPI"
+- dividas.tipo: "Financiamento Imobiliário", "Financiamento Veículo", "Empréstimo Pessoal", "Cartão de Crédito", "Outro"
+- aplicacoes.tipo: "CDB", "LCI", "LCA", "Tesouro Direto", "Fundo", "Ações", "Outro"
+- contas_bancarias.tipo_conta: "Corrente", "Poupança", "Salário", "Investimento"
+- rendimentos.tipo: "Trabalho Assalariado", "Trabalho Autônomo", "Aluguel", "Pensão", "Aposentadoria", "Outros"
+
+CAMPOS OBRIGATÓRIOS:
+- dividas: valor_original é OBRIGATÓRIO. Se não souber, NÃO inclua o item
+- Todos os valores numéricos devem ser numbers, não strings`
           },
           {
             role: 'user',
-            content: `Analise minuciosamente esta declaração de IRPF em PDF (base64) e extraia TODOS os dados financeiros, categorizando-os nas estruturas corretas.
+            content: `Analise este PDF de declaração de IRPF e extraia APENAS os dados que você consegue LER com 100% de certeza.
 
-VALORES PERMITIDOS POR CATEGORIA (use EXATAMENTE estes valores):
+⚠️ IMPORTANTE: 
+- Se não conseguir ler algo claramente, retorne array vazio []
+- NÃO invente marcas de veículos (ex: se não vê "Honda" escrito, não escreva "Honda")
+- NÃO estime valores (use apenas valores que você LÊ no PDF)
+- Se o PDF estiver ilegível, retorne todos os arrays vazios
 
-📊 APLICAÇÕES - tipo deve ser EXATAMENTE um destes:
-  - "CDB"
-  - "LCI" 
-  - "LCA"
-  - "Tesouro Direto"
-  - "Fundo"
-  - "Ações" (para ações individuais)
-  - "Outro" (para FII, ETF, etc)
+MAPEAMENTO DE CÓDIGOS (use estes códigos para categorizar):
+- Código 01-09: bens_imobilizados categoria "Imóvel"
+- Código 11-19: bens_imobilizados categoria "Veículo" 
+- Código 31-49: aplicacoes (ações, fundos, títulos)
+- Código 51-69: contas_bancarias
+- Código 71-72: previdencia
 
-🏦 CONTAS BANCÁRIAS - tipo_conta deve ser EXATAMENTE um destes:
-  - "Corrente"
-  - "Poupança"
-  - "Salário"
-  - "Investimento"
+PDF em base64: ${base64.substring(0, 200000)}
 
-💳 DÍVIDAS - tipo deve ser EXATAMENTE um destes:
-  - "Financiamento Imobiliário"
-  - "Financiamento Veículo"
-  - "Empréstimo Pessoal"
-  - "Cartão de Crédito"
-  - "Outro"
-
-🏠 PREVIDÊNCIA - tipo deve ser EXATAMENTE um destes:
-  - "PGBL"
-  - "VGBL"
-  - "FAPI"
-
-INSTRUÇÕES DE EXTRAÇÃO:
-- Bens e Direitos código 01-09 → bens_imobilizados (Imóveis)
-- Bens e Direitos código 11-19 → bens_imobilizados (Veículos)
-- Bens e Direitos código 31-49 → aplicacoes (ações, fundos, títulos)
-- Bens e Direitos código 51-69 → contas_bancarias
-- Bens e Direitos código 71-72 → previdencia
-- Dívidas e Ônus → dividas
-
-Arquivo PDF em base64: ${base64.substring(0, 150000)}
-
-Retorne APENAS este JSON (sem \`\`\`json):
+Retorne APENAS JSON válido (sem markdown):
 {
-  "contribuinte": {
-    "nome": "string do PDF",
-    "cpf": "string do PDF"
-  },
-  "declaracao": {
-    "ano": number,
-    "status": "Importada",
-    "recibo": "número do recibo ou null"
-  },
-  "rendimentos": [
-    {
-      "fonte_pagadora": "nome completo",
-      "cnpj": "XX.XXX.XXX/XXXX-XX ou vazio",
-      "tipo": "Salário ou Pró-labore ou Dividendos ou Outros",
-      "valor": valor_numero,
-      "irrf": valor_numero,
-      "contribuicao_previdenciaria": valor_numero,
-      "decimo_terceiro": valor_numero
-    }
-  ],
-  "bens_imobilizados": [
-    {
-      "nome": "nome descritivo do bem",
-      "categoria": "Imóvel ou Veículo ou Outro",
-      "descricao": "descrição detalhada do PDF",
-      "valor_aquisicao": valor_ano_anterior,
-      "valor_atual": valor_ano_declaracao,
-      "localizacao": "endereço completo ou localização"
-    }
-  ],
-  "aplicacoes": [
-    {
-      "nome": "nome/ticker da aplicação",
-      "tipo": "USE VALORES PERMITIDOS ACIMA",
-      "instituicao": "nome da corretora/banco",
-      "valor_aplicado": valor_ano_anterior,
-      "valor_atual": valor_ano_declaracao
-    }
-  ],
-  "previdencia": [
-    {
-      "nome": "nome do plano",
-      "tipo": "PGBL ou VGBL ou FAPI",
-      "instituicao": "seguradora/banco",
-      "valor_acumulado": valor_atual,
-      "contribuicao_mensal": estimativa_mensal
-    }
-  ],
-  "contas_bancarias": [
-    {
-      "banco": "nome do banco",
-      "agencia": "número agência",
-      "numero_conta": "número conta",
-      "tipo_conta": "USE VALORES PERMITIDOS ACIMA",
-      "saldo_atual": saldo_declarado
-    }
-  ],
-  "dividas": [
-    {
-      "nome": "descrição da dívida",
-      "tipo": "USE VALORES PERMITIDOS ACIMA",
-      "credor": "nome do credor",
-      "valor_original": valor_original_contratado,
-      "saldo_devedor": saldo_atual_devido
-    }
-  ]
+  "contribuinte": { "nome": "NOME EXATO DO PDF", "cpf": "CPF DO PDF" },
+  "declaracao": { "ano": 2024, "status": "Importada", "recibo": "numero ou null" },
+  "rendimentos": [ /* apenas se conseguir ler claramente */ ],
+  "bens_imobilizados": [ /* nome, categoria, descricao, valor_aquisicao, valor_atual, localizacao */ ],
+  "aplicacoes": [ /* nome, tipo, instituicao, valor_aplicado, valor_atual */ ],
+  "previdencia": [ /* nome, tipo (PGBL/VGBL/FAPI), instituicao, valor_acumulado, contribuicao_mensal */ ],
+  "contas_bancarias": [ /* banco, agencia, numero_conta, tipo_conta, saldo_atual */ ],
+  "dividas": [ /* nome, tipo, credor, valor_original (obrigatório), saldo_devedor */ ]
 }`
           }
         ],
@@ -243,14 +174,18 @@ Retorne APENAS este JSON (sem \`\`\`json):
       console.log('Extracted data:', JSON.stringify(extractedData, null, 2));
       
       // Validar se não são dados mockados/genéricos
-      const mockNames = ['JOÃO DA SILVA', 'MARIA DA SILVA', 'EMPRESA MODELO', 'BANCO INTER', 'EXEMPLO'];
+      const mockIndicators = [
+        'JOÃO DA SILVA', 'MARIA DA SILVA', 'EMPRESA MODELO', 'EXEMPLO',
+        'FORD KA', 'FIAT UNO', 'VW GOL 1.0' // Marcas/modelos genéricos suspeitos
+      ];
       const contribuinte = extractedData.contribuinte?.nome?.toUpperCase() || '';
+      const bensNomes = extractedData.bens_imobilizados?.map((b: any) => b.nome?.toUpperCase()) || [];
       
-      for (const mockName of mockNames) {
-        if (contribuinte.includes(mockName)) {
-          console.error('Detected mock data in extraction:', contribuinte);
+      for (const mockName of mockIndicators) {
+        if (contribuinte.includes(mockName) || bensNomes.some((nome: string) => nome?.includes(mockName))) {
+          console.error('Detected mock/generic data in extraction:', { contribuinte, bensNomes });
           return new Response(JSON.stringify({ 
-            error: 'Não foi possível extrair dados reais do PDF. O documento pode estar ilegível, corrompido ou em formato não suportado. Por favor, verifique se o PDF está legível e tente novamente.' 
+            error: 'A IA não conseguiu extrair dados reais do PDF. O documento pode estar ilegível, corrompido ou em formato não suportado. Por favor, verifique se o arquivo é um PDF válido da Receita Federal e tente novamente.' 
           }), {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
