@@ -277,6 +277,12 @@ Se esqueceu algo, VOLTE e extraia!`
 • Se faltar informação (ex: nome da instituição), deixe o campo NULL ou VAZIO
 • NUNCA use "NAO INFORMADO", "N/A" ou termos genéricos
 
+⚠️ ATENÇÃO ESPECIAL - BENS E DIREITOS:
+• Na declaração de IRPF, "Bens e Direitos" inclui IMÓVEIS, VEÍCULOS, APLICAÇÕES FINANCEIRAS
+• Se você vê no PDF: apartamentos, casas, terrenos, carros, motos → são "bens_imobilizados"
+• Se você vê: CDB, LCI, poupança, fundos, ações → são "aplicacoes"
+• NUNCA deixe "bens_imobilizados" vazio se houver imóveis ou veículos no PDF!
+
 ❌ NUNCA ESCREVA:
 • "NAO INFORMADO"
 • "N/A"  
@@ -915,7 +921,8 @@ ${suspiciousItems.map((item, idx) => `${idx + 1}. ${item}`).join('\n')}
             nome: a.nome,
             tipo: a.tipo,
             instituicao: cleanField(a.instituicao) || 'Instituição não informada',
-            valor_aplicado: a.valor_aplicado,
+            // Se valor_aplicado for null, usar valor_atual como fallback (coluna é NOT NULL)
+            valor_aplicado: a.valor_aplicado ?? a.valor_atual,
             valor_atual: a.valor_atual,
             data_aplicacao: dataAplicacao
           };
