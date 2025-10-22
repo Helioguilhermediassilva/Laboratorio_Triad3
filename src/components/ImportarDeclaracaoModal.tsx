@@ -29,6 +29,7 @@ export default function ImportarDeclaracaoModal({
   const [carregando, setCarregando] = useState(false);
   const [progresso, setProgresso] = useState(0);
   const [etapaAtual, setEtapaAtual] = useState("");
+  const [tempoEstimado, setTempoEstimado] = useState("");
   const { toast } = useToast();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -60,6 +61,7 @@ export default function ImportarDeclaracaoModal({
     setCarregando(true);
     setProgresso(0);
     setEtapaAtual("Enviando arquivo...");
+    setTempoEstimado("");
 
     try {
       // Check authentication
@@ -69,20 +71,30 @@ export default function ImportarDeclaracaoModal({
       }
 
       setProgresso(20);
-      setEtapaAtual("Processando documento com OCR...");
+      setEtapaAtual("Analisando PDF com inteligência artificial...");
+      setTempoEstimado("Esta etapa pode levar 60-90 segundos");
 
       // Prepare form data
       const formData = new FormData();
       formData.append('file', arquivo);
       formData.append('ano', anoDeclaracao);
 
-      setProgresso(40);
-      setEtapaAtual("Extraindo dados financeiros...");
+      setProgresso(30);
+      
+      // Simular progresso durante o processamento da IA
+      const progressInterval = setInterval(() => {
+        setProgresso(prev => {
+          if (prev < 70) return prev + 5;
+          return prev;
+        });
+      }, 4000);
 
       // Call edge function to process the declaration
       const { data, error } = await supabase.functions.invoke('processar-declaracao-irpf', {
         body: formData,
       });
+      
+      clearInterval(progressInterval);
 
       if (error) {
         console.error('Edge function error:', error);
@@ -91,6 +103,7 @@ export default function ImportarDeclaracaoModal({
 
       setProgresso(80);
       setEtapaAtual("Categorizando e salvando dados...");
+      setTempoEstimado("");
 
       if (!data.success) {
         throw new Error('Falha ao processar a declaração');
@@ -180,11 +193,16 @@ export default function ImportarDeclaracaoModal({
 
           {carregando && (
             <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <CheckCircle2 className="h-4 w-4 text-green-600 animate-pulse" />
                 {etapaAtual}
               </div>
               <Progress value={progresso} className="w-full" />
+              {tempoEstimado && (
+                <p className="text-xs text-muted-foreground text-center">
+                  ⏱️ {tempoEstimado}
+                </p>
+              )}
             </div>
           )}
 
