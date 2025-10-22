@@ -92,16 +92,18 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `Você é um especialista em análise de declarações de IRPF brasileiras. Sua missão é extrair TODOS os dados REAIS estruturados do PDF da declaração com MÁXIMA PRECISÃO.
+            content: `Você é um especialista em análise de declarações de IRPF brasileiras. EXTRAIA APENAS DADOS REAIS DO PDF - NUNCA invente dados.
 
 REGRAS CRÍTICAS:
-1. EXTRAIA APENAS DADOS REAIS DO PDF - NUNCA invente ou use dados de exemplo
-2. Se não conseguir ler alguma informação, retorne arrays vazios [] para aquela categoria
-3. Use APENAS os valores permitidos para cada campo tipo (veja lista abaixo)
-4. Extraia valores EXATOS do PDF, sem arredondamentos
-5. Retorne APENAS JSON válido, sem markdown ou comentários
-6. Se o PDF estiver ilegível ou corrompido, retorne arrays vazios para todas as categorias
-7. NUNCA use nomes como "JOÃO DA SILVA", "EMPRESA MODELO", "BANCO INTER" ou outros dados genéricos - extraia os nomes REAIS do PDF`
+1. EXTRAIA APENAS o que está EXPLICITAMENTE no PDF - se não encontrar, retorne array vazio []
+2. NUNCA invente nomes, valores ou informações genéricas
+3. Para planos_previdencia, tipo deve ser EXATAMENTE: "PGBL", "VGBL" ou "FAPI"
+4. Para dividas, valor_original é OBRIGATÓRIO - se não souber, NÃO inclua o item
+5. Para rendimentos, tipo deve ser: "Trabalho Assalariado", "Trabalho Autônomo", "Aluguel", "Pensão", "Aposentadoria" ou "Outros"
+6. Para aplicacoes, tipo deve ser: "Poupança", "CDB", "LCI/LCA", "Tesouro Direto", "Fundos", "Ações" ou "Outro"
+7. Para contas_bancarias, tipo_conta deve ser: "Corrente", "Poupança" ou "Investimento"
+8. Extraia valores EXATOS sem arredondamentos
+9. Retorne APENAS JSON válido sem markdown`
           },
           {
             role: 'user',
@@ -368,28 +370,33 @@ Retorne APENAS este JSON (sem \`\`\`json):
       }
     }
 
-    // Insert previdência
+    // Insert previdência (apenas tipos válidos)
     if (extractedData.previdencia && extractedData.previdencia.length > 0) {
+      const validTipos = ['PGBL', 'VGBL', 'FAPI'];
       const dataInicio = new Date().toISOString().split('T')[0];
-      const previdenciaToInsert = extractedData.previdencia.map((p: any) => ({
-        user_id: user.id,
-        nome: p.nome,
-        tipo: p.tipo,
-        instituicao: p.instituicao,
-        valor_acumulado: p.valor_acumulado,
-        contribuicao_mensal: p.contribuicao_mensal || 0,
-        data_inicio: dataInicio,
-        ativo: true
-      }));
+      const previdenciaToInsert = extractedData.previdencia
+        .filter((p: any) => validTipos.includes(p.tipo))
+        .map((p: any) => ({
+          user_id: user.id,
+          nome: p.nome,
+          tipo: p.tipo,
+          instituicao: p.instituicao,
+          valor_acumulado: p.valor_acumulado,
+          contribuicao_mensal: p.contribuicao_mensal || 0,
+          data_inicio: dataInicio,
+          ativo: true
+        }));
 
-      const { error: previdenciaError } = await supabaseClient
-        .from('planos_previdencia')
-        .insert(previdenciaToInsert);
+      if (previdenciaToInsert.length > 0) {
+        const { error: previdenciaError } = await supabaseClient
+          .from('planos_previdencia')
+          .insert(previdenciaToInsert);
 
-      if (!previdenciaError) {
-        previdenciaCount = previdenciaToInsert.length;
-      } else {
-        console.error('Previdência insert error:', previdenciaError);
+        if (!previdenciaError) {
+          previdenciaCount = previdenciaToInsert.length;
+        } else {
+          console.error('Previdência insert error:', previdenciaError);
+        }
       }
     }
 
@@ -416,26 +423,37 @@ Retorne APENAS este JSON (sem \`\`\`json):
       }
     }
 
-    // Insert dívidas
+    // Insert dívidas (apenas com valor_original válido)
     if (extractedData.dividas && extractedData.dividas.length > 0) {
       const dataContratacao = new Date().toISOString().split('T')[0];
-      const dividasToInsert = extractedData.dividas.map((d: any) => ({
-        user_id: user.id,
-        nome: d.nome,
-        tipo: d.tipo,
-        credor: d.credor,
-        valor_original: d.valor_original,
-        saldo_devedor: d.saldo_devedor,
-        valor_parcela: d.saldo_devedor,
-        numero_parcelas: 1,
-        parcelas_pagas: 0,
-        data_contratacao: dataContratacao,
-        status: 'Ativo'
-      }));
+      const dividasToInsert = extractedData.dividas
+        .filter((d: any) => d.valor_original != null && d.valor_original > 0)
+        .map((d: any) => ({
+          user_id: user.id,
+          nome: d.nome,
+          tipo: d.tipo,
+          credor: d.credor,
+          valor_original: d.valor_original,
+          saldo_devedor: d.saldo_devedor,
+          valor_parcela: d.saldo_devedor,
+          numero_parcelas: 1,
+          parcelas_pagas: 0,
+          data_contratacao: dataContratacao,
+          status: 'Ativo'
+        }));
 
-      const { error: dividasError } = await supabaseClient
-        .from('dividas')
-        .insert(dividasToInsert);
+      if (dividasToInsert.length > 0) {
+        const { error: dividasError } = await supabaseClient
+          .from('dividas')
+          .insert(dividasToInsert);
+
+        if (!dividasError) {
+          dividasCount = dividasToInsert.length;
+        } else {
+          console.error('Dívidas insert error:', dividasError);
+        }
+      }
+    }
 
       if (!dividasError) {
         dividasCount = dividasToInsert.length;
