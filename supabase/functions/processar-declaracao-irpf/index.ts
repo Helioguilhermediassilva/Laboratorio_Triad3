@@ -836,6 +836,7 @@ ${suspiciousItems.map((item, idx) => `${idx + 1}. ${item}`).join('\n')}
     }
 
     // Insert bens imobilizados
+    console.log('Bens imobilizados data from AI:', JSON.stringify(extractedData.bens_imobilizados || []));
     if (extractedData.bens_imobilizados && extractedData.bens_imobilizados.length > 0) {
       const dataAquisicao = new Date().toISOString().split('T')[0];
       const bensToInsert = extractedData.bens_imobilizados.map((b: any) => ({
@@ -850,15 +851,20 @@ ${suspiciousItems.map((item, idx) => `${idx + 1}. ${item}`).join('\n')}
         status: 'Ativo'
       }));
 
+      console.log('Bens imobilizados to insert:', JSON.stringify(bensToInsert));
+
       const { error: bensError } = await supabaseClient
         .from('bens_imobilizados')
         .insert(bensToInsert);
 
       if (!bensError) {
         bensImobilizadosCount = bensToInsert.length;
+        console.log('Successfully inserted assets:', bensImobilizadosCount);
       } else {
         console.error('Bens imobilizados insert error:', bensError);
       }
+    } else {
+      console.log('No assets data extracted from PDF');
     }
 
     // Insert aplicações com validação de tipos
@@ -1004,23 +1010,32 @@ ${suspiciousItems.map((item, idx) => `${idx + 1}. ${item}`).join('\n')}
     }
 
     // Insert dívidas (apenas com valor_original válido)
+    console.log('Dívidas data from AI:', JSON.stringify(extractedData.dividas || []));
     if (extractedData.dividas && extractedData.dividas.length > 0) {
       const dataContratacao = new Date().toISOString().split('T')[0];
       const dividasToInsert = extractedData.dividas
-        .filter((d: any) => d.valor_original != null && d.valor_original > 0)
+        .filter((d: any) => {
+          const hasValidData = d.valor_original != null && d.valor_original > 0;
+          if (!hasValidData) {
+            console.log('Filtering out invalid debt (missing valor_original):', d.nome);
+          }
+          return hasValidData;
+        })
         .map((d: any) => ({
           user_id: user.id,
           nome: d.nome,
           tipo: d.tipo,
           credor: d.credor,
           valor_original: d.valor_original,
-          saldo_devedor: d.saldo_devedor,
-          valor_parcela: d.saldo_devedor,
+          saldo_devedor: d.saldo_devedor || d.valor_original,
+          valor_parcela: d.saldo_devedor || d.valor_original,
           numero_parcelas: 1,
           parcelas_pagas: 0,
           data_contratacao: dataContratacao,
           status: 'Ativo'
         }));
+
+      console.log('Dívidas to insert:', JSON.stringify(dividasToInsert));
 
       if (dividasToInsert.length > 0) {
         const { error: dividasError } = await supabaseClient
@@ -1029,10 +1044,15 @@ ${suspiciousItems.map((item, idx) => `${idx + 1}. ${item}`).join('\n')}
 
         if (!dividasError) {
           dividasCount = dividasToInsert.length;
+          console.log('Successfully inserted debts:', dividasCount);
         } else {
           console.error('Dívidas insert error:', dividasError);
         }
+      } else {
+        console.log('No valid debts to insert after filtering');
       }
+    } else {
+      console.log('No debt data extracted from PDF');
     }
 
     console.log('=== PROCESSAMENTO CONCLUÍDO ===');
