@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Filter, Home, Car, Wrench, MapPin, Plus } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Input } from "@/components/ui/input";
@@ -10,61 +10,14 @@ import { useToast } from "@/hooks/use-toast";
 import AdicionarBemModal from "@/components/AdicionarBemModal";
 import VisualizarBemModal from "@/components/VisualizarBemModal";
 import EditarBemModal from "@/components/EditarBemModal";
-
-// Mock data - Imobilizado
-const imobilizadoItems = [
-  {
-    id: "1",
-    nome: "Apartamento Centro",
-    categoria: "Imóvel",
-    endereco: "Rua das Flores, 123 - Centro",
-    valor: 450000,
-    dataAquisicao: "2020-03-15",
-    status: "Próprio",
-    condicao: "Excelente",
-    observacoes: "Apartamento 3 quartos, 2 banheiros, área de 95m²"
-  },
-  {
-    id: "2",
-    nome: "Honda Civic 2022",
-    categoria: "Veículo",
-    endereco: "Garagem Residencial",
-    valor: 125000,
-    dataAquisicao: "2022-01-10",
-    status: "Próprio",
-    condicao: "Excelente",
-    observacoes: "Sedan automático, cor prata, 15.000 km rodados"
-  },
-  {
-    id: "3",
-    nome: "Casa de Praia",
-    categoria: "Imóvel",
-    endereco: "Av. Beira Mar, 456 - Guarujá",
-    valor: 850000,
-    dataAquisicao: "2019-07-20",
-    status: "Próprio",
-    condicao: "Boa",
-    observacoes: "Casa 4 quartos, vista para o mar, área de 180m²"
-  },
-  {
-    id: "4",
-    nome: "Equipamentos de Escritório",
-    categoria: "Equipamento",
-    endereco: "Escritório Comercial",
-    valor: 25000,
-    dataAquisicao: "2023-05-12",
-    status: "Próprio",
-    condicao: "Excelente",
-    observacoes: "Computadores, impressoras, móveis de escritório"
-  }
-];
+import { supabase } from "@/integrations/supabase/client";
 
 const ImobilizadoCard = ({ 
   item, 
   onVisualizar, 
   onEditar 
 }: { 
-  item: typeof imobilizadoItems[0];
+  item: any;
   onVisualizar: (item: any) => void;
   onEditar: (item: any) => void;
 }) => {
@@ -160,12 +113,74 @@ export default function Imobilizado() {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [items, setItems] = useState(imobilizadoItems);
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [adicionarBemOpen, setAdicionarBemOpen] = useState(false);
   const [visualizarBemOpen, setVisualizarBemOpen] = useState(false);
   const [editarBemOpen, setEditarBemOpen] = useState(false);
   const [bemSelecionado, setBemSelecionado] = useState<any>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    loadBens();
+  }, []);
+
+  const loadBens = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Busca bens da tabela principal
+      const { data: bensImobilizados, error: bensError } = await supabase
+        .from('bens_imobilizados')
+        .select('*')
+        .eq('user_id', user.id);
+
+      // Busca bens da declaração de IRPF
+      const { data: bensDireitosIRPF, error: irpfError } = await supabase
+        .from('bens_direitos_irpf')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (bensError || irpfError) {
+        console.error('Error loading bens:', bensError || irpfError);
+        setLoading(false);
+        return;
+      }
+
+      // Combina e formata os dados
+      const bensCombinados = [
+        ...(bensImobilizados || []).map(b => ({
+          id: b.id,
+          nome: b.nome,
+          categoria: b.categoria,
+          endereco: b.localizacao || 'Não informado',
+          valor: Number(b.valor_atual),
+          dataAquisicao: b.data_aquisicao,
+          status: b.status,
+          condicao: 'Boa',
+          observacoes: b.descricao
+        })),
+        ...(bensDireitosIRPF || []).map(b => ({
+          id: b.id,
+          nome: b.discriminacao.substring(0, 50),
+          categoria: b.categoria || 'Outro',
+          endereco: 'Importado da declaração IRPF',
+          valor: Number(b.situacao_ano_atual),
+          dataAquisicao: new Date().toISOString().split('T')[0],
+          status: 'Próprio',
+          condicao: 'Boa',
+          observacoes: b.discriminacao
+        }))
+      ];
+
+      setItems(bensCombinados);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error loading bens:', error);
+      setLoading(false);
+    }
+  };
 
   const filteredItems = items
     .filter(item => {

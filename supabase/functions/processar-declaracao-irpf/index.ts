@@ -63,15 +63,13 @@ serve(async (req) => {
       });
     }
 
-    // Extract text from PDF using OCR-like simulation
-    // In production, you would use a proper OCR service or PDF parsing library
+    // Read file content as base64 for better AI processing
     const arrayBuffer = await file.arrayBuffer();
-    const uint8Array = new Uint8Array(arrayBuffer);
-    const text = new TextDecoder().decode(uint8Array);
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    
+    console.log('File size:', arrayBuffer.byteLength, 'bytes');
 
-    console.log('Extracted text length:', text.length);
-
-    // Use Lovable AI to extract and categorize data
+    // Use Lovable AI to extract and categorize data with improved prompt
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -85,58 +83,65 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `Você é um assistente especializado em extrair dados de declarações de IRPF brasileiras. Retorne APENAS um JSON válido com a estrutura especificada, sem markdown ou texto adicional.`
+            content: `Você é um especialista em análise de declarações de IRPF brasileiras. Extraia TODOS os dados estruturados encontrados no documento. Retorne APENAS um JSON válido, sem markdown.`
           },
           {
             role: 'user',
-            content: `Analise o texto abaixo da declaração de IRPF e extraia os dados estruturados.
+            content: `Analise esta declaração de IRPF em PDF (base64) e extraia TODOS os dados encontrados.
 
-Texto da declaração:
-${text.substring(0, 50000)}
+IMPORTANTE: 
+- Extraia TODOS os rendimentos listados, não deixe nenhum de fora
+- Extraia TODOS os bens e direitos, incluindo veículos, imóveis, contas bancárias, aplicações
+- Extraia TODAS as dívidas se houver
+- Use os valores EXATOS que aparecem no documento
+- Se não encontrar alguma informação, use valores vazios mas SEMPRE retorne o JSON completo
 
-Retorne um JSON com esta estrutura exata:
+Arquivo em base64: ${base64.substring(0, 100000)}
+
+Retorne um JSON com esta estrutura:
 {
   "contribuinte": {
-    "nome": "string",
-    "cpf": "string"
+    "nome": "string (nome completo do contribuinte)",
+    "cpf": "string (CPF com pontos e traço)"
   },
   "declaracao": {
-    "ano": number,
+    "ano": number (ano da declaração),
     "status": "Importada",
-    "recibo": "string ou null"
+    "recibo": "string ou null (número do recibo se houver)"
   },
   "rendimentos": [
     {
-      "fonte_pagadora": "string",
-      "cnpj": "string",
-      "tipo": "Salário|Pró-labore|Dividendos|Outros",
-      "valor": number,
-      "irrf": number,
+      "fonte_pagadora": "string (nome da empresa)",
+      "cnpj": "string (CNPJ formatado)",
+      "tipo": "Salário" ou "Pró-labore" ou "Dividendos" ou "Outros",
+      "valor": number (valor total recebido),
+      "irrf": number (imposto retido na fonte),
       "contribuicao_previdenciaria": number,
       "decimo_terceiro": number
     }
   ],
   "bens_direitos": [
     {
-      "codigo": "string",
-      "discriminacao": "string",
-      "situacao_ano_anterior": number,
-      "situacao_ano_atual": number,
-      "categoria": "Imóvel|Veículo|Aplicação Financeira|Outro"
+      "codigo": "string (código do bem, ex: 02, 04, 06)",
+      "discriminacao": "string (descrição completa do bem)",
+      "situacao_ano_anterior": number (valor em 31/12 ano anterior),
+      "situacao_ano_atual": number (valor em 31/12 ano atual),
+      "categoria": "Imóvel" ou "Veículo" ou "Aplicação Financeira" ou "Outro"
     }
   ],
   "dividas": [
     {
-      "discriminacao": "string",
+      "discriminacao": "string (descrição da dívida)",
       "valor_ano_anterior": number,
       "valor_ano_atual": number,
-      "credor": "string"
+      "credor": "string (nome do credor)"
     }
   ]
 }`
           }
         ],
-        temperature: 0.1
+        temperature: 0.1,
+        max_tokens: 4000
       }),
     });
 
@@ -150,14 +155,14 @@ Retorne um JSON com esta estrutura exata:
     }
 
     const aiResult = await aiResponse.json();
-    console.log('AI response:', JSON.stringify(aiResult));
+    console.log('AI response received');
     
     let extractedData;
     try {
       const content = aiResult.choices[0].message.content;
-      // Remove markdown code blocks if present
       const jsonText = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       extractedData = JSON.parse(jsonText);
+      console.log('Extracted data:', JSON.stringify(extractedData, null, 2));
     } catch (parseError) {
       console.error('Failed to parse AI response:', parseError);
       return new Response(JSON.stringify({ error: 'Failed to parse extracted data' }), {
@@ -188,6 +193,10 @@ Retorne um JSON com esta estrutura exata:
       });
     }
 
+    let rendimentosCount = 0;
+    let bensCount = 0;
+    let dividasCount = 0;
+
     // Insert rendimentos
     if (extractedData.rendimentos && extractedData.rendimentos.length > 0) {
       const rendimentosToInsert = extractedData.rendimentos.map((r: any) => ({
@@ -207,7 +216,9 @@ Retorne um JSON com esta estrutura exata:
         .from('rendimentos_irpf')
         .insert(rendimentosToInsert);
 
-      if (rendError) {
+      if (!rendError) {
+        rendimentosCount = rendimentosToInsert.length;
+      } else {
         console.error('Rendimentos insert error:', rendError);
       }
     }
@@ -228,7 +239,9 @@ Retorne um JSON com esta estrutura exata:
         .from('bens_direitos_irpf')
         .insert(bensToInsert);
 
-      if (bensError) {
+      if (!bensError) {
+        bensCount = bensToInsert.length;
+      } else {
         console.error('Bens insert error:', bensError);
       }
     }
@@ -248,20 +261,23 @@ Retorne um JSON com esta estrutura exata:
         .from('dividas_irpf')
         .insert(dividasToInsert);
 
-      if (dividasError) {
+      if (!dividasError) {
+        dividasCount = dividasToInsert.length;
+      } else {
         console.error('Dividas insert error:', dividasError);
       }
     }
 
     console.log('Declaration processed successfully');
+    console.log(`Inserted: ${rendimentosCount} rendimentos, ${bensCount} bens, ${dividasCount} dividas`);
 
     return new Response(JSON.stringify({
       success: true,
       declaracao_id: declaracao.id,
       dados_extraidos: {
-        rendimentos: extractedData.rendimentos?.length || 0,
-        bens: extractedData.bens_direitos?.length || 0,
-        dividas: extractedData.dividas?.length || 0
+        rendimentos: rendimentosCount,
+        bens: bensCount,
+        dividas: dividasCount
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
