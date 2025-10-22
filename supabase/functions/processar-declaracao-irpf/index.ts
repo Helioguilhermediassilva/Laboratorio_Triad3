@@ -186,15 +186,22 @@ Para CONTAS BANCÁRIAS:
 - banco: nome do banco
 - agencia: se não tiver, use "0000"
 - numero_conta: se não tiver, use "00000-0"
-- tipo_conta: "Corrente", "Poupança", "Salário", ou "Investimento"
+- tipo_conta: DEVE SER EXATAMENTE um destes valores: "Corrente" | "Poupança" | "Salário" | "Investimento"
 - saldo_atual: valor em 31/12
 
 Para APLICAÇÕES:
 - Nome curto e descritivo
-- Tipo: CDB, LCI, LCA, Tesouro Direto, Fundo, Ações, Outro
+- tipo: DEVE SER EXATAMENTE um destes valores: "CDB" | "LCI" | "LCA" | "Tesouro Direto" | "Fundo" | "Ações" | "Outro"
+  * Para poupança: use "Outro"
+  * Para fundos de investimento: use "Fundo"
+  * Para títulos do tesouro: use "Tesouro Direto"
+  * Para ações na bolsa: use "Ações"
+  * Se não souber classificar: use "Outro"
 - instituicao: banco ou corretora
 - valor_aplicado: valor de aquisição ou valor ano anterior
 - valor_atual: valor em 31/12 do ano da declaração
+- liquidez (opcional): DEVE SER EXATAMENTE: "Diária" | "Mensal" | "No Vencimento"
+- rentabilidade_tipo (opcional): DEVE SER EXATAMENTE: "CDI" | "IPCA" | "Pré-fixado" | "Variável"
 
 Para BENS IMOBILIZADOS:
 - categoria: "Imóvel", "Veículo", ou "Outro"
@@ -296,7 +303,9 @@ Se esqueceu algo, VOLTE e extraia!`
       "tipo": "CDB | LCI | LCA | Tesouro Direto | Fundo | Ações | Outro",
       "instituicao": "Nome do banco ou corretora",
       "valor_aplicado": 0,
-      "valor_atual": 0
+      "valor_atual": 0,
+      "liquidez": "Diária | Mensal | No Vencimento (opcional)",
+      "rentabilidade_tipo": "CDI | IPCA | Pré-fixado | Variável (opcional)"
     }
   ],
   "previdencia": [
@@ -360,7 +369,21 @@ Retorne em aplicacoes:
   "tipo": "CDB",
   "instituicao": "Banco Bradesco",
   "valor_aplicado": 50000,
-  "valor_atual": 50000
+  "valor_atual": 50000,
+  "liquidez": "No Vencimento",
+  "rentabilidade_tipo": "CDI"
+}
+
+EXEMPLO 4 - Poupança (código 61):
+Se você vê: "61 - Caderneta de Poupança - Banco Santander - R$ 12.500,00"
+Retorne em aplicacoes:
+{
+  "nome": "Poupança Santander",
+  "tipo": "Outro",
+  "instituicao": "Banco Santander",
+  "valor_aplicado": 12500,
+  "valor_atual": 12500,
+  "liquidez": "Diária"
 }
 
 🎯 CHECKLIST FINAL ANTES DE RETORNAR:
@@ -571,27 +594,60 @@ Retorne em aplicacoes:
       }
     }
 
-    // Insert aplicações
+    // Insert aplicações com validação de tipos
+    console.log('Aplicações data from AI:', JSON.stringify(extractedData.aplicacoes || []));
     if (extractedData.aplicacoes && extractedData.aplicacoes.length > 0) {
+      const validTipos = ['CDB', 'LCI', 'LCA', 'Tesouro Direto', 'Fundo', 'Ações', 'Outro'];
+      const validLiquidez = ['Diária', 'Mensal', 'No Vencimento'];
+      const validRentabilidade = ['CDI', 'IPCA', 'Pré-fixado', 'Variável'];
+      
       const dataAplicacao = new Date().toISOString().split('T')[0];
-      const aplicacoesToInsert = extractedData.aplicacoes.map((a: any) => ({
-        user_id: user.id,
-        nome: a.nome,
-        tipo: a.tipo,
-        instituicao: a.instituicao,
-        valor_aplicado: a.valor_aplicado,
-        valor_atual: a.valor_atual,
-        data_aplicacao: dataAplicacao
-      }));
+      
+      const aplicacoesToInsert = extractedData.aplicacoes
+        .filter((a: any) => {
+          if (!validTipos.includes(a.tipo)) {
+            console.log('Filtering out invalid investment type:', a.tipo, '- Application:', a.nome);
+            return false;
+          }
+          return true;
+        })
+        .map((a: any) => {
+          const record: any = {
+            user_id: user.id,
+            nome: a.nome,
+            tipo: a.tipo,
+            instituicao: a.instituicao,
+            valor_aplicado: a.valor_aplicado,
+            valor_atual: a.valor_atual,
+            data_aplicacao: dataAplicacao
+          };
+          
+          // Adicionar campos opcionais apenas se válidos
+          if (a.liquidez && validLiquidez.includes(a.liquidez)) {
+            record.liquidez = a.liquidez;
+          }
+          if (a.rentabilidade_tipo && validRentabilidade.includes(a.rentabilidade_tipo)) {
+            record.rentabilidade_tipo = a.rentabilidade_tipo;
+          }
+          
+          return record;
+        });
 
-      const { error: aplicacoesError } = await supabaseClient
-        .from('aplicacoes')
-        .insert(aplicacoesToInsert);
+      console.log('Aplicações to insert:', JSON.stringify(aplicacoesToInsert));
 
-      if (!aplicacoesError) {
-        aplicacoesCount = aplicacoesToInsert.length;
+      if (aplicacoesToInsert.length > 0) {
+        const { error: aplicacoesError } = await supabaseClient
+          .from('aplicacoes')
+          .insert(aplicacoesToInsert);
+
+        if (!aplicacoesError) {
+          aplicacoesCount = aplicacoesToInsert.length;
+          console.log('Successfully inserted investments:', aplicacoesCount);
+        } else {
+          console.error('Aplicações insert error:', aplicacoesError);
+        }
       } else {
-        console.error('Aplicações insert error:', aplicacoesError);
+        console.log('No valid investments to insert after filtering');
       }
     }
 
@@ -639,26 +695,44 @@ Retorne em aplicacoes:
       console.log('No pension data extracted from PDF');
     }
 
-    // Insert contas bancárias
+    // Insert contas bancárias com validação de tipos
+    console.log('Contas bancárias data from AI:', JSON.stringify(extractedData.contas_bancarias || []));
     if (extractedData.contas_bancarias && extractedData.contas_bancarias.length > 0) {
-      const contasToInsert = extractedData.contas_bancarias.map((c: any) => ({
-        user_id: user.id,
-        banco: c.banco,
-        agencia: c.agencia,
-        numero_conta: c.numero_conta,
-        tipo_conta: c.tipo_conta,
-        saldo_atual: c.saldo_atual,
-        ativo: true
-      }));
+      const validTiposConta = ['Corrente', 'Poupança', 'Salário', 'Investimento'];
+      
+      const contasToInsert = extractedData.contas_bancarias
+        .filter((c: any) => {
+          if (!validTiposConta.includes(c.tipo_conta)) {
+            console.log('Filtering out invalid account type:', c.tipo_conta, '- Bank:', c.banco);
+            return false;
+          }
+          return true;
+        })
+        .map((c: any) => ({
+          user_id: user.id,
+          banco: c.banco,
+          agencia: c.agencia || '0000',
+          numero_conta: c.numero_conta || '00000-0',
+          tipo_conta: c.tipo_conta,
+          saldo_atual: c.saldo_atual,
+          ativo: true
+        }));
 
-      const { error: contasError } = await supabaseClient
-        .from('contas_bancarias')
-        .insert(contasToInsert);
+      console.log('Contas bancárias to insert:', JSON.stringify(contasToInsert));
 
-      if (!contasError) {
-        contasBancariasCount = contasToInsert.length;
+      if (contasToInsert.length > 0) {
+        const { error: contasError } = await supabaseClient
+          .from('contas_bancarias')
+          .insert(contasToInsert);
+
+        if (!contasError) {
+          contasBancariasCount = contasToInsert.length;
+          console.log('Successfully inserted bank accounts:', contasBancariasCount);
+        } else {
+          console.error('Contas bancárias insert error:', contasError);
+        }
       } else {
-        console.error('Contas bancárias insert error:', contasError);
+        console.log('No valid bank accounts to insert after filtering');
       }
     }
 
