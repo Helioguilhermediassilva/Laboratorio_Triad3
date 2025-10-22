@@ -108,7 +108,7 @@ serve(async (req) => {
 - Se encontrar "R$ 230.000,00", converta para 230000
 - Se o PDF estiver ilegível ou não houver dados, retorne arrays vazios
 
-📋 CATEGORIZAÇÃO AUTOMÁTICA:
+📋 CATEGORIZAÇÃO AUTOMÁTICA - ATENÇÃO ESPECIAL PARA PREVIDÊNCIA:
 Ao encontrar um bem/direito no PDF, verifique o CÓDIGO e categorize:
 - Código 01-09 = IMÓVEIS → bens_imobilizados (categoria: "Imóvel")
 - Código 11-19 = VEÍCULOS → bens_imobilizados (categoria: "Veículo")
@@ -118,9 +118,18 @@ Ao encontrar um bem/direito no PDF, verifique o CÓDIGO e categorize:
 - Código 45 = CRIPTOMOEDAS → aplicacoes (tipo: "Outro")
 - Código 51-59 = DEPÓSITOS → contas_bancarias
 - Código 61-69 = TÍTULOS/CDB/RDB → aplicacoes (tipo: "CDB")
-- Código 71 = VGBL → previdencia (tipo: "VGBL")
-- Código 72 = PGBL → previdencia (tipo: "PGBL")
-- Código 73 = FAPI → previdencia (tipo: "FAPI")
+
+🎯 ATENÇÃO ESPECIAL - PREVIDÊNCIA PRIVADA:
+- Código 71 = VGBL (Vida Gerador de Benefício Livre) → previdencia (tipo: "VGBL")
+- Código 72 = PGBL (Plano Gerador de Benefício Livre) → previdencia (tipo: "PGBL")
+- Código 73 = FAPI (Fundo de Aposentadoria Programada Individual) → previdencia (tipo: "FAPI")
+- Código 74 = Outros planos de previdência → previdencia (tipo: "VGBL")
+
+⚠️ IMPORTANTE PARA PREVIDÊNCIA:
+- Se você VER "VGBL", "PGBL", "FAPI" ou termos como "Previdência", "Plano de Aposentadoria" no PDF, SEMPRE categorize como previdencia
+- O valor na coluna "Situação em 31/12/XXXX" é o valor_acumulado
+- Se não houver contribuição mensal explícita, use 0 (zero)
+- Sempre preencha: nome (descrição do plano), tipo (VGBL/PGBL/FAPI), instituicao (seguradora/banco)
 
 🔍 VALIDAÇÃO DE QUALIDADE:
 Antes de retornar, pergunte-se:
@@ -432,22 +441,31 @@ Se você NÃO vê um valor, NÃO invente "25400" ou "120000"!
     }
 
     // Insert previdência (apenas tipos válidos)
+    console.log('Previdência data from AI:', JSON.stringify(extractedData.previdencia || []));
     if (extractedData.previdencia && extractedData.previdencia.length > 0) {
       const validTipos = ['PGBL', 'VGBL', 'FAPI'];
       const dataInicio = new Date().toISOString().split('T')[0];
       const previdenciaToInsert = extractedData.previdencia
-        .filter((p: any) => validTipos.includes(p.tipo))
+        .filter((p: any) => {
+          const isValid = validTipos.includes(p.tipo);
+          if (!isValid) {
+            console.log('Filtering out invalid pension type:', p.tipo);
+          }
+          return isValid;
+        })
         .map((p: any) => ({
           user_id: user.id,
           nome: p.nome,
           tipo: p.tipo,
           instituicao: p.instituicao,
-          valor_acumulado: p.valor_acumulado,
+          valor_acumulado: p.valor_acumulado || 0,
           contribuicao_mensal: p.contribuicao_mensal || 0,
           data_inicio: dataInicio,
           ativo: true
         }));
 
+      console.log('Previdência to insert:', JSON.stringify(previdenciaToInsert));
+      
       if (previdenciaToInsert.length > 0) {
         const { error: previdenciaError } = await supabaseClient
           .from('planos_previdencia')
@@ -455,10 +473,15 @@ Se você NÃO vê um valor, NÃO invente "25400" ou "120000"!
 
         if (!previdenciaError) {
           previdenciaCount = previdenciaToInsert.length;
+          console.log('Successfully inserted pension plans:', previdenciaCount);
         } else {
           console.error('Previdência insert error:', previdenciaError);
         }
+      } else {
+        console.log('No valid pension plans to insert after filtering');
       }
+    } else {
+      console.log('No pension data extracted from PDF');
     }
 
     // Insert contas bancárias
