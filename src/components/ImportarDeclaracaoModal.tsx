@@ -146,19 +146,25 @@ export default function ImportarDeclaracaoModal({
       const dadosExtraidos = data.dados_extraidos;
       
       toast({
-        title: "Declaração importada com sucesso!",
+        title: "✅ Declaração importada com sucesso!",
         description: (
           <div className="space-y-2">
-            <p>Declaração de {anoDeclaracao} processada com sucesso.</p>
-            <p className="text-amber-500 font-semibold text-sm">⚠️ IMPORTANTE: Confira TODOS os dados importados! A IA pode ter extraído dados incorretos ou inventados.</p>
-            <ul className="text-sm space-y-1">
-              <li>✓ {dadosExtraidos.rendimentos} rendimentos extraídos</li>
-              <li>✓ {dadosExtraidos.bens} bens e direitos cadastrados</li>
-              <li>✓ {dadosExtraidos.dividas} dívidas registradas</li>
+            <p className="font-semibold">Declaração de {anoDeclaracao} processada.</p>
+            <p className="text-amber-600 font-semibold text-sm">📊 Dados categorizados automaticamente:</p>
+            <ul className="text-sm space-y-1 ml-2">
+              <li>• <span className="font-medium">Imobilizado:</span> {dadosExtraidos.bens_imobilizados} itens</li>
+              <li>• <span className="font-medium">Aplicações:</span> {dadosExtraidos.aplicacoes} itens</li>
+              <li>• <span className="font-medium">Previdência:</span> {dadosExtraidos.previdencia} planos</li>
+              <li>• <span className="font-medium">Contas Bancárias:</span> {dadosExtraidos.contas_bancarias} contas</li>
+              <li>• <span className="font-medium">Dívidas:</span> {dadosExtraidos.dividas} itens</li>
+              <li>• <span className="font-medium">Rendimentos:</span> {dadosExtraidos.rendimentos} itens</li>
             </ul>
+            <p className="text-xs text-muted-foreground mt-2">
+              🔄 A página recarregará automaticamente. Depois navegue para cada guia para conferir os dados.
+            </p>
           </div>
         ),
-        duration: 10000
+        duration: 12000
       });
 
       // Notify parent component
@@ -171,6 +177,11 @@ export default function ImportarDeclaracaoModal({
         dataImportacao: new Date().toISOString(),
         observacoes
       });
+      
+      // Force reload after a short delay to ensure data is visible
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
 
       // Reset form
       setArquivo(null);
