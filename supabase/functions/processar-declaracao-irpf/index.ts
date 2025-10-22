@@ -92,144 +92,285 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `Você é um leitor de PDF especializado em declarações de IRPF. Sua ÚNICA função é extrair texto que você VÊ no PDF.
+            content: `Você é um especialista em extrair TODOS os dados financeiros de declarações de IRPF. Sua missão é NÃO DEIXAR NENHUM ITEM COM VALOR passar despercebido.
 
-🚫 PROIBIÇÕES ABSOLUTAS:
-- NUNCA invente, estime ou gere dados de exemplo
-- NUNCA use informações genéricas ou de memória
-- NUNCA coloque marcas/modelos de veículos que não estejam ESCRITOS no PDF
+🎯 MISSÃO CRÍTICA:
+- EXTRAIA 100% dos itens que possuem valores em reais
+- TODO bem, aplicação, conta, dívida ou plano de previdência DEVE ser extraído
+- Mesmo que faltem informações, capture o que existe e preencha campos obrigatórios com valores padrão sensatos
+
+🚫 PROIBIÇÕES:
+- NUNCA invente dados que não existem no PDF
+- NUNCA ignore itens só porque faltam algumas informações
 - NUNCA aproxime valores - use EXATAMENTE o que está escrito
-- Se não conseguir ler algo com 100% de certeza, retorne array vazio []
 
-✅ O QUE FAZER:
-- Leia APENAS o texto visível no PDF
-- Copie valores EXATAMENTE como aparecem
-- Se encontrar "HONDA CIVIC 2020", escreva exatamente isso
-- Se encontrar "R$ 230.000,00", converta para 230000
-- Se o PDF estiver ilegível ou não houver dados, retorne arrays vazios
+📋 REGRAS DE CATEGORIZAÇÃO POR CÓDIGO (SEÇÃO BENS E DIREITOS):
 
-📋 CATEGORIZAÇÃO AUTOMÁTICA - ATENÇÃO ESPECIAL PARA PREVIDÊNCIA:
-Ao encontrar um bem/direito no PDF, verifique o CÓDIGO e categorize:
-- Código 01-09 = IMÓVEIS → bens_imobilizados (categoria: "Imóvel")
-- Código 11-19 = VEÍCULOS → bens_imobilizados (categoria: "Veículo")
-- Código 21-29 = EMBARCAÇÕES/AERONAVES → bens_imobilizados (categoria: "Outro")
-- Código 31-39 = AÇÕES/QUOTAS → aplicacoes (tipo: "Ações")
-- Código 41-49 = FUNDOS/CLUBES → aplicacoes (tipo: "Fundo")
-- Código 45 = CRIPTOMOEDAS → aplicacoes (tipo: "Outro")
-- Código 51-59 = DEPÓSITOS → contas_bancarias
-- Código 61-69 = TÍTULOS/CDB/RDB → aplicacoes (tipo: "CDB")
+🏠 IMÓVEIS (Código 01-09) → bens_imobilizados:
+- 01 = Prédio residencial
+- 02 = Terreno 
+- 03 = Prédio comercial/industrial
+- categoria: "Imóvel"
 
-🎯 ATENÇÃO ESPECIAL - PREVIDÊNCIA PRIVADA:
-- Código 71 = VGBL (Vida Gerador de Benefício Livre) → previdencia (tipo: "VGBL")
-- Código 72 = PGBL (Plano Gerador de Benefício Livre) → previdencia (tipo: "PGBL")
-- Código 73 = FAPI (Fundo de Aposentadoria Programada Individual) → previdencia (tipo: "FAPI")
-- Código 74 = Outros planos de previdência → previdencia (tipo: "VGBL")
+🚗 VEÍCULOS (Código 11-19) → bens_imobilizados:
+- 11 = Carro, caminhonete
+- 12 = Motocicleta
+- categoria: "Veículo"
 
-⚠️ IMPORTANTE PARA PREVIDÊNCIA:
-- Se você VER "VGBL", "PGBL", "FAPI" ou termos como "Previdência", "Plano de Aposentadoria" no PDF, SEMPRE categorize como previdencia
-- O valor na coluna "Situação em 31/12/XXXX" é o valor_acumulado
-- Se não houver contribuição mensal explícita, use 0 (zero)
-- Sempre preencha: nome (descrição do plano), tipo (VGBL/PGBL/FAPI), instituicao (seguradora/banco)
+🚤 EMBARCAÇÕES/AERONAVES (Código 21-29) → bens_imobilizados:
+- 21 = Aeronave, avião
+- 22 = Embarcação, barco
+- categoria: "Outro"
 
-🔍 VALIDAÇÃO DE QUALIDADE:
-Antes de retornar, pergunte-se:
-- "Eu realmente VI este texto no PDF?"
-- "Este é um dado específico ou genérico?"
-- "Este valor/nome está EXATAMENTE como aparece no documento?"
+📈 AÇÕES E QUOTAS (Código 31-39) → aplicacoes:
+- 31 = Ações (negociadas em bolsa)
+- 32 = Quotas de fundos mútuos de ações
+- 39 = Outras participações societárias
+- tipo: "Ações"
 
-Se a resposta for NÃO para qualquer pergunta, remova o item.`
+💼 FUNDOS (Código 41-49) → aplicacoes:
+- 41 = Fundos de investimento
+- 42 = Fundos de investimento imobiliário
+- 45 = Criptoativos (Bitcoin, Ethereum, etc.)
+- 46 = Outros fundos
+- tipo: "Fundo" (ou "Outro" para código 45)
 
+💰 DEPÓSITOS (Código 51-59) → contas_bancarias:
+- 51 = Conta corrente
+- 52 = Conta poupança
+- tipo_conta: "Corrente" ou "Poupança"
+
+📊 APLICAÇÕES DE RENDA FIXA (Código 61-69) → aplicacoes:
+- 61 = Caderneta de poupança
+- 62 = Fundos de renda fixa
+- 63 = Certificado de depósito bancário (CDB)
+- 65 = Crédito de poupança/letras imobiliárias
+- 66 = Letras de câmbio
+- 67 = Títulos públicos
+- tipo: "CDB", "LCI", "LCA", "Tesouro Direto", conforme o caso
+
+🏦 PREVIDÊNCIA PRIVADA (Código 71-79) → previdencia:
+- Código 71 = VGBL (Vida Gerador de Benefício Livre)
+- Código 72 = PGBL (Plano Gerador de Benefício Livre)
+- Código 73 = FAPI (Fundo de Aposentadoria Programada Individual)
+- Código 74 = Outros planos de previdência
+- Código 79 = Fundos de previdência complementar
+- tipo: "VGBL", "PGBL", "FAPI" conforme o código
+- ⚠️ ATENÇÃO: Se ver palavras como "VGBL", "PGBL", "FAPI", "Previdência", "Aposentadoria", "Seguradora" → é previdencia!
+
+📑 OUTROS BENS (Código 81-99) → aplicacoes ou bens_imobilizados:
+- 81 = Joias, obras de arte
+- 82 = Outros bens móveis
+- 91 = Créditos decorrentes de empréstimos
+- 99 = Outros bens e direitos
+
+💳 DÍVIDAS E ÔNUS REAIS (SEÇÃO SEPARADA) → dividas:
+- 11 = Estabelecimento bancário do país
+- 12 = Estabelecimento bancário do exterior
+- 13 = Pessoas físicas
+- 14 = Pessoas jurídicas
+- 15 = Empréstimos de instituição financeira
+- 16 = Financiamento de veículo
+- 17 = Financiamento imobiliário
+
+🔍 INSTRUÇÕES ESPECÍFICAS:
+
+Para PREVIDÊNCIA:
+- O valor em "Situação 31/12/20XX" = valor_acumulado
+- Se não houver contribuição mensal explícita, use contribuicao_mensal: 0
+- SEMPRE preencha: nome (descrição do plano), tipo (VGBL/PGBL/FAPI), instituicao (seguradora/banco)
+- Exemplo de descrição: "71 - VGBL - BRADESCO VIDA E PREVIDÊNCIA" → nome: "VGBL BRADESCO", tipo: "VGBL", instituicao: "Bradesco"
+
+Para CONTAS BANCÁRIAS:
+- Se aparecer apenas "Conta corrente Banco X", está OK!
+- banco: nome do banco
+- agencia: se não tiver, use "0000"
+- numero_conta: se não tiver, use "00000-0"
+- tipo_conta: "Corrente", "Poupança", "Salário", ou "Investimento"
+- saldo_atual: valor em 31/12
+
+Para APLICAÇÕES:
+- Nome curto e descritivo
+- Tipo: CDB, LCI, LCA, Tesouro Direto, Fundo, Ações, Outro
+- instituicao: banco ou corretora
+- valor_aplicado: valor de aquisição ou valor ano anterior
+- valor_atual: valor em 31/12 do ano da declaração
+
+Para BENS IMOBILIZADOS:
+- categoria: "Imóvel", "Veículo", ou "Outro"
+- nome: descrição curta (ex: "Apartamento Rua X" ou "Honda Civic 2020")
+- descricao: descrição completa do PDF
+- valor_aquisicao: valor de aquisição
+- valor_atual: valor em 31/12
+- localizacao: endereço ou "Brasil" se não especificado
+
+Para DÍVIDAS:
+- nome: descrição da dívida
+- tipo: "Financiamento Imobiliário", "Financiamento Veículo", "Empréstimo Pessoal", "Cartão de Crédito", "Outro"
+- credor: nome do credor (banco, pessoa física, etc.)
+- valor_original: valor total original (se disponível, senão use saldo_devedor)
+- saldo_devedor: saldo em 31/12
+
+✅ COMO PROCEDER:
+1. Leia o PDF linha por linha na seção "BENS E DIREITOS"
+2. Para CADA linha que contenha um CÓDIGO e um VALOR, extraia os dados
+3. Categorize baseado no código usando as regras acima
+4. Se faltar informação (ex: agência, conta), use valores padrão sensatos
+5. Leia a seção "DÍVIDAS E ÔNUS REAIS" e extraia TODAS as dívidas
+
+⚠️ VALIDAÇÃO FINAL:
+Antes de retornar, pergunte:
+- "Olhei TODOS os códigos 71, 72, 73 (previdência)?"
+- "Olhei TODOS os códigos 51, 52 (contas)?"
+- "Extraí TODAS as aplicações (códigos 31-49, 61-69)?"
+- "Extraí TODOS os bens (códigos 01-29, 81-99)?"
+- "Extraí TODAS as dívidas da seção específica?"
+
+Se esqueceu algo, VOLTE e extraia!`
           },
           {
             role: 'user',
-            content: `TAREFA: Leia este PDF de declaração de IRPF e extraia APENAS o texto que você consegue VER e LER claramente.
+            content: `TAREFA: Leia este PDF de declaração de IRPF e extraia TODOS os dados financeiros que você consegue VER.
 
-⚠️ CRITICAL: Se você não conseguir ler o PDF ou os dados parecerem ilegíveis, retorne TODOS os arrays vazios. É melhor não retornar nada do que inventar dados.
+⚠️ CRÍTICO: 
+- NÃO PULE NENHUM ITEM que tenha valor em reais
+- Se você encontrar 10 itens, deve retornar 10 itens
+- Se você encontrar um VGBL de R$ 15.000, ELE DEVE APARECER no JSON de resposta
+- É MELHOR extrair com informações parciais do que NÃO extrair
 
 📄 PDF (base64): ${base64.substring(0, 200000)}
 
-EXEMPLO DE BOA EXTRAÇÃO (baseado no que está NO PDF):
-Se você VÊ no PDF:
-"Bem: HONDA CIVIC 2020 - Código 11
-Situação 31/12/2022: 230.000,00
-Situação 31/12/2023: 230.000,00"
+🎯 CHECKLIST DE EXTRAÇÃO:
 
-Você retorna:
-{
-  "nome": "HONDA CIVIC 2020",
-  "categoria": "Veículo",
-  "descricao": "HONDA CIVIC 2020",
-  "valor_aquisicao": 230000,
-  "valor_atual": 230000,
-  "localizacao": "Brasil"
-}
+1️⃣ SEÇÃO "BENS E DIREITOS" - Extraia TODOS os itens:
+   □ Imóveis (códigos 01-09)
+   □ Veículos (códigos 11-19)
+   □ Ações e quotas (códigos 31-39)
+   □ Fundos (códigos 41-49)
+   □ Contas bancárias (códigos 51-59)
+   □ Aplicações de renda fixa (códigos 61-69)
+   □ ⭐ PREVIDÊNCIA PRIVADA (códigos 71-79) - CRÍTICO!
+   □ Outros bens (códigos 81-99)
 
-EXEMPLO DE MÁ EXTRAÇÃO (NUNCA FAÇA ISSO):
-Se você NÃO vê marca/modelo no PDF, NÃO invente "Ford KA" ou "Fiat Uno"!
-Se você NÃO vê um valor, NÃO invente "25400" ou "120000"!
+2️⃣ SEÇÃO "DÍVIDAS E ÔNUS REAIS" - Extraia TODAS as dívidas:
+   □ Financiamentos imobiliários
+   □ Financiamentos de veículos
+   □ Empréstimos pessoais
+   □ Outras dívidas
 
 📤 FORMATO DE RETORNO (JSON puro, sem markdown):
 {
   "contribuinte": {
-    "nome": "NOME COMPLETO DO PDF",
+    "nome": "NOME EXATO DO PDF",
     "cpf": "000.000.000-00"
   },
   "declaracao": {
     "ano": 2024,
     "status": "Importada",
-    "recibo": "número do recibo ou null"
+    "recibo": "número do recibo se houver, senão null"
   },
-  "rendimentos": [],
+  "rendimentos": [
+    {
+      "fonte_pagadora": "Nome da empresa",
+      "cnpj": "00.000.000/0000-00",
+      "tipo": "Salário | Pró-labore | Pensão | Outro",
+      "valor": 0,
+      "irrf": 0,
+      "contribuicao_previdenciaria": 0,
+      "decimo_terceiro": 0
+    }
+  ],
   "bens_imobilizados": [
     {
-      "nome": "descrição curta do bem",
+      "nome": "Descrição curta (ex: Apartamento Rua X ou Honda Civic)",
       "categoria": "Imóvel | Veículo | Outro",
-      "descricao": "descrição completa do PDF",
+      "descricao": "Descrição completa do PDF",
       "valor_aquisicao": 0,
       "valor_atual": 0,
-      "localizacao": "endereço ou localização"
+      "localizacao": "Endereço completo ou Brasil"
     }
   ],
   "aplicacoes": [
     {
-      "nome": "nome da aplicação",
+      "nome": "Nome da aplicação",
       "tipo": "CDB | LCI | LCA | Tesouro Direto | Fundo | Ações | Outro",
-      "instituicao": "banco/corretora",
+      "instituicao": "Nome do banco ou corretora",
       "valor_aplicado": 0,
       "valor_atual": 0
     }
   ],
   "previdencia": [
     {
-      "nome": "nome do plano",
+      "nome": "Nome do plano (ex: VGBL Bradesco)",
       "tipo": "PGBL | VGBL | FAPI",
-      "instituicao": "seguradora",
+      "instituicao": "Nome da seguradora ou banco",
       "valor_acumulado": 0,
       "contribuicao_mensal": 0
     }
   ],
   "contas_bancarias": [
     {
-      "banco": "nome banco",
-      "agencia": "0000",
-      "numero_conta": "00000-0",
+      "banco": "Nome do banco",
+      "agencia": "0000 (ou 0000 se não souber)",
+      "numero_conta": "00000-0 (ou 00000-0 se não souber)",
       "tipo_conta": "Corrente | Poupança | Salário | Investimento",
       "saldo_atual": 0
     }
   ],
   "dividas": [
     {
-      "nome": "descrição",
+      "nome": "Descrição da dívida",
       "tipo": "Financiamento Imobiliário | Financiamento Veículo | Empréstimo Pessoal | Cartão de Crédito | Outro",
-      "credor": "nome credor",
+      "credor": "Nome do credor",
       "valor_original": 0,
       "saldo_devedor": 0
     }
   ]
 }
 
-🔍 LEMBRE-SE: Você está LENDO um PDF, não gerando dados de exemplo. Se não conseguir ler, retorne arrays vazios!`
+🔍 EXEMPLOS DE BOA EXTRAÇÃO:
 
+EXEMPLO 1 - VGBL (código 71):
+Se você vê: "71 - VGBL - BANCO DO BRASIL - R$ 15.000,00"
+Retorne em previdencia:
+{
+  "nome": "VGBL Banco do Brasil",
+  "tipo": "VGBL",
+  "instituicao": "Banco do Brasil",
+  "valor_acumulado": 15000,
+  "contribuicao_mensal": 0
+}
+
+EXEMPLO 2 - Conta Corrente (código 51):
+Se você vê: "51 - Conta Corrente - Banco Itaú - R$ 5.340,10"
+Retorne em contas_bancarias:
+{
+  "banco": "Banco Itaú",
+  "agencia": "0000",
+  "numero_conta": "00000-0",
+  "tipo_conta": "Corrente",
+  "saldo_atual": 5340.10
+}
+
+EXEMPLO 3 - CDB (código 63):
+Se você vê: "63 - CDB - Banco Bradesco - R$ 50.000,00"
+Retorne em aplicacoes:
+{
+  "nome": "CDB Bradesco",
+  "tipo": "CDB",
+  "instituicao": "Banco Bradesco",
+  "valor_aplicado": 50000,
+  "valor_atual": 50000
+}
+
+🎯 CHECKLIST FINAL ANTES DE RETORNAR:
+□ Contei quantos itens têm valor no PDF?
+□ Meu JSON tem o MESMO número de itens?
+□ Todos os códigos 71-79 (previdência) foram extraídos?
+□ Todas as contas (51-59) foram extraídas?
+□ Se houver 5 aplicações no PDF, tenho 5 no JSON?
+
+⚠️ SE ALGO NÃO BATER, REVISE O PDF E EXTRAIA NOVAMENTE!`
           }
         ],
         max_completion_tokens: 8000
@@ -281,13 +422,30 @@ Se você NÃO vê um valor, NÃO invente "25400" ou "120000"!
       const content = aiResult.choices[0].message.content;
       const jsonText = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       extractedData = JSON.parse(jsonText);
-      console.log('Extracted data:', JSON.stringify(extractedData, null, 2));
+      
+      // Log detalhado da extração
+      console.log('=== DADOS EXTRAÍDOS PELA IA ===');
+      console.log('Contribuinte:', extractedData.contribuinte?.nome || 'N/A');
+      console.log('Rendimentos:', extractedData.rendimentos?.length || 0, 'itens');
+      console.log('Bens Imobilizados:', extractedData.bens_imobilizados?.length || 0, 'itens');
+      console.log('Aplicações:', extractedData.aplicacoes?.length || 0, 'itens');
+      console.log('Previdência:', extractedData.previdencia?.length || 0, 'itens');
+      console.log('Contas Bancárias:', extractedData.contas_bancarias?.length || 0, 'itens');
+      console.log('Dívidas:', extractedData.dividas?.length || 0, 'itens');
+      console.log('=== DETALHAMENTO PREVIDÊNCIA ===');
+      if (extractedData.previdencia && extractedData.previdencia.length > 0) {
+        extractedData.previdencia.forEach((p: any, index: number) => {
+          console.log(`  ${index + 1}. ${p.nome} (${p.tipo}) - ${p.instituicao} - R$ ${p.valor_acumulado}`);
+        });
+      } else {
+        console.log('  Nenhum plano de previdência extraído');
+      }
+      console.log('==============================');
       
       // Validação básica: verificar se dados estruturais fazem sentido
-      // Removemos validações muito restritivas que podem bloquear PDFs legítimos
       const bensNomes = (extractedData.bens_imobilizados || []).map((b: any) => b.nome?.toUpperCase() || '');
       
-      // Verificar apenas padrões claramente suspeitos (veículos genéricos muito comuns que indicam dados inventados)
+      // Verificar apenas padrões claramente suspeitos
       const suspiciousVehicles = ['CARRO GENERICO', 'VEICULO EXEMPLO', 'AUTOMOVEL TESTE'];
       
       for (const bens of bensNomes) {
@@ -304,7 +462,7 @@ Se você NÃO vê um valor, NÃO invente "25400" ou "120000"!
         }
       }
       
-      // Validar se há dados reais extraídos (não arrays vazios em tudo)
+      // Validar se há dados reais extraídos
       const totalItems = 
         (extractedData.rendimentos?.length || 0) +
         (extractedData.bens_imobilizados?.length || 0) +
@@ -323,10 +481,7 @@ Se você NÃO vê um valor, NÃO invente "25400" ou "120000"!
         });
       }
       
-      console.log('Validation passed - Real data detected:', { 
-        contribuinte: extractedData.contribuinte?.nome,
-        totalItems 
-      });
+      console.log('Validation passed - Total items extracted:', totalItems);
     } catch (parseError) {
       console.error('Failed to parse AI response:', parseError);
       return new Response(JSON.stringify({ error: 'Failed to parse extracted data' }), {
@@ -539,8 +694,16 @@ Se você NÃO vê um valor, NÃO invente "25400" ou "120000"!
       }
     }
 
+    console.log('=== PROCESSAMENTO CONCLUÍDO ===');
     console.log('Declaration processed successfully');
-    console.log(`Inserted: ${rendimentosCount} rendimentos, ${bensImobilizadosCount} bens imobilizados, ${aplicacoesCount} aplicações, ${previdenciaCount} previdência, ${contasBancariasCount} contas, ${dividasCount} dívidas`);
+    console.log(`RESUMO DE INSERÇÃO NO BANCO:`);
+    console.log(`  - Rendimentos: ${rendimentosCount} itens`);
+    console.log(`  - Bens Imobilizados: ${bensImobilizadosCount} itens`);
+    console.log(`  - Aplicações: ${aplicacoesCount} itens`);
+    console.log(`  - Previdência: ${previdenciaCount} itens`);
+    console.log(`  - Contas Bancárias: ${contasBancariasCount} itens`);
+    console.log(`  - Dívidas: ${dividasCount} itens`);
+    console.log('==============================');
 
     return new Response(JSON.stringify({
       success: true,
