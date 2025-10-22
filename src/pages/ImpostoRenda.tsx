@@ -356,12 +356,20 @@ export default function ImpostoRenda() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Badge className={getStatusColor(declaracaoAtual.status)}>
-                {declaracaoAtual.status}
-              </Badge>
-              <div className="text-sm text-muted-foreground mt-2">
-                Ano: {declaracaoAtual.ano}
-              </div>
+              {declaracoesList.length > 0 ? (
+                <>
+                  <Badge className={getStatusColor(declaracaoAtual.status)}>
+                    {declaracaoAtual.status}
+                  </Badge>
+                  <div className="text-sm text-muted-foreground mt-2">
+                    Ano: {declaracaoAtual.ano}
+                  </div>
+                </>
+              ) : (
+                <div className="text-sm text-muted-foreground">
+                  Nenhuma declaração cadastrada
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
