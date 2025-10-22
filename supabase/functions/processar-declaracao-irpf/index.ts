@@ -65,7 +65,16 @@ serve(async (req) => {
 
     // Read file content as base64 for better AI processing
     const arrayBuffer = await file.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    const bytes = new Uint8Array(arrayBuffer);
+    
+    // Convert to base64 safely for large files
+    let binary = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = bytes.slice(i, i + chunkSize);
+      binary += String.fromCharCode.apply(null, Array.from(chunk));
+    }
+    const base64 = btoa(binary);
     
     console.log('File size:', arrayBuffer.byteLength, 'bytes');
 
