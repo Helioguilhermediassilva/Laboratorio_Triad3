@@ -11,86 +11,47 @@ import ViewAssetModal from "./ViewAssetModal";
 import EditAssetModal from "./EditAssetModal";
 import heroImage from "@/assets/hero-bg.jpg";
 import { useState, useEffect } from "react";
-
-// Mock data - Patrimônio Geral
-const stats = [
-  {
-    title: "Patrimônio Total",
-    value: "R$ 2.8M",
-    icon: Package,
-    change: { value: 12, type: "increase" as const }
-  },
-  {
-    title: "Aplicações",
-    value: "R$ 485.2K",
-    icon: TrendingUp,
-    change: { value: 8, type: "increase" as const }
-  },
-  {
-    title: "Imobilizado",
-    value: "R$ 1.2M",
-    icon: CheckCircle,
-    change: { value: 5, type: "increase" as const }
-  },
-  {
-    title: "Receita Mensal",
-    value: "R$ 18.5K",
-    icon: AlertTriangle,
-    change: { value: 22, type: "increase" as const }
-  }
-];
-
-const recentAssets = [
-  {
-    id: "1",
-    name: "PETR4",
-    category: "Ação",
-    location: "XP Investimentos",
-    value: 35840,
-    purchaseDate: "2024-01-15",
-    status: "active" as const,
-    condition: "excellent" as const,
-    ticker: "PETR4",
-    quantity: 1000,
-    currentPrice: 35.84
-  },
-  {
-    id: "2", 
-    name: "VALE3",
-    category: "Ação",
-    location: "Rico Investimentos", 
-    value: 42650,
-    purchaseDate: "2023-11-20",
-    status: "active" as const,
-    condition: "good" as const,
-    ticker: "VALE3",
-    quantity: 850,
-    currentPrice: 50.18
-  },
-  {
-    id: "3",
-    name: "HGLG11",
-    category: "FII",
-    location: "Inter Investimentos",
-    value: 12480,
-    purchaseDate: "2024-02-10", 
-    status: "active" as const,
-    condition: "excellent" as const,
-    ticker: "HGLG11",
-    quantity: 120,
-    currentPrice: 104.00
-  }
-];
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Dashboard() {
-  const [assets, setAssets] = useState(recentAssets);
-  const [filteredAssets, setFilteredAssets] = useState(recentAssets);
+  const [assets, setAssets] = useState<any[]>([]);
+  const [filteredAssets, setFilteredAssets] = useState<any[]>([]);
+  const [stats, setStats] = useState([
+    {
+      title: "Patrimônio Total",
+      value: "R$ 0",
+      icon: Package,
+      change: { value: 0, type: "increase" as const }
+    },
+    {
+      title: "Aplicações",
+      value: "R$ 0",
+      icon: TrendingUp,
+      change: { value: 0, type: "increase" as const }
+    },
+    {
+      title: "Imobilizado",
+      value: "R$ 0",
+      icon: CheckCircle,
+      change: { value: 0, type: "increase" as const }
+    },
+    {
+      title: "Receita Mensal",
+      value: "R$ 0",
+      icon: AlertTriangle,
+      change: { value: 0, type: "increase" as const }
+    }
+  ]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isFiltersModalOpen, setIsFiltersModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilters, setActiveFilters] = useState<FilterCriteria | null>(null);
   const [viewAsset, setViewAsset] = useState<any>(null);
   const [editAsset, setEditAsset] = useState<any>(null);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
 
   // Busca automática - executa sempre que searchTerm muda
   useEffect(() => {
@@ -101,14 +62,80 @@ export default function Dashboard() {
     return () => clearTimeout(timer);
   }, [searchTerm, assets, activeFilters]);
 
+  const loadDashboardData = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Load aplicações
+    const { data: aplicacoes } = await supabase
+      .from('aplicacoes')
+      .select('*')
+      .eq('user_id', user.id)
+      .limit(3);
+
+    if (aplicacoes) {
+      const transformedAssets = aplicacoes.map((a: any) => ({
+        id: a.id,
+        name: a.nome,
+        category: a.tipo,
+        location: a.instituicao,
+        value: Number(a.valor_atual),
+        purchaseDate: a.data_aplicacao,
+        status: "active" as const,
+        condition: "excellent" as const,
+        ticker: a.nome,
+        quantity: 0,
+        currentPrice: Number(a.valor_atual)
+      }));
+      setAssets(transformedAssets);
+      setFilteredAssets(transformedAssets);
+
+      const totalAplicacoes = aplicacoes.reduce((sum, a) => sum + Number(a.valor_atual), 0);
+
+      // Load bens imobilizados
+      const { data: bens } = await supabase
+        .from('bens_imobilizados')
+        .select('*')
+        .eq('user_id', user.id);
+
+      const totalBens = bens ? bens.reduce((sum, b) => sum + Number(b.valor_atual), 0) : 0;
+      const totalPatrimonio = totalAplicacoes + totalBens;
+
+      setStats([
+        {
+          title: "Patrimônio Total",
+          value: totalPatrimonio.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+          icon: Package,
+          change: { value: 0, type: "increase" as const }
+        },
+        {
+          title: "Aplicações",
+          value: totalAplicacoes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+          icon: TrendingUp,
+          change: { value: 0, type: "increase" as const }
+        },
+        {
+          title: "Imobilizado",
+          value: totalBens.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+          icon: CheckCircle,
+          change: { value: 0, type: "increase" as const }
+        },
+        {
+          title: "Receita Mensal",
+          value: "R$ 0",
+          icon: AlertTriangle,
+          change: { value: 0, type: "increase" as const }
+        }
+      ]);
+    }
+  };
+
   const handleAddAsset = (newAsset: any) => {
-    const updatedAssets = [...assets, newAsset];
-    setAssets(updatedAssets);
-    applyFiltersAndSearch(updatedAssets, searchTerm, activeFilters);
+    loadDashboardData();
     setIsAddModalOpen(false);
   };
 
-  const applyFiltersAndSearch = (assetList: typeof recentAssets, search: string, filters: FilterCriteria | null) => {
+  const applyFiltersAndSearch = (assetList: any[], search: string, filters: FilterCriteria | null) => {
     let filtered = [...assetList];
 
     // Apply search filter

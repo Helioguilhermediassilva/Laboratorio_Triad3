@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ScrollText, Plus, Eye, Edit, Trash2, Calendar, Shield, Users, FileText } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,65 +9,13 @@ import { useToast } from "@/hooks/use-toast";
 import NovoTestamentoModal from "@/components/NovoTestamentoModal";
 import VisualizarTestamentoModal from "@/components/VisualizarTestamentoModal";
 import EditarTestamentoModal from "@/components/EditarTestamentoModal";
-
-// Mock data for testament documents
-const mockTestamentos = [
-  {
-    id: 1,
-    titulo: "Testamento Principal",
-    tipo: "Testamento Público",
-    dataElaboracao: "15/03/2023",
-    ultimaAtualizacao: "22/11/2024",
-    cartorio: "1º Tabelionato de Notas - São Paulo",
-    testamenteiro: "Maria Silva Santos",
-    status: "Ativo",
-    beneficiarios: ["João Carlos Silva", "Ana Maria Silva", "Pedro Silva Santos"],
-    bensIncluidos: [
-      "Apartamento - Rua das Flores, 123",
-      "Casa de Campo - Campos do Jordão",
-      "Conta Corrente - Banco do Brasil",
-      "Investimentos - CDB Premium"
-    ],
-    observacoes: "Documento registrado em cartório com todas as formalidades legais."
-  },
-  {
-    id: 2,
-    titulo: "Codicilo - Alterações",
-    tipo: "Codicilo",
-    dataElaboracao: "05/08/2024",
-    ultimaAtualizacao: "05/08/2024",
-    cartorio: "1º Tabelionato de Notas - São Paulo",
-    testamenteiro: "Maria Silva Santos",
-    status: "Ativo",
-    beneficiarios: ["Fundação Criança Esperança", "Instituto Amigos dos Animais"],
-    bensIncluidos: [
-      "Doação de 10% dos investimentos",
-      "Biblioteca pessoal completa"
-    ],
-    observacoes: "Codicilo para incluir doações beneficentes."
-  },
-  {
-    id: 3,
-    titulo: "Testamento Anterior",
-    tipo: "Testamento Particular",
-    dataElaboracao: "10/01/2020",
-    ultimaAtualizacao: "10/01/2020",
-    cartorio: "-",
-    testamenteiro: "José Antonio Silva",
-    status: "Revogado",
-    beneficiarios: ["João Carlos Silva", "Ana Maria Silva"],
-    bensIncluidos: [
-      "Apartamento - Centro da Cidade"
-    ],
-    observacoes: "Testamento revogado pela criação do testamento público atual."
-  }
-];
+import { supabase } from "@/integrations/supabase/client";
 
 interface TestamentCardProps {
-  testamento: typeof mockTestamentos[0];
-  onView: (id: number) => void;
+  testamento: any;
+  onView: (id: string) => void;
   onEdit: (testamento: any) => void;
-  onDelete: (id: number) => void;
+  onDelete: (id: string) => void;
 }
 
 function TestamentCard({ testamento, onView, onEdit, onDelete }: TestamentCardProps) {
@@ -203,46 +151,83 @@ function TestamentCard({ testamento, onView, onEdit, onDelete }: TestamentCardPr
 }
 
 export default function Testamento() {
-  const [testamentos, setTestamentos] = useState(mockTestamentos);
+  const [testamentos, setTestamentos] = useState<any[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [testamentoToDelete, setTestamentoToDelete] = useState<number | null>(null);
+  const [testamentoToDelete, setTestamentoToDelete] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const handleView = (id: number) => {
+  useEffect(() => {
+    loadTestamentos();
+  }, []);
+
+  const loadTestamentos = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('testamentos')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error loading testamentos:', error);
+      return;
+    }
+
+    // Transform data to match expected format
+    const transformed = (data || []).map((t: any) => ({
+      ...t,
+      dataElaboracao: new Date(t.data_elaboracao).toLocaleDateString('pt-BR'),
+      ultimaAtualizacao: new Date(t.updated_at).toLocaleDateString('pt-BR'),
+      testamenteiro: t.titulo,
+      beneficiarios: [],
+      bensIncluidos: []
+    }));
+
+    setTestamentos(transformed);
+  };
+
+  const handleView = (id: string) => {
     console.log("Visualizar testamento:", id);
   };
 
   const handleEdit = (testamentoAtualizado: any) => {
-    setTestamentos(prev => prev.map(t => t.id === testamentoAtualizado.id ? testamentoAtualizado : t));
+    loadTestamentos();
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = (id: string) => {
     setTestamentoToDelete(id);
     setDeleteDialogOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (testamentoToDelete) {
-      setTestamentos(prev => prev.filter(t => t.id !== testamentoToDelete));
-      toast({
-        title: "Testamento excluído",
-        description: "O testamento foi removido com sucesso.",
-      });
+      const { error } = await supabase
+        .from('testamentos')
+        .delete()
+        .eq('id', testamentoToDelete);
+
+      if (!error) {
+        loadTestamentos();
+        toast({
+          title: "Testamento excluído",
+          description: "O testamento foi removido com sucesso.",
+        });
+      }
     }
     setDeleteDialogOpen(false);
     setTestamentoToDelete(null);
   };
 
   const handleAddTestament = (novoTestamento: any) => {
-    setTestamentos(prev => [...prev, novoTestamento]);
+    loadTestamentos();
   };
 
   // Calculations
-  const testamentosAtivos = testamentos.filter(t => t.status === "Ativo").length;
+  const testamentosAtivos = testamentos.filter(t => t.status === "Vigente").length;
   const testamentosRascunho = testamentos.filter(t => t.status === "Rascunho").length;
-  const totalBeneficiarios = testamentos
-    .filter(t => t.status === "Ativo")
-    .reduce((acc, t) => acc + t.beneficiarios.length, 0);
+  const totalBeneficiarios = 0;
 
   return (
     <Layout>
