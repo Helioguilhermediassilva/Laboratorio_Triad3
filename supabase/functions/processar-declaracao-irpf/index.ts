@@ -415,7 +415,17 @@ Retorne em aplicacoes:
 5. "Tenho 100% de certeza de que NADA foi inventado?"
    ❌ Se NÃO → Revise e remova dados duvidosos
 
-⚠️ LEMBRE-SE: É MELHOR retornar MENOS itens (só os reais) do que MAIS itens (com dados inventados)!`
+⚠️ LEMBRE-SE: É MELHOR retornar MENOS itens (só os reais) do que MAIS itens (com dados inventados)!
+
+🔒 REQUISITOS CRÍTICOS PARA O JSON DE RETORNO:
+1. O JSON deve ser VÁLIDO e bem formatado
+2. TODAS as strings devem ter aspas duplas escapadas se necessário
+3. NÃO inclua quebras de linha dentro de valores de string (use espaços)
+4. NÃO coloque vírgula após o último elemento de arrays ou objetos
+5. Retorne APENAS o JSON puro, sem blocos de código markdown (sem \`\`\`json)
+6. Antes de retornar, VALIDE que o JSON pode ser parseado corretamente
+
+FORMATO FINAL: Retorne apenas o objeto JSON começando com { e terminando com }, sem nenhum texto adicional antes ou depois.`
           }
         ],
         max_completion_tokens: 8000
@@ -465,8 +475,45 @@ Retorne em aplicacoes:
     let extractedData;
     try {
       const content = aiResult.choices[0].message.content;
-      const jsonText = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      extractedData = JSON.parse(jsonText);
+      console.log('=== RAW AI CONTENT (first 1000 chars) ===');
+      console.log(content.substring(0, 1000));
+      console.log('=== END RAW CONTENT ===');
+      
+      // Remove markdown code blocks
+      let jsonText = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      
+      // Try to fix common JSON issues before parsing
+      // Remove any trailing commas before closing braces/brackets
+      jsonText = jsonText.replace(/,(\s*[}\]])/g, '$1');
+      
+      // Try to fix common newline issues in strings (replace internal newlines with spaces)
+      jsonText = jsonText.replace(/"\s*\n\s*([^"{}[\],:])/g, '" $1');
+      
+      // Fix unescaped quotes inside strings (basic attempt)
+      // This is tricky, but we can try to catch some common cases
+      jsonText = jsonText.replace(/([^\\])"([^,:}\]]+)"/g, '$1\\"$2\\"');
+      
+      console.log('=== CLEANED JSON (first 1000 chars) ===');
+      console.log(jsonText.substring(0, 1000));
+      console.log('=== END CLEANED JSON ===');
+      
+      try {
+        extractedData = JSON.parse(jsonText);
+      } catch (firstParseError) {
+        console.error('First parse attempt failed:', firstParseError);
+        console.error('JSON text causing error (first 2000 chars):', jsonText.substring(0, 2000));
+        
+        // Try one more time with more aggressive cleaning
+        // Remove all literal newlines within the JSON
+        jsonText = jsonText.replace(/\n/g, ' ');
+        // Remove multiple spaces
+        jsonText = jsonText.replace(/\s+/g, ' ');
+        
+        console.log('=== ATTEMPTING SECOND PARSE (first 1000 chars) ===');
+        console.log(jsonText.substring(0, 1000));
+        
+        extractedData = JSON.parse(jsonText); // This will throw if still invalid
+      }
       
       // Log detalhado da extração
       console.log('=== DADOS EXTRAÍDOS PELA IA ===');
