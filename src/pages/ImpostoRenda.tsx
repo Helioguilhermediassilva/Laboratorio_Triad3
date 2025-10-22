@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FileText, Calculator, Calendar, TrendingUp, AlertTriangle, Download, Upload } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +16,7 @@ import EditarDeclaracaoModal from "@/components/EditarDeclaracaoModal";
 import VisualizarReciboModal from "@/components/VisualizarReciboModal";
 import EditarRendimentoModal from "@/components/EditarRendimentoModal";
 import ImportarDeclaracaoModal from "@/components/ImportarDeclaracaoModal";
+import { supabase } from "@/integrations/supabase/client";
 
 // Mock data - Imposto de Renda
 const declaracoes = [
@@ -142,7 +143,74 @@ export default function ImpostoRenda() {
   const [declaracoesList, setDeclaracoesList] = useState(declaracoes);
   const [rendimentosList, setRendimentosList] = useState(rendimentos);
   const [prazosList, setPrazosList] = useState(prazosInitial);
+  const [carregandoDados, setCarregandoDados] = useState(false);
   const { toast } = useToast();
+
+  // Load declarations from database
+  useEffect(() => {
+    loadDeclaracoes();
+    loadRendimentos();
+  }, []);
+
+  const loadDeclaracoes = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('declaracoes_irpf')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('ano', { ascending: false });
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const formattedDeclaracoes = data.map(d => ({
+          id: d.id,
+          ano: d.ano,
+          status: d.status,
+          prazoLimite: d.prazo_limite || `${d.ano}-04-30`,
+          recibo: d.recibo,
+          valorPagar: Number(d.valor_pagar || 0),
+          valorRestituir: Number(d.valor_restituir || 0),
+          arquivoOriginal: d.arquivo_original
+        }));
+        setDeclaracoesList([...formattedDeclaracoes, ...declaracoes]);
+      }
+    } catch (error) {
+      console.error('Error loading declarations:', error);
+    }
+  };
+
+  const loadRendimentos = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('rendimentos_irpf')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const formattedRendimentos = data.map(r => ({
+          id: r.id,
+          fonte: r.fonte_pagadora,
+          cnpj: r.cnpj || 'N/A',
+          tipo: r.tipo,
+          valor: Number(r.valor),
+          irrf: Number(r.irrf || 0),
+          ano: r.ano
+        }));
+        setRendimentosList([...formattedRendimentos, ...rendimentos]);
+      }
+    } catch (error) {
+      console.error('Error loading rendimentos:', error);
+    }
+  };
   
   const declaracaoAtual = declaracoesList.find(d => d.ano === anoSelecionado) || declaracoesList[0];
   const rendimentosAno = rendimentosList.filter(r => r.ano === anoSelecionado);
@@ -196,12 +264,16 @@ export default function ImpostoRenda() {
     });
   };
 
-  const handleDeclaracaoImportada = (declaracaoImportada: any) => {
+  const handleDeclaracaoImportada = async (declaracaoImportada: any) => {
     setDeclaracoesList(prev => [...prev, declaracaoImportada]);
+    
+    // Reload data from database to get the extracted information
+    await loadDeclaracoes();
+    await loadRendimentos();
     
     toast({
       title: "Declaração importada!",
-      description: "A declaração foi importada e adicionada ao histórico."
+      description: "A declaração foi importada e os dados foram categorizados automaticamente."
     });
   };
 
