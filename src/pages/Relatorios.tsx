@@ -34,6 +34,25 @@ export default function Relatorios() {
     if (!error && aplicacoes) {
       const total = aplicacoes.reduce((sum, a) => sum + Number(a.valor_atual), 0);
       setTotalValue(total);
+
+      // Calculate performance data (empty for now)
+      setPerformanceData([]);
+      
+      // Calculate category distribution
+      const categoryMap = new Map();
+      aplicacoes.forEach(a => {
+        const categoria = a.tipo || 'Outros';
+        const valor = Number(a.valor_atual);
+        categoryMap.set(categoria, (categoryMap.get(categoria) || 0) + valor);
+      });
+
+      const distribution = Array.from(categoryMap.entries()).map(([category, value]) => ({
+        category,
+        value,
+        percentage: total > 0 ? ((value / total) * 100).toFixed(1) : 0
+      }));
+
+      setCategoryDistribution(distribution);
     }
   };
 
@@ -77,16 +96,16 @@ export default function Relatorios() {
       doc.text(`Valor Total da Carteira: ${totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 20, yPos);
       yPos += 8;
       
-      doc.text(`Crescimento Mensal: +${monthlyGrowth}%`, 20, yPos);
+      doc.text(`Crescimento Mensal: ${monthlyGrowth > 0 ? '+' : ''}${monthlyGrowth}%`, 20, yPos);
       yPos += 8;
       
-      doc.text(`Crescimento Anual: +${yearlyGrowth}%`, 20, yPos);
+      doc.text(`Crescimento Anual: ${yearlyGrowth > 0 ? '+' : ''}${yearlyGrowth}%`, 20, yPos);
       yPos += 8;
       
-      doc.text(`Melhor Ativo: VALE3 (+24.5%)`, 20, yPos);
+      doc.text(`Melhor Ativo: N/A`, 20, yPos);
       yPos += 8;
       
-      doc.text(`Dividendos Recebidos (Ano): R$ 18.500,00`, 20, yPos);
+      doc.text(`Dividendos Recebidos (Ano): R$ 0,00`, 20, yPos);
       yPos += 20;
 
       // Evolução da Carteira
@@ -127,19 +146,9 @@ export default function Relatorios() {
       doc.text("ÚLTIMAS TRANSAÇÕES", 20, yPos);
       yPos += 15;
 
-      const transactions = [
-        { type: "Compra", asset: "PETR4", date: "15/01/2024", value: "R$ 35.840", qty: "1.000 ações" },
-        { type: "Dividendos", asset: "HGLG11", date: "10/01/2024", value: "R$ 124", qty: "120 cotas" },
-        { type: "Venda", asset: "ITUB4", date: "08/01/2024", value: "R$ 15.200", qty: "500 ações" },
-        { type: "Compra", asset: "BBDC4", date: "05/01/2024", value: "R$ 28.450", qty: "800 ações" }
-      ];
-
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      transactions.forEach((transaction) => {
-        doc.text(`${transaction.date} - ${transaction.type} ${transaction.asset}: ${transaction.value} (${transaction.qty})`, 20, yPos);
-        yPos += 6;
-      });
+      doc.text("Nenhuma transação disponível", 20, yPos);
       yPos += 15;
 
       // Análise de Risco
@@ -256,15 +265,15 @@ export default function Relatorios() {
           />
           <StatsCard
             title="Melhor Ativo"
-            value="VALE3"
+            value={totalValue > 0 ? "N/A" : "R$ 0,00"}
             icon={TrendingUp}
-            change={{ value: 24.5, type: "increase" }}
+            change={{ value: 0, type: "increase" }}
           />
           <StatsCard
             title="Dividendos (Ano)"
-            value="R$ 18.5K"
+            value="R$ 0,00"
             icon={PieChart}
-            change={{ value: 15.2, type: "increase" }}
+            change={{ value: 0, type: "increase" }}
           />
         </div>
 
@@ -278,32 +287,38 @@ export default function Relatorios() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {performanceData.map((data, index) => (
-                <div key={data.month} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-4">
-                    <div className="font-medium text-foreground w-12">
-                      {data.month}
+              {performanceData.length > 0 ? (
+                performanceData.map((data, index) => (
+                  <div key={data.month} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center gap-4">
+                      <div className="font-medium text-foreground w-12">
+                        {data.month}
+                      </div>
+                      <div className="text-lg font-semibold">
+                        {data.value.toLocaleString('pt-BR', { 
+                          style: 'currency', 
+                          currency: 'BRL' 
+                        })}
+                      </div>
                     </div>
-                    <div className="text-lg font-semibold">
-                      {data.value.toLocaleString('pt-BR', { 
-                        style: 'currency', 
-                        currency: 'BRL' 
-                      })}
+                    
+                    <div className={`flex items-center gap-1 text-sm font-medium ${
+                      data.growth >= 0 ? 'text-success' : 'text-destructive'
+                    }`}>
+                      {data.growth >= 0 ? (
+                        <TrendingUp className="h-4 w-4" />
+                      ) : (
+                        <TrendingDown className="h-4 w-4" />
+                      )}
+                      {data.growth >= 0 ? '+' : ''}{data.growth}%
                     </div>
                   </div>
-                  
-                  <div className={`flex items-center gap-1 text-sm font-medium ${
-                    data.growth >= 0 ? 'text-success' : 'text-destructive'
-                  }`}>
-                    {data.growth >= 0 ? (
-                      <TrendingUp className="h-4 w-4" />
-                    ) : (
-                      <TrendingDown className="h-4 w-4" />
-                    )}
-                    {data.growth >= 0 ? '+' : ''}{data.growth}%
-                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  Nenhum dado de evolução disponível
                 </div>
-              ))}
+              )}
             </div>
           </CardContent>
         </Card>
@@ -318,33 +333,39 @@ export default function Relatorios() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {categoryDistribution.map((item) => (
-                <div key={item.category} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-4">
-                    <div className="font-medium text-foreground min-w-0 flex-1">
-                      {item.category}
+              {categoryDistribution.length > 0 ? (
+                categoryDistribution.map((item) => (
+                  <div key={item.category} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center gap-4">
+                      <div className="font-medium text-foreground min-w-0 flex-1">
+                        {item.category}
+                      </div>
+                      <div className="text-lg font-semibold">
+                        {item.value.toLocaleString('pt-BR', { 
+                          style: 'currency', 
+                          currency: 'BRL' 
+                        })}
+                      </div>
                     </div>
-                    <div className="text-lg font-semibold">
-                      {item.value.toLocaleString('pt-BR', { 
-                        style: 'currency', 
-                        currency: 'BRL' 
-                      })}
+                    
+                    <div className="flex items-center gap-2">
+                      <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-primary rounded-full"
+                          style={{ width: `${item.percentage}%` }}
+                        />
+                      </div>
+                      <span className="text-sm font-medium text-muted-foreground min-w-[3rem] text-right">
+                        {item.percentage}%
+                      </span>
                     </div>
                   </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-primary rounded-full"
-                        style={{ width: `${item.percentage}%` }}
-                      />
-                    </div>
-                    <span className="text-sm font-medium text-muted-foreground min-w-[3rem] text-right">
-                      {item.percentage}%
-                    </span>
-                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  Nenhuma categoria disponível
                 </div>
-              ))}
+              )}
             </div>
           </CardContent>
         </Card>
@@ -360,38 +381,8 @@ export default function Relatorios() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center gap-4">
-                  <div className="p-2 bg-success/10 rounded-lg">
-                    <TrendingUp className="h-4 w-4 text-success" />
-                  </div>
-                  <div>
-                    <div className="font-medium">Compra PETR4</div>
-                    <div className="text-sm text-muted-foreground">15/01/2024</div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="font-semibold">R$ 35.840</div>
-                  <div className="text-sm text-muted-foreground">1.000 ações</div>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center gap-4">
-                  <div className="p-2 bg-accent/10 rounded-lg">
-                    <PieChart className="h-4 w-4 text-accent" />
-                  </div>
-                  <div>
-                    <div className="font-medium">Dividendos HGLG11</div>
-                    <div className="text-sm text-muted-foreground">10/01/2024</div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="font-semibold text-success">+R$ 124</div>
-                  <div className="text-sm text-muted-foreground">120 cotas</div>
-                </div>
-              </div>
+            <div className="text-center py-8 text-muted-foreground">
+              Nenhuma transação disponível
             </div>
           </CardContent>
         </Card>
