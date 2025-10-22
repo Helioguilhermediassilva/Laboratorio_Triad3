@@ -192,6 +192,9 @@ export default function Imobilizado() {
     });
 
   const totalValue = items.reduce((sum, item) => sum + item.valor, 0);
+  const maiorBem = items.length > 0 
+    ? items.reduce((max, item) => item.valor > max.valor ? item : max, items[0])
+    : null;
 
   const handleBemAdicionado = (novoBem: any) => {
     setItems(prev => [...prev, novoBem]);
@@ -271,12 +274,20 @@ export default function Imobilizado() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-foreground">
-                Casa de Praia
-              </div>
-              <div className="text-sm text-muted-foreground mt-1">
-                R$ 850.000
-              </div>
+              {maiorBem ? (
+                <>
+                  <div className="text-2xl font-bold text-foreground">
+                    {maiorBem.nome}
+                  </div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    {maiorBem.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </div>
+                </>
+              ) : (
+                <div className="text-2xl font-bold text-muted-foreground">
+                  Nenhum
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
