@@ -92,17 +92,21 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `Você é um especialista em extrair TODOS os dados financeiros de declarações de IRPF. Sua missão é NÃO DEIXAR NENHUM ITEM COM VALOR passar despercebido.
+            content: `Você é um especialista em extrair dados financeiros de declarações de IRPF.
 
-🎯 MISSÃO CRÍTICA:
-- EXTRAIA 100% dos itens que possuem valores em reais
-- TODO bem, aplicação, conta, dívida ou plano de previdência DEVE ser extraído
-- Mesmo que faltem informações, capture o que existe e preencha campos obrigatórios com valores padrão sensatos
+🚫 REGRA NÚMERO 1 - NUNCA INVENTAR DADOS:
+- VOCÊ ESTÁ ESTRITAMENTE PROIBIDO DE INVENTAR, FABRICAR OU ADIVINHAR QUALQUER INFORMAÇÃO
+- SE UM DADO NÃO EXISTE NO PDF, NÃO O INCLUA NO JSON
+- É MELHOR RETORNAR UM ARRAY VAZIO DO QUE INVENTAR DADOS
+- EXEMPLO: Se não houver VGBL no PDF, retorne previdencia: []
+- EXEMPLO: Se não houver aplicações, retorne aplicacoes: []
+- VOCÊ SERÁ VALIDADO - dados inventados serão rejeitados
 
-🚫 PROIBIÇÕES:
-- NUNCA invente dados que não existem no PDF
-- NUNCA ignore itens só porque faltam algumas informações
-- NUNCA aproxime valores - use EXATAMENTE o que está escrito
+🎯 SUA MISSÃO:
+- Extrair APENAS os dados que REALMENTE existem no PDF
+- Copiar valores EXATAMENTE como aparecem (não arredondar, não aproximar)
+- Usar apenas informações que você consegue VER no documento
+- Se não tiver certeza sobre um dado, NÃO o inclua
 
 📋 REGRAS DE CATEGORIZAÇÃO POR CÓDIGO (SEÇÃO BENS E DIREITOS):
 
@@ -237,13 +241,21 @@ Se esqueceu algo, VOLTE e extraia!`
           },
           {
             role: 'user',
-            content: `TAREFA: Leia este PDF de declaração de IRPF e extraia TODOS os dados financeiros que você consegue VER.
+            content: `TAREFA: Leia este PDF de declaração de IRPF e extraia APENAS os dados que REALMENTE EXISTEM no documento.
 
-⚠️ CRÍTICO: 
-- NÃO PULE NENHUM ITEM que tenha valor em reais
-- Se você encontrar 10 itens, deve retornar 10 itens
-- Se você encontrar um VGBL de R$ 15.000, ELE DEVE APARECER no JSON de resposta
-- É MELHOR extrair com informações parciais do que NÃO extrair
+⚠️ ADVERTÊNCIA CRÍTICA: 
+- VOCÊ ESTÁ SENDO MONITORADO - NÃO INVENTE DADOS
+- Se não encontrar dados de uma categoria, retorne array VAZIO []
+- Cada item que você retornar PRECISA existir literalmente no PDF
+- VALORES devem ser EXATAMENTE como estão escritos no PDF
+- NOMES devem ser EXATAMENTE como aparecem no PDF
+- Se você INVENTAR dados, sua resposta será REJEITADA
+
+🔍 COMO TRABALHAR:
+1. Leia o PDF linha por linha
+2. Anote APENAS o que você VÊ escrito
+3. Se não encontrar nada em uma seção, retorne []
+4. NÃO use exemplos, NÃO use dados de teste, NÃO adivinhe
 
 📄 PDF (base64): ${base64.substring(0, 200000)}
 
@@ -386,14 +398,24 @@ Retorne em aplicacoes:
   "liquidez": "Diária"
 }
 
-🎯 CHECKLIST FINAL ANTES DE RETORNAR:
-□ Contei quantos itens têm valor no PDF?
-□ Meu JSON tem o MESMO número de itens?
-□ Todos os códigos 71-79 (previdência) foram extraídos?
-□ Todas as contas (51-59) foram extraídas?
-□ Se houver 5 aplicações no PDF, tenho 5 no JSON?
+🛑 VALIDAÇÃO FINAL OBRIGATÓRIA - FAÇA ESTAS PERGUNTAS:
 
-⚠️ SE ALGO NÃO BATER, REVISE O PDF E EXTRAIA NOVAMENTE!`
+1. "Cada item que retornei EXISTE LITERALMENTE no PDF?"
+   ❌ Se NÃO → REMOVA o item inventado
+   
+2. "Os valores são EXATAMENTE como estão no PDF?"
+   ❌ Se NÃO → Corrija ou remova
+   
+3. "Eu inventei algum nome, banco ou instituição?"
+   ❌ Se SIM → REMOVA o item
+   
+4. "Se não encontrei dados em uma categoria, retornei [] vazio?"
+   ❌ Se NÃO → Corrija para []
+   
+5. "Tenho 100% de certeza de que NADA foi inventado?"
+   ❌ Se NÃO → Revise e remova dados duvidosos
+
+⚠️ LEMBRE-SE: É MELHOR retornar MENOS itens (só os reais) do que MAIS itens (com dados inventados)!`
           }
         ],
         max_completion_tokens: 8000
@@ -465,18 +487,47 @@ Retorne em aplicacoes:
       }
       console.log('==============================');
       
-      // Validação básica: verificar se dados estruturais fazem sentido
-      const bensNomes = (extractedData.bens_imobilizados || []).map((b: any) => b.nome?.toUpperCase() || '');
+      // Validação rigorosa contra dados inventados
+      const allNomes = [
+        ...(extractedData.bens_imobilizados || []).map((b: any) => b.nome || ''),
+        ...(extractedData.aplicacoes || []).map((a: any) => a.nome || ''),
+        ...(extractedData.previdencia || []).map((p: any) => p.nome || ''),
+        ...(extractedData.contas_bancarias || []).map((c: any) => c.banco || ''),
+        ...(extractedData.dividas || []).map((d: any) => d.nome || '')
+      ].map(n => n.toUpperCase());
       
-      // Verificar apenas padrões claramente suspeitos
-      const suspiciousVehicles = ['CARRO GENERICO', 'VEICULO EXEMPLO', 'AUTOMOVEL TESTE'];
+      // Padrões que indicam dados inventados/genéricos
+      const suspiciousPatterns = [
+        'GENERICO', 'EXEMPLO', 'TESTE', 'PADRAO', 'DEFAULT',
+        'SAMPLE', 'PLACEHOLDER', 'N/A', 'NAO INFORMADO',
+        'SEM INFORMACAO', 'A DEFINIR', 'INDEFINIDO'
+      ];
       
-      for (const bens of bensNomes) {
-        for (const suspicious of suspiciousVehicles) {
-          if (bens.includes(suspicious)) {
-            console.error('Detected clearly fabricated data:', { bens, suspicious });
+      const allDescriptions = [
+        ...(extractedData.bens_imobilizados || []).map((b: any) => b.descricao || ''),
+        ...(extractedData.aplicacoes || []).map((a: any) => a.instituicao || '')
+      ].map(d => d.toUpperCase());
+      
+      for (const nome of allNomes) {
+        for (const pattern of suspiciousPatterns) {
+          if (nome.includes(pattern)) {
+            console.error('❌ DADOS INVENTADOS DETECTADOS:', nome);
             return new Response(JSON.stringify({ 
-              error: 'A IA não conseguiu extrair dados reais do PDF. Verifique se o arquivo está legível.' 
+              error: 'Foram detectados dados inventados pela IA. O sistema rejeitou a importação. Por favor, verifique se o PDF está legível e tente novamente.' 
+            }), {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+        }
+      }
+      
+      for (const desc of allDescriptions) {
+        for (const pattern of suspiciousPatterns) {
+          if (desc.includes(pattern)) {
+            console.error('❌ DADOS INVENTADOS DETECTADOS na descrição:', desc);
+            return new Response(JSON.stringify({ 
+              error: 'Foram detectados dados inventados pela IA. O sistema rejeitou a importação. Por favor, verifique se o PDF está legível e tente novamente.' 
             }), {
               status: 400,
               headers: { ...corsHeaders, 'Content-Type': 'application/json' },
