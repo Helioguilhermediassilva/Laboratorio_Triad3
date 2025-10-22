@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,24 @@ export default function ImportarDeclaracaoModal({
   const [etapaAtual, setEtapaAtual] = useState("");
   const [tempoEstimado, setTempoEstimado] = useState("");
   const { toast } = useToast();
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (open) {
+      setArquivo(null);
+      setTipoArquivo("");
+      setAnoDeclaracao("");
+      setObservacoes("");
+      setProgresso(0);
+      setEtapaAtual("");
+      setTempoEstimado("");
+      // Reset file input
+      const fileInput = document.getElementById('arquivo') as HTMLInputElement;
+      if (fileInput) {
+        fileInput.value = '';
+      }
+    }
+  }, [open]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
