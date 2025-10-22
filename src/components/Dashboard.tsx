@@ -66,15 +66,18 @@ export default function Dashboard() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    const allAssets: any[] = [];
+
     // Load aplicações
     const { data: aplicacoes } = await supabase
       .from('aplicacoes')
       .select('*')
       .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
       .limit(3);
 
     if (aplicacoes) {
-      const transformedAssets = aplicacoes.map((a: any) => ({
+      const transformedAplicacoes = aplicacoes.map((a: any) => ({
         id: a.id,
         name: a.nome,
         category: a.tipo,
@@ -87,47 +90,78 @@ export default function Dashboard() {
         quantity: 0,
         currentPrice: Number(a.valor_atual)
       }));
-      setAssets(transformedAssets);
-      setFilteredAssets(transformedAssets);
-
-      const totalAplicacoes = aplicacoes.reduce((sum, a) => sum + Number(a.valor_atual), 0);
-
-      // Load bens imobilizados
-      const { data: bens } = await supabase
-        .from('bens_imobilizados')
-        .select('*')
-        .eq('user_id', user.id);
-
-      const totalBens = bens ? bens.reduce((sum, b) => sum + Number(b.valor_atual), 0) : 0;
-      const totalPatrimonio = totalAplicacoes + totalBens;
-
-      setStats([
-        {
-          title: "Patrimônio Total",
-          value: totalPatrimonio.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-          icon: Package,
-          change: { value: 0, type: "increase" as const }
-        },
-        {
-          title: "Aplicações",
-          value: totalAplicacoes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-          icon: TrendingUp,
-          change: { value: 0, type: "increase" as const }
-        },
-        {
-          title: "Imobilizado",
-          value: totalBens.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-          icon: CheckCircle,
-          change: { value: 0, type: "increase" as const }
-        },
-        {
-          title: "Receita Mensal",
-          value: "R$ 0",
-          icon: AlertTriangle,
-          change: { value: 0, type: "increase" as const }
-        }
-      ]);
+      allAssets.push(...transformedAplicacoes);
     }
+
+    // Load bens imobilizados for display
+    const { data: bensRecentes } = await supabase
+      .from('bens_imobilizados')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(3);
+
+    if (bensRecentes) {
+      const transformedBens = bensRecentes.map((b: any) => ({
+        id: b.id,
+        name: b.nome,
+        category: b.categoria,
+        location: b.localizacao || 'N/A',
+        value: Number(b.valor_atual),
+        purchaseDate: b.data_aquisicao,
+        status: b.status === 'Ativo' ? "active" as const : "inactive" as const,
+        condition: "excellent" as const,
+        ticker: b.nome,
+        quantity: 1,
+        currentPrice: Number(b.valor_atual)
+      }));
+      allAssets.push(...transformedBens);
+    }
+
+    setAssets(allAssets);
+    setFilteredAssets(allAssets);
+
+    // Calculate all totals
+    const { data: todasAplicacoes } = await supabase
+      .from('aplicacoes')
+      .select('valor_atual')
+      .eq('user_id', user.id);
+
+    const { data: todosBens } = await supabase
+      .from('bens_imobilizados')
+      .select('valor_atual')
+      .eq('user_id', user.id);
+
+    const totalAplicacoes = todasAplicacoes ? todasAplicacoes.reduce((sum, a) => sum + Number(a.valor_atual), 0) : 0;
+    const totalBens = todosBens ? todosBens.reduce((sum, b) => sum + Number(b.valor_atual), 0) : 0;
+    const totalPatrimonio = totalAplicacoes + totalBens;
+
+    setStats([
+      {
+        title: "Patrimônio Total",
+        value: totalPatrimonio.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+        icon: Package,
+        change: { value: 0, type: "increase" as const }
+      },
+      {
+        title: "Aplicações",
+        value: totalAplicacoes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+        icon: TrendingUp,
+        change: { value: 0, type: "increase" as const }
+      },
+      {
+        title: "Imobilizado",
+        value: totalBens.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+        icon: CheckCircle,
+        change: { value: 0, type: "increase" as const }
+      },
+      {
+        title: "Receita Mensal",
+        value: "R$ 0,00",
+        icon: AlertTriangle,
+        change: { value: 0, type: "increase" as const }
+      }
+    ]);
   };
 
   const handleAddAsset = (newAsset: any) => {
