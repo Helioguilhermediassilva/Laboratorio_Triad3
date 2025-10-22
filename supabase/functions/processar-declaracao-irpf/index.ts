@@ -92,21 +92,43 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `Você é um especialista em extrair dados financeiros de declarações de IRPF.
+            content: `🚨 MODO ULTRA-RESTRITIVO ATIVADO - ZERO INVENÇÃO 🚨
 
-🚫 REGRA NÚMERO 1 - NUNCA INVENTAR DADOS:
-- VOCÊ ESTÁ ESTRITAMENTE PROIBIDO DE INVENTAR, FABRICAR OU ADIVINHAR QUALQUER INFORMAÇÃO
-- SE UM DADO NÃO EXISTE NO PDF, NÃO O INCLUA NO JSON
-- É MELHOR RETORNAR UM ARRAY VAZIO DO QUE INVENTAR DADOS
-- EXEMPLO: Se não houver VGBL no PDF, retorne previdencia: []
-- EXEMPLO: Se não houver aplicações, retorne aplicacoes: []
-- VOCÊ SERÁ VALIDADO - dados inventados serão rejeitados
+VOCÊ É UM EXTRATOR DE DADOS, NÃO UM CRIADOR.
+SÓ RETORNE O QUE VOCÊ VÊ. PONTO FINAL.
 
-🎯 SUA MISSÃO:
-- Extrair APENAS os dados que REALMENTE existem no PDF
-- Copiar valores EXATAMENTE como aparecem (não arredondar, não aproximar)
-- Usar apenas informações que você consegue VER no documento
-- Se não tiver certeza sobre um dado, NÃO o inclua
+═══════════════════════════════════════════════
+REGRA ABSOLUTA INEGOCIÁVEL:
+═══════════════════════════════════════════════
+
+❌ PROIBIDO:
+• Inventar qualquer informação
+• Deduzir dados não presentes
+• "Completar" informações parciais
+• Usar exemplos genéricos
+• "Melhorar" ou "formatar" dados
+• Aproximar valores
+• Criar endereços, nomes ou descrições
+
+✅ PERMITIDO:
+• Copiar LITERALMENTE o que está escrito
+• Deixar campos vazios se não houver dados
+• Retornar arrays vazios [] se não encontrar nada
+
+═══════════════════════════════════════════════
+MÉTODO DE TRABALHO:
+═══════════════════════════════════════════════
+
+1. Leia o PDF palavra por palavra
+2. Se você VÊ "BANCO BRADESCO S.A." → copie EXATAMENTE isso
+3. Se você VÊ "R$ 350.000,00" → extraia esse VALOR EXATO
+4. Se você VÊ "RUA SANTOS DUMONT 456" → copie LITERALMENTE
+5. Se NÃO VÊ algo → deixe vazio (null) ou omita
+
+⚠️ TESTE FINAL (OBRIGATÓRIO):
+Para CADA dado extraído, pergunte:
+"Onde EXATAMENTE no PDF está escrito isso?"
+• Se não consegue responder → REMOVA o dado
 
 📋 REGRAS DE CATEGORIZAÇÃO POR CÓDIGO (SEÇÃO BENS E DIREITOS):
 
@@ -241,49 +263,23 @@ Se esqueceu algo, VOLTE e extraia!`
           },
           {
             role: 'user',
-            content: `TAREFA: Leia este PDF de declaração de IRPF e extraia APENAS os dados que REALMENTE EXISTEM no documento.
+            content: `⚠️ ATENÇÃO: SISTEMA ANTI-INVENÇÃO ULTRA RIGOROSO ATIVO ⚠️
 
-⚠️ ADVERTÊNCIA CRÍTICA - SISTEMA ANTI-ALUCINAÇÃO ATIVO V2.0:
+EXTRAIA DADOS DESTE PDF DE IRPF.
+USE APENAS O QUE ESTÁ ESCRITO. NÃO INVENTE NADA.
 
-🔴 VOCÊ ESTÁ SOB MONITORAMENTO RIGOROSO:
-- Validadores automáticos verificarão CADA palavra que você retornar
-- Se não encontrar dados em uma categoria → retorne array VAZIO []
-- NUNCA complete informações faltantes → deixe o campo null ou array vazio
-- NUNCA aproxime valores → use os NÚMEROS EXATOS do PDF
+🔴 PROIBIÇÕES ABSOLUTAS:
+• Endereços genéricos: "Rua das Flores", "Avenida Central"
+• Veículos sem placa: "Honda Civic 2021"
+• Nomes vagos: "Apartamento", "Casa"
+• Bancos fictícios: "Banco X"
+• Qualquer dado que você "deduziu"
 
-🔴 LISTA NEGRA - NUNCA USE ESTES DADOS (são exemplos genéricos):
-- Endereços: "Rua das Flores", "Rua das Rosas", "Rua A", "Rua B", "Avenida Central", "Rua Principal"
-- Veículos: "Honda Civic 2021/2022/2023", "Fiat Uno", "VW Gol", "Ford Ka" (sem placa específica)
-- Nomes genéricos: "Apartamento", "Casa", "Veículo", "Carro" (sem endereço completo)
-- Contas: "Banco X", "Instituição Y", agências como "0001", "1234" sem contexto
-- CNPJs/CPFs: NUNCA invente numerações
-
-🟢 COMO PROCEDER CORRETAMENTE:
-1. Leia o PDF linha por linha na seção "BENS E DIREITOS"
-2. Para cada código + discriminação, copie EXATAMENTE o que está escrito
-3. Se a discriminação diz "APARTAMENTO RUA SANTOS DUMONT 456, AP 302, BAIRRO CENTRO, SÃO PAULO/SP"
-   → Use EXATAMENTE isso no nome/descrição
-4. Se não houver endereço completo → não inclua o item
-5. Se não houver placa do veículo → não inclua o veículo
-6. Se não houver saldo ou valor → não inclua o item
-
-🔴 VALIDAÇÃO FINAL (OBRIGATÓRIA):
-Antes de retornar, pergunte-se:
-- "Todos esses endereços/nomes estão LITERALMENTE no PDF?"
-- "Eu consigo apontar a linha EXATA onde cada informação aparece?"
-- "Há algum dado que eu 'completei' ou 'deduzi'?"
-Se a resposta for NÃO para qualquer pergunta → REMOVA esse item
-
-💀 PENALIDADE POR ALUCINAÇÃO:
-- Sua resposta será REJEITADA
-- O usuário verá erro de "dados inventados detectados"
-- É MELHOR retornar arrays VAZIOS do que dados inventados
-
-🔍 COMO TRABALHAR:
+🟢 O QUE FAZER:
 1. Leia o PDF linha por linha
-2. Anote APENAS o que você VÊ escrito
-3. Se não encontrar nada em uma seção, retorne []
-4. NÃO use exemplos, NÃO use dados de teste, NÃO adivinhe
+2. Copie EXATAMENTE o que vê
+3. Se não vê → não inclua
+4. Dúvida? → não inclua
 
 📄 PDF (base64): ${base64.substring(0, 200000)}
 
@@ -577,7 +573,7 @@ FORMATO FINAL: Retorne apenas o objeto JSON começando com { e terminando com },
       console.log('==============================');
       
       // ========================================
-      // VALIDAÇÃO ANTI-ALUCINAÇÃO RIGOROSA V2.0
+      // VALIDAÇÃO ANTI-ALUCINAÇÃO ULTRA RIGOROSA V3.0
       // ========================================
       
       const allNomes = [
@@ -593,25 +589,33 @@ FORMATO FINAL: Retorne apenas o objeto JSON começando com { e terminando com },
         ...(extractedData.aplicacoes || []).map((a: any) => a.instituicao || '')
       ].map(d => d.toUpperCase());
       
-      // LISTA FOCADA de padrões suspeitos (apenas combinações obviamente inventadas)
+      // LISTA ULTRA RIGOROSA de padrões inventados
       const suspiciousPatterns = [
-        // Palavras de exemplo/teste óbvias
+        // Palavras de teste/exemplo
         'GENERICO', 'EXEMPLO', 'TESTE', 'PADRAO', 'DEFAULT', 'SAMPLE', 
-        'PLACEHOLDER', 'A DEFINIR', 'INDEFINIDO',
+        'PLACEHOLDER', 'A DEFINIR', 'INDEFINIDO', 'N/A', 'NAO INFORMADO',
         
-        // Endereços genéricos completos que a IA inventa
+        // Endereços fictícios comuns
         'RUA DAS FLORES', 'RUA DAS ROSAS', 'RUA PRINCIPAL', 'AVENIDA CENTRAL',
         'RUA A,', 'RUA B,', 'RUA C,', 'RUA EXEMPLO', 'CIDADE MODELO',
+        'RUA 1,', 'RUA 2,', 'ENDERECO NAO INFORMADO',
         
-        // Veículos sem placa específica (marca + modelo + ano SEM mais detalhes)
-        'HONDA CIVIC 2020/2021', 'HONDA CIVIC 2021/2022', 'HONDA CIVIC 2022/2023',
-        'FIAT UNO 20', 'VOLKSWAGEN GOL 20', 'FORD KA 20',
+        // Veículos genéricos sem detalhes
+        'HONDA CIVIC 2020', 'HONDA CIVIC 2021', 'HONDA CIVIC 2022', 'HONDA CIVIC 2023',
+        'FIAT UNO 20', 'VW GOL 20', 'FORD KA 20', 'CHEVROLET ONIX 20',
+        'VEICULO SEM PLACA', 'CARRO NAO IDENTIFICADO',
         
-        // Bancos/instituições ficcionais
-        'BANCO X', 'INSTITUICAO Y', 'BANCO EXEMPLO',
+        // Instituições fictícias
+        'BANCO X', 'BANCO Y', 'INSTITUICAO Y', 'BANCO EXEMPLO',
+        'CORRETORA X', 'FINANCEIRA EXEMPLO',
         
-        // Valores/contas obviamente genéricos
-        'AGENCIA 0001', 'AGENCIA 1234', 'CONTA 00000-', 'CONTA 12345-'
+        // Contas/valores genéricos
+        'AGENCIA 0001', 'AGENCIA 1234', 'CONTA 00000-', 'CONTA 12345-',
+        'CONTA NAO INFORMADA', 'SEM NUMERO DE CONTA',
+        
+        // Nomes muito genéricos (sem contexto adicional)
+        'APARTAMENTO RESIDENCIAL', 'CASA RESIDENCIAL', 'TERRENO URBANO',
+        'IMOVEL NAO ESPECIFICADO', 'BEM NAO IDENTIFICADO'
       ];
       
       // Verificar nomes contra padrões suspeitos
@@ -642,6 +646,23 @@ FORMATO FINAL: Retorne apenas o objeto JSON começando com { e terminando com },
         }
       }
       
+      // Validação adicional: verificar valores suspeitos muito redondos (múltiplos de 10000)
+      const allValores = [
+        ...(extractedData.bens_imobilizados || []).map((b: any) => b.valor_atual || 0),
+        ...(extractedData.aplicacoes || []).map((a: any) => a.valor_atual || 0),
+        ...(extractedData.previdencia || []).map((p: any) => p.valor_acumulado || 0)
+      ];
+      
+      const valoresMuitoRedondos = allValores.filter(v => 
+        v > 0 && v % 10000 === 0 && v >= 100000
+      ).length;
+      
+      if (valoresMuitoRedondos >= 3) {
+        suspiciousCount++;
+        suspiciousItems.push(`VALORES SUSPEITOS: ${valoresMuitoRedondos} valores muito redondos (múltiplos de R$ 10.000) - possível invenção`);
+        console.warn('⚠️ Muitos valores redondos detectados:', valoresMuitoRedondos);
+      }
+      
       // REJEITAR se houver QUALQUER item suspeito (política de tolerância zero)
       if (suspiciousCount > 0) {
         console.error('❌ DADOS INVENTADOS DETECTADOS - Total de itens suspeitos:', suspiciousCount);
@@ -649,14 +670,18 @@ FORMATO FINAL: Retorne apenas o objeto JSON começando com { e terminando com },
         suspiciousItems.forEach((item, idx) => console.error(`  ${idx + 1}. ${item}`));
         
         return new Response(JSON.stringify({ 
-          error: `Foram detectados ${suspiciousCount} dado(s) suspeito(s) que parecem ter sido inventados pela IA. O sistema rejeitou a importação automaticamente por segurança. 
+          error: `❌ IMPORTAÇÃO REJEITADA: Detectados ${suspiciousCount} dado(s) que parecem ter sido INVENTADOS pela IA.
 
-Verifique se:
-1. O PDF é uma declaração de IRPF válida e completa
-2. O arquivo não está corrompido ou protegido por senha
-3. O texto do PDF é legível (não é imagem escaneada de baixa qualidade)
+🔍 O sistema identificou:
+${suspiciousItems.map((item, idx) => `${idx + 1}. ${item}`).join('\n')}
 
-Se o problema persistir, tente exportar o PDF novamente do programa da Receita Federal.`
+✅ Possíveis soluções:
+1. Verifique se o PDF é uma declaração de IRPF válida exportada do programa da Receita Federal
+2. Certifique-se de que o arquivo não está corrompido ou protegido
+3. Verifique se o PDF tem texto legível (não é apenas imagem escaneada)
+4. Se o problema persistir, entre em contato com o suporte
+
+⚠️ Por segurança, nenhum dado foi importado. É melhor não importar do que importar dados incorretos.`
         }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
