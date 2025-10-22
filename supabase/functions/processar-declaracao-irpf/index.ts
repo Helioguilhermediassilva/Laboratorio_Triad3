@@ -243,16 +243,41 @@ Se esqueceu algo, VOLTE e extraia!`
             role: 'user',
             content: `TAREFA: Leia este PDF de declaração de IRPF e extraia APENAS os dados que REALMENTE EXISTEM no documento.
 
-⚠️ ADVERTÊNCIA CRÍTICA - SISTEMA ANTI-ALUCINAÇÃO ATIVO:
-- VOCÊ ESTÁ SENDO MONITORADO POR VALIDADORES AUTOMÁTICOS
-- Se não encontrar dados de uma categoria, retorne array VAZIO []
-- Cada item que você retornar PRECISA existir LITERALMENTE no PDF
-- VALORES devem ser EXATAMENTE como estão escritos no PDF (sem aproximações)
-- NOMES, ENDEREÇOS, PLACAS devem ser EXATAMENTE como aparecem no PDF
-- NÃO use exemplos genéricos como "Rua das Flores", "Honda Civic 2021" etc
-- NÃO invente CNPJs, CPFs, números de conta ou agências
-- Se você INVENTAR qualquer dado, sua resposta será REJEITADA e reportada
-- CADA dado será validado contra o PDF original
+⚠️ ADVERTÊNCIA CRÍTICA - SISTEMA ANTI-ALUCINAÇÃO ATIVO V2.0:
+
+🔴 VOCÊ ESTÁ SOB MONITORAMENTO RIGOROSO:
+- Validadores automáticos verificarão CADA palavra que você retornar
+- Se não encontrar dados em uma categoria → retorne array VAZIO []
+- NUNCA complete informações faltantes → deixe o campo null ou array vazio
+- NUNCA aproxime valores → use os NÚMEROS EXATOS do PDF
+
+🔴 LISTA NEGRA - NUNCA USE ESTES DADOS (são exemplos genéricos):
+- Endereços: "Rua das Flores", "Rua das Rosas", "Rua A", "Rua B", "Avenida Central", "Rua Principal"
+- Veículos: "Honda Civic 2021/2022/2023", "Fiat Uno", "VW Gol", "Ford Ka" (sem placa específica)
+- Nomes genéricos: "Apartamento", "Casa", "Veículo", "Carro" (sem endereço completo)
+- Contas: "Banco X", "Instituição Y", agências como "0001", "1234" sem contexto
+- CNPJs/CPFs: NUNCA invente numerações
+
+🟢 COMO PROCEDER CORRETAMENTE:
+1. Leia o PDF linha por linha na seção "BENS E DIREITOS"
+2. Para cada código + discriminação, copie EXATAMENTE o que está escrito
+3. Se a discriminação diz "APARTAMENTO RUA SANTOS DUMONT 456, AP 302, BAIRRO CENTRO, SÃO PAULO/SP"
+   → Use EXATAMENTE isso no nome/descrição
+4. Se não houver endereço completo → não inclua o item
+5. Se não houver placa do veículo → não inclua o veículo
+6. Se não houver saldo ou valor → não inclua o item
+
+🔴 VALIDAÇÃO FINAL (OBRIGATÓRIA):
+Antes de retornar, pergunte-se:
+- "Todos esses endereços/nomes estão LITERALMENTE no PDF?"
+- "Eu consigo apontar a linha EXATA onde cada informação aparece?"
+- "Há algum dado que eu 'completei' ou 'deduzi'?"
+Se a resposta for NÃO para qualquer pergunta → REMOVA esse item
+
+💀 PENALIDADE POR ALUCINAÇÃO:
+- Sua resposta será REJEITADA
+- O usuário verá erro de "dados inventados detectados"
+- É MELHOR retornar arrays VAZIOS do que dados inventados
 
 🔍 COMO TRABALHAR:
 1. Leia o PDF linha por linha
@@ -551,7 +576,10 @@ FORMATO FINAL: Retorne apenas o objeto JSON começando com { e terminando com },
       }
       console.log('==============================');
       
-      // Validação rigorosa contra dados inventados
+      // ========================================
+      // VALIDAÇÃO ANTI-ALUCINAÇÃO RIGOROSA V2.0
+      // ========================================
+      
       const allNomes = [
         ...(extractedData.bens_imobilizados || []).map((b: any) => b.nome || ''),
         ...(extractedData.aplicacoes || []).map((a: any) => a.nome || ''),
@@ -560,55 +588,91 @@ FORMATO FINAL: Retorne apenas o objeto JSON começando com { e terminando com },
         ...(extractedData.dividas || []).map((d: any) => d.nome || '')
       ].map(n => n.toUpperCase());
       
-      // Padrões que indicam dados inventados/genéricos (expandido para detectar dados realistas)
-      const suspiciousPatterns = [
-        'GENERICO', 'EXEMPLO', 'TESTE', 'PADRAO', 'DEFAULT',
-        'SAMPLE', 'PLACEHOLDER', 'N/A', 'NAO INFORMADO',
-        'SEM INFORMACAO', 'A DEFINIR', 'INDEFINIDO',
-        // Endereços genéricos comuns que a IA inventa
-        'RUA DAS FLORES', 'RUA DAS ROSAS', 'RUA DO COMERCIO',
-        'RUA PRINCIPAL', 'AVENIDA CENTRAL', 'RUA A', 'RUA B',
-        // Veículos genéricos sem detalhes específicos
-        'HONDA CIVIC 2021', 'HONDA CIVIC 2022', 'HONDA CIVIC 2023',
-        'FIAT UNO', 'VOLKSWAGEN GOL', 'FORD KA',
-        // Nomes muito genéricos
-        'APARTAMENTO', 'CASA', 'VEICULO', 'CARRO', 'MOTO'
-      ];
-      
-      const allDescriptions = [
-        ...(extractedData.bens_imobilizados || []).map((b: any) => b.descricao || ''),
+      const allDescricoes = [
+        ...(extractedData.bens_imobilizados || []).map((b: any) => (b.descricao || '') + ' ' + (b.localizacao || '')),
         ...(extractedData.aplicacoes || []).map((a: any) => a.instituicao || '')
       ].map(d => d.toUpperCase());
       
+      // LISTA EXPANDIDA de padrões suspeitos (dados que a IA tipicamente inventa)
+      const suspiciousPatterns = [
+        // Palavras genéricas óbvias
+        'GENERICO', 'EXEMPLO', 'TESTE', 'PADRAO', 'DEFAULT', 'SAMPLE', 
+        'PLACEHOLDER', 'N/A', 'NAO INFORMADO', 'SEM INFORMACAO', 
+        'A DEFINIR', 'INDEFINIDO', 'SEM DADOS', 'INDISPONIVEL',
+        
+        // Endereços genéricos que a IA usa
+        'RUA DAS FLORES', 'RUA DAS ROSAS', 'RUA DO COMERCIO', 'RUA DO SOL',
+        'RUA PRINCIPAL', 'AVENIDA CENTRAL', 'AVENIDA PRINCIPAL',
+        'RUA A, ', 'RUA B, ', 'RUA C, ', 'RUA 1, ', 'RUA 2, ',
+        
+        // Veículos genéricos (marca + modelo + ano sem placa)
+        'HONDA CIVIC 2020', 'HONDA CIVIC 2021', 'HONDA CIVIC 2022', 'HONDA CIVIC 2023',
+        'FIAT UNO 20', 'VOLKSWAGEN GOL 20', 'FORD KA 20',
+        'CHEVROLET ONIX 20', 'TOYOTA COROLLA 20', 'HYUNDAI HB20 20',
+        
+        // Nomes muito genéricos sem especificação
+        'APARTAMENTO ', 'CASA ', 'VEICULO ', 'CARRO ', 'MOTO ',
+        'IMOVEL ', 'TERRENO ', 'APLICACAO ', 'INVESTIMENTO ',
+        
+        // Bancos/instituições genéricas
+        'BANCO X', 'INSTITUICAO Y', 'BANCO DO BRASIL (sem mais detalhes)',
+        'CAIXA ECONOMICA (sem mais detalhes)',
+        
+        // Valores/contas genéricas
+        'CONTA CORRENTE (sem banco)', 'POUPANCA (sem banco)',
+        'AGENCIA 0001', 'AGENCIA 1234', 'CONTA 00000'
+      ];
+      
+      // Verificar nomes contra padrões suspeitos
+      let suspiciousCount = 0;
+      const suspiciousItems: string[] = [];
+      
+      // Verificar nomes suspeitos
       for (const nome of allNomes) {
+        if (!nome) continue;
         for (const pattern of suspiciousPatterns) {
           if (nome.includes(pattern)) {
-            console.error('❌ DADOS INVENTADOS DETECTADOS:', nome);
-            return new Response(JSON.stringify({ 
-              error: 'Foram detectados dados inventados pela IA. O sistema rejeitou a importação. Por favor, verifique se o PDF está legível e tente novamente.' 
-            }), {
-              status: 400,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
+            suspiciousCount++;
+            suspiciousItems.push(`NOME: "${nome}" (contém "${pattern}")`);
+            console.warn('⚠️ Item suspeito detectado:', nome, '→ pattern:', pattern);
           }
         }
       }
       
-      for (const desc of allDescriptions) {
+      // Verificar descrições suspeitas
+      for (const desc of allDescricoes) {
+        if (!desc) continue;
         for (const pattern of suspiciousPatterns) {
           if (desc.includes(pattern)) {
-            console.error('❌ DADOS INVENTADOS DETECTADOS na descrição:', desc);
-            return new Response(JSON.stringify({ 
-              error: 'Foram detectados dados inventados pela IA. O sistema rejeitou a importação. Por favor, verifique se o PDF está legível e tente novamente.' 
-            }), {
-              status: 400,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
+            suspiciousCount++;
+            suspiciousItems.push(`DESCRIÇÃO: "${desc.substring(0, 100)}" (contém "${pattern}")`);
+            console.warn('⚠️ Descrição suspeita detectada:', desc.substring(0, 100), '→ pattern:', pattern);
           }
         }
       }
       
-      // Validar se há dados reais extraídos
+      // REJEITAR se houver QUALQUER item suspeito (política de tolerância zero)
+      if (suspiciousCount > 0) {
+        console.error('❌ DADOS INVENTADOS DETECTADOS - Total de itens suspeitos:', suspiciousCount);
+        console.error('Itens problemáticos:');
+        suspiciousItems.forEach((item, idx) => console.error(`  ${idx + 1}. ${item}`));
+        
+        return new Response(JSON.stringify({ 
+          error: `Foram detectados ${suspiciousCount} dado(s) suspeito(s) que parecem ter sido inventados pela IA. O sistema rejeitou a importação automaticamente por segurança. 
+
+Verifique se:
+1. O PDF é uma declaração de IRPF válida e completa
+2. O arquivo não está corrompido ou protegido por senha
+3. O texto do PDF é legível (não é imagem escaneada de baixa qualidade)
+
+Se o problema persistir, tente exportar o PDF novamente do programa da Receita Federal.`
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      // Validar quantidade mínima de dados extraídos
       const totalItems = 
         (extractedData.rendimentos?.length || 0) +
         (extractedData.bens_imobilizados?.length || 0) +
@@ -617,17 +681,25 @@ FORMATO FINAL: Retorne apenas o objeto JSON começando com { e terminando com },
         (extractedData.contas_bancarias?.length || 0) +
         (extractedData.dividas?.length || 0);
       
+      console.log('📊 Total de itens extraídos:', totalItems);
+      console.log('  - Rendimentos:', extractedData.rendimentos?.length || 0);
+      console.log('  - Bens Imobilizados:', extractedData.bens_imobilizados?.length || 0);
+      console.log('  - Aplicações:', extractedData.aplicacoes?.length || 0);
+      console.log('  - Previdência:', extractedData.previdencia?.length || 0);
+      console.log('  - Contas Bancárias:', extractedData.contas_bancarias?.length || 0);
+      console.log('  - Dívidas:', extractedData.dividas?.length || 0);
+      
       if (totalItems === 0 && !extractedData.contribuinte?.nome) {
-        console.error('No data extracted from PDF');
+        console.error('❌ Nenhum dado extraído do PDF');
         return new Response(JSON.stringify({ 
-          error: 'Nenhum dado foi extraído do PDF. O arquivo pode estar corrompido, protegido por senha, ou em formato não suportado. Por favor, verifique o arquivo e tente novamente.' 
+          error: 'Nenhum dado foi extraído do PDF. Possíveis causas:\n\n1. O PDF não é uma declaração de IRPF válida\n2. O arquivo está corrompido ou protegido por senha\n3. O PDF é uma imagem escaneada sem OCR\n4. O formato do arquivo não é suportado\n\nPor favor, verifique o arquivo e tente novamente.' 
         }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
       
-      console.log('Validation passed - Total items extracted:', totalItems);
+      console.log('✅ Validação anti-alucinação passou - Total items extracted:', totalItems);
     } catch (parseError) {
       console.error('Failed to parse AI response:', parseError);
       return new Response(JSON.stringify({ error: 'Failed to parse extracted data' }), {
