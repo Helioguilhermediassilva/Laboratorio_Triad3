@@ -77,6 +77,11 @@ serve(async (req) => {
     const base64 = btoa(binary);
     
     console.log('File size:', arrayBuffer.byteLength, 'bytes');
+    
+    // Log para debug - primeiros caracteres do PDF
+    const pdfPreview = base64.substring(0, 500);
+    console.log('PDF preview (first 500 base64 chars):', pdfPreview.substring(0, 100) + '...');
+    console.log('Base64 length:', base64.length);
 
     // Use Lovable AI to extract and categorize data with improved prompt
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -88,49 +93,51 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-pro',
+        model: 'google/gemini-2.5-flash',
         messages: [
           {
             role: 'system',
-            content: `🚨 MODO ULTRA-RESTRITIVO ATIVADO - ZERO INVENÇÃO 🚨
+            content: `VOCÊ É UM ROBÔ DE CÓPIA DE TEXTO. NÃO É UM CRIADOR.
 
-VOCÊ É UM EXTRATOR DE DADOS, NÃO UM CRIADOR.
-SÓ RETORNE O QUE VOCÊ VÊ. PONTO FINAL.
+════════════════════════════════════════
+MISSÃO: COPIAR TEXTO DO PDF
+════════════════════════════════════════
 
-═══════════════════════════════════════════════
-REGRA ABSOLUTA INEGOCIÁVEL:
-═══════════════════════════════════════════════
+✅ ÚNICO TRABALHO PERMITIDO:
+Ler o PDF e COPIAR exatamente o que está escrito.
 
-❌ PROIBIDO:
-• Inventar qualquer informação
-• Deduzir dados não presentes
-• "Completar" informações parciais
-• Usar exemplos genéricos
-• "Melhorar" ou "formatar" dados
-• Aproximar valores
-• Criar endereços, nomes ou descrições
+❌ TRABALHOS PROIBIDOS:
+• Inventar nomes
+• Inventar endereços
+• Inventar valores
+• Inventar empresas
+• Inventar qualquer coisa
 
-✅ PERMITIDO:
-• Copiar LITERALMENTE o que está escrito
-• Deixar campos vazios se não houver dados
-• Retornar arrays vazios [] se não encontrar nada
+════════════════════════════════════════
+EXEMPLOS DE DADOS PROIBIDOS:
+════════════════════════════════════════
 
-═══════════════════════════════════════════════
-MÉTODO DE TRABALHO:
-═══════════════════════════════════════════════
+❌ NUNCA retorne estes dados (são INVENÇÕES):
+• Nome: "João da Silva", "Maria Santos", "José Pereira"
+• Empresa: "Empresa Modelo LTDA", "Companhia Exemplo"
+• Endereço: "Rua das Flores", "Rua Principal", "Avenida Central"
+• Veículo: "Honda Civic 2021", "Fiat Uno 2020"
+• Banco: "Banco Exemplo", "Banco X"
 
-1. Leia o PDF palavra por palavra
-2. Se você VÊ "BANCO BRADESCO S.A." → copie EXATAMENTE isso
-3. Se você VÊ "R$ 350.000,00" → extraia esse VALOR EXATO
-4. Se você VÊ "RUA SANTOS DUMONT 456" → copie LITERALMENTE
-5. Se NÃO VÊ algo → deixe vazio (null) ou omita
+✅ SOMENTE retorne dados que você REALMENTE VÊ no PDF
 
-⚠️ TESTE FINAL (OBRIGATÓRIO):
-Para CADA dado extraído, pergunte:
-"Onde EXATAMENTE no PDF está escrito isso?"
-• Se não consegue responder → REMOVA o dado
+════════════════════════════════════════
+REGRA DE OURO:
+════════════════════════════════════════
 
-📋 REGRAS DE CATEGORIZAÇÃO POR CÓDIGO (SEÇÃO BENS E DIREITOS):
+Para CADA palavra que você colocar na resposta, pergunte:
+"Eu CONSIGO APONTAR onde isso está escrito no PDF?"
+
+Se NÃO → REMOVA da resposta
+
+════════════════════════════════════════
+CATEGORIZAÇÃO POR CÓDIGO:
+════════════════════════════════════════
 
 🏠 IMÓVEIS (Código 01-09) → bens_imobilizados:
 - 01 = Prédio residencial
@@ -263,25 +270,20 @@ Se esqueceu algo, VOLTE e extraia!`
           },
           {
             role: 'user',
-            content: `⚠️ ATENÇÃO: SISTEMA ANTI-INVENÇÃO ULTRA RIGOROSO ATIVO ⚠️
+            content: `LEIA O PDF E COPIE OS DADOS EXATOS.
 
-EXTRAIA DADOS DESTE PDF DE IRPF.
-USE APENAS O QUE ESTÁ ESCRITO. NÃO INVENTE NADA.
+🔴 DADOS PROIBIDOS (são invenções da sua imaginação):
+• "João da Silva", "Maria Santos" → INVENTADOS
+• "Rua das Flores", "Avenida Central" → INVENTADOS  
+• "Honda Civic 2021", "Fiat Uno" → INVENTADOS
+• "Empresa Modelo LTDA" → INVENTADO
 
-🔴 PROIBIÇÕES ABSOLUTAS:
-• Endereços genéricos: "Rua das Flores", "Avenida Central"
-• Veículos sem placa: "Honda Civic 2021"
-• Nomes vagos: "Apartamento", "Casa"
-• Bancos fictícios: "Banco X"
-• Qualquer dado que você "deduziu"
+✅ SEU TRABALHO:
+Copiar palavra por palavra o que REALMENTE está no PDF.
 
-🟢 O QUE FAZER:
-1. Leia o PDF linha por linha
-2. Copie EXATAMENTE o que vê
-3. Se não vê → não inclua
-4. Dúvida? → não inclua
+📄 PDF: ${base64.substring(0, 200000)}
 
-📄 PDF (base64): ${base64.substring(0, 200000)}
+📤 RETORNE JSON COM DADOS REAIS:
 
 🎯 CHECKLIST DE EXTRAÇÃO:
 
@@ -573,8 +575,27 @@ FORMATO FINAL: Retorne apenas o objeto JSON começando com { e terminando com },
       console.log('==============================');
       
       // ========================================
-      // VALIDAÇÃO ANTI-ALUCINAÇÃO ULTRA RIGOROSA V3.0
+      // VALIDAÇÃO ANTI-ALUCINAÇÃO ULTRA RIGOROSA V4.0
       // ========================================
+      
+      // Verificar se o próprio contribuinte parece inventado
+      const contribuinteNome = (extractedData.contribuinte?.nome || '').toUpperCase();
+      const nomesGenericos = [
+        'JOÃO', 'MARIA', 'JOSÉ', 'SILVA', 'SANTOS', 'PEREIRA',
+        'EXEMPLO', 'MODELO', 'TESTE', 'FULANO', 'CICLANO'
+      ];
+      
+      let nomeContribuinteSuspeito = false;
+      if (contribuinteNome) {
+        const palavrasNome = contribuinteNome.split(' ');
+        const palavrasGenericas = palavrasNome.filter(p => nomesGenericos.includes(p));
+        
+        // Se o nome tem 2+ palavras genéricas E é curto (2-3 palavras), é suspeito
+        if (palavrasGenericas.length >= 2 && palavrasNome.length <= 3) {
+          nomeContribuinteSuspeito = true;
+          console.warn('⚠️ Nome do contribuinte parece inventado:', contribuinteNome);
+        }
+      }
       
       const allNomes = [
         ...(extractedData.bens_imobilizados || []).map((b: any) => b.nome || ''),
@@ -588,6 +609,11 @@ FORMATO FINAL: Retorne apenas o objeto JSON começando com { e terminando com },
         ...(extractedData.bens_imobilizados || []).map((b: any) => (b.descricao || '') + ' ' + (b.localizacao || '')),
         ...(extractedData.aplicacoes || []).map((a: any) => a.instituicao || '')
       ].map(d => d.toUpperCase());
+      
+      // Adicionar fontes pagadoras à lista de verificação
+      const allFontesPagadoras = (extractedData.rendimentos || [])
+        .map((r: any) => r.fonte_pagadora || '')
+        .map(f => f.toUpperCase());
       
       // LISTA ULTRA RIGOROSA de padrões inventados
       const suspiciousPatterns = [
@@ -609,6 +635,10 @@ FORMATO FINAL: Retorne apenas o objeto JSON começando com { e terminando com },
         'BANCO X', 'BANCO Y', 'INSTITUICAO Y', 'BANCO EXEMPLO',
         'CORRETORA X', 'FINANCEIRA EXEMPLO',
         
+        // Empresas genéricas
+        'EMPRESA MODELO', 'COMPANHIA EXEMPLO', 'EMPRESA EXEMPLO',
+        'LTDA MODELO', 'EXEMPLO LTDA',
+        
         // Contas/valores genéricos
         'AGENCIA 0001', 'AGENCIA 1234', 'CONTA 00000-', 'CONTA 12345-',
         'CONTA NAO INFORMADA', 'SEM NUMERO DE CONTA',
@@ -621,6 +651,24 @@ FORMATO FINAL: Retorne apenas o objeto JSON começando com { e terminando com },
       // Verificar nomes contra padrões suspeitos
       let suspiciousCount = 0;
       const suspiciousItems: string[] = [];
+      
+      // Verificar se o nome do contribuinte é suspeito
+      if (nomeContribuinteSuspeito) {
+        suspiciousCount++;
+        suspiciousItems.push(`CONTRIBUINTE: "${contribuinteNome}" (nome parece inventado - combinação de palavras genéricas)`);
+      }
+      
+      // Verificar fontes pagadoras suspeitas
+      for (const fonte of allFontesPagadoras) {
+        if (!fonte) continue;
+        for (const pattern of suspiciousPatterns) {
+          if (fonte.includes(pattern)) {
+            suspiciousCount++;
+            suspiciousItems.push(`FONTE PAGADORA: "${fonte}" (contém "${pattern}")`);
+            console.warn('⚠️ Fonte pagadora suspeita detectada:', fonte, '→ pattern:', pattern);
+          }
+        }
+      }
       
       // Verificar nomes suspeitos
       for (const nome of allNomes) {
@@ -675,13 +723,21 @@ FORMATO FINAL: Retorne apenas o objeto JSON começando com { e terminando com },
 🔍 O sistema identificou:
 ${suspiciousItems.map((item, idx) => `${idx + 1}. ${item}`).join('\n')}
 
-✅ Possíveis soluções:
-1. Verifique se o PDF é uma declaração de IRPF válida exportada do programa da Receita Federal
-2. Certifique-se de que o arquivo não está corrompido ou protegido
-3. Verifique se o PDF tem texto legível (não é apenas imagem escaneada)
-4. Se o problema persistir, entre em contato com o suporte
+⚠️ A IA está retornando dados genéricos (como "João da Silva", "Rua das Flores", "Honda Civic 2021", "Empresa Modelo LTDA") ao invés de extrair os dados REAIS do seu PDF.
 
-⚠️ Por segurança, nenhum dado foi importado. É melhor não importar do que importar dados incorretos.`
+✅ Possíveis causas:
+1. O PDF pode estar com problemas de codificação de texto
+2. O arquivo pode ser uma imagem escaneada sem OCR legível
+3. O PDF pode estar protegido ou corrompido
+4. O formato do arquivo pode não ser compatível
+
+💡 Sugestões:
+1. Abra o PDF e tente copiar/colar algum texto - se não conseguir, o arquivo é uma imagem
+2. Se for imagem, use um software de OCR antes de importar
+3. Exporte novamente o PDF do programa da Receita Federal
+4. Certifique-se de que o PDF contém texto selecionável
+
+⚠️ Por segurança, NENHUM dado foi importado. É melhor não importar do que importar dados incorretos.`
         }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
