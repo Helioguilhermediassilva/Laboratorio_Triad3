@@ -88,100 +88,142 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'claude-sonnet-4-5',
         messages: [
           {
             role: 'system',
-            content: `Você é um especialista em análise de declarações de IRPF brasileiras. Extraia TODOS os dados estruturados do documento e categorize automaticamente em: rendimentos, bens imobilizados, aplicações financeiras, previdência, contas bancárias e dívidas. Retorne APENAS um JSON válido, sem markdown.`
+            content: `Você é um especialista em análise de declarações de IRPF brasileiras. Sua missão é extrair TODOS os dados estruturados do PDF da declaração com MÁXIMA PRECISÃO, incluindo:
+
+- TODOS os rendimentos com valores exatos
+- TODOS os bens e direitos, categorizando corretamente
+- TODAS as aplicações financeiras (ações, fundos, títulos)
+- TODOS os planos de previdência (PGBL, VGBL)
+- TODAS as contas bancárias com saldos
+- TODAS as dívidas e ônus reais
+
+REGRAS CRÍTICAS:
+1. Use APENAS os valores permitidos para cada campo tipo
+2. Extraia valores EXATOS do PDF, sem arredondamentos
+3. Categorize corretamente cada item
+4. Não invente ou omita dados
+5. Retorne APENAS JSON válido, sem markdown ou comentários`
           },
           {
             role: 'user',
-            content: `Analise esta declaração de IRPF em PDF (base64) e extraia TODOS os dados, categorizando-os corretamente.
+            content: `Analise minuciosamente esta declaração de IRPF em PDF (base64) e extraia TODOS os dados financeiros, categorizando-os nas estruturas corretas.
 
-IMPORTANTE: 
-- Extraia TODOS os rendimentos (salários, pró-labore, dividendos, etc)
-- Categorize bens e direitos em: imóveis (imobilizado), ações/fundos (aplicações), previdência privada, contas bancárias
-- Extraia TODAS as dívidas
-- Use valores EXATOS do documento
-- Para aplicações: identifique tipo (Ação, FII, CDB, etc), instituição, ticker se houver
-- Para previdência: identifique PGBL, VGBL, instituição
-- Para contas: identifique banco, agência, número da conta, tipo
+VALORES PERMITIDOS POR CATEGORIA (use EXATAMENTE estes valores):
 
-Arquivo em base64: ${base64.substring(0, 100000)}
+📊 APLICAÇÕES - tipo deve ser EXATAMENTE um destes:
+  - "CDB"
+  - "LCI" 
+  - "LCA"
+  - "Tesouro Direto"
+  - "Fundo"
+  - "Ações" (para ações individuais)
+  - "Outro" (para FII, ETF, etc)
 
-Retorne um JSON com esta estrutura:
+🏦 CONTAS BANCÁRIAS - tipo_conta deve ser EXATAMENTE um destes:
+  - "Corrente"
+  - "Poupança"
+  - "Salário"
+  - "Investimento"
+
+💳 DÍVIDAS - tipo deve ser EXATAMENTE um destes:
+  - "Financiamento Imobiliário"
+  - "Financiamento Veículo"
+  - "Empréstimo Pessoal"
+  - "Cartão de Crédito"
+  - "Outro"
+
+🏠 PREVIDÊNCIA - tipo deve ser EXATAMENTE um destes:
+  - "PGBL"
+  - "VGBL"
+  - "FAPI"
+
+INSTRUÇÕES DE EXTRAÇÃO:
+- Bens e Direitos código 01-09 → bens_imobilizados (Imóveis)
+- Bens e Direitos código 11-19 → bens_imobilizados (Veículos)
+- Bens e Direitos código 31-49 → aplicacoes (ações, fundos, títulos)
+- Bens e Direitos código 51-69 → contas_bancarias
+- Bens e Direitos código 71-72 → previdencia
+- Dívidas e Ônus → dividas
+
+Arquivo PDF em base64: ${base64.substring(0, 150000)}
+
+Retorne APENAS este JSON (sem \`\`\`json):
 {
   "contribuinte": {
-    "nome": "string",
-    "cpf": "string"
+    "nome": "string do PDF",
+    "cpf": "string do PDF"
   },
   "declaracao": {
     "ano": number,
     "status": "Importada",
-    "recibo": "string ou null"
+    "recibo": "número do recibo ou null"
   },
   "rendimentos": [
     {
-      "fonte_pagadora": "string",
-      "cnpj": "string",
-      "tipo": "Salário|Pró-labore|Dividendos|Outros",
-      "valor": number,
-      "irrf": number,
-      "contribuicao_previdenciaria": number,
-      "decimo_terceiro": number
+      "fonte_pagadora": "nome completo",
+      "cnpj": "XX.XXX.XXX/XXXX-XX ou vazio",
+      "tipo": "Salário ou Pró-labore ou Dividendos ou Outros",
+      "valor": valor_numero,
+      "irrf": valor_numero,
+      "contribuicao_previdenciaria": valor_numero,
+      "decimo_terceiro": valor_numero
     }
   ],
   "bens_imobilizados": [
     {
-      "nome": "string (nome do bem)",
-      "categoria": "Imóvel|Veículo|Outro",
-      "descricao": "string (descrição detalhada)",
-      "valor_aquisicao": number,
-      "valor_atual": number,
-      "localizacao": "string (endereço ou localização)"
+      "nome": "nome descritivo do bem",
+      "categoria": "Imóvel ou Veículo ou Outro",
+      "descricao": "descrição detalhada do PDF",
+      "valor_aquisicao": valor_ano_anterior,
+      "valor_atual": valor_ano_declaracao,
+      "localizacao": "endereço completo ou localização"
     }
   ],
   "aplicacoes": [
     {
-      "nome": "string (nome da aplicação/ticker)",
-      "tipo": "Ação|FII|CDB|Tesouro Direto|Fundo|Outro",
-      "instituicao": "string (corretora/banco)",
-      "valor_aplicado": number,
-      "valor_atual": number
+      "nome": "nome/ticker da aplicação",
+      "tipo": "USE VALORES PERMITIDOS ACIMA",
+      "instituicao": "nome da corretora/banco",
+      "valor_aplicado": valor_ano_anterior,
+      "valor_atual": valor_ano_declaracao
     }
   ],
   "previdencia": [
     {
-      "nome": "string (nome do plano)",
-      "tipo": "PGBL|VGBL|FAPI",
-      "instituicao": "string",
-      "valor_acumulado": number,
-      "contribuicao_mensal": number
+      "nome": "nome do plano",
+      "tipo": "PGBL ou VGBL ou FAPI",
+      "instituicao": "seguradora/banco",
+      "valor_acumulado": valor_atual,
+      "contribuicao_mensal": estimativa_mensal
     }
   ],
   "contas_bancarias": [
     {
-      "banco": "string",
-      "agencia": "string",
-      "numero_conta": "string",
-      "tipo_conta": "Conta Corrente|Poupança|Conta Investimento",
-      "saldo_atual": number
+      "banco": "nome do banco",
+      "agencia": "número agência",
+      "numero_conta": "número conta",
+      "tipo_conta": "USE VALORES PERMITIDOS ACIMA",
+      "saldo_atual": saldo_declarado
     }
   ],
   "dividas": [
     {
-      "nome": "string (descrição da dívida)",
-      "tipo": "Financiamento|Empréstimo|Cartão de Crédito|Outro",
-      "credor": "string",
-      "valor_original": number,
-      "saldo_devedor": number
+      "nome": "descrição da dívida",
+      "tipo": "USE VALORES PERMITIDOS ACIMA",
+      "credor": "nome do credor",
+      "valor_original": valor_original_contratado,
+      "saldo_devedor": saldo_atual_devido
     }
   ]
 }`
           }
         ],
         temperature: 0.1,
-        max_tokens: 6000
+        max_completion_tokens: 8000
       }),
     });
 
