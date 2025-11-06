@@ -88,9 +88,9 @@ export default function ImportarDeclaracaoModal({
         throw new Error("Você precisa estar autenticado para importar declarações");
       }
 
-      setProgresso(20);
-      setEtapaAtual("Processando declaração...");
-      setTempoEstimado("Aguarde, isso pode levar de 1 a 3 minutos");
+      setProgresso(50);
+      setEtapaAtual("Processando arquivo...");
+      setTempoEstimado("Aguarde alguns instantes");
 
       // Prepare form data
       const formData = new FormData();
@@ -117,83 +117,27 @@ export default function ImportarDeclaracaoModal({
         throw new Error('Falha ao enviar a declaração');
       }
 
-      // Declaration is being processed, start polling
+      // Declaration imported successfully
       const declaracaoId = data.declaracao_id;
-      setProgresso(40);
-      setEtapaAtual("Aguardando processamento com IA...");
-      setTempoEstimado("Analisando PDF e extraindo dados");
+      setProgresso(100);
+      setEtapaAtual("Concluído!");
 
-      // Poll for status
-      let attempts = 0;
-      const maxAttempts = 60; // 5 minutos (60 * 5 segundos)
-      const pollInterval = setInterval(async () => {
-        attempts++;
-        
-        // Update progress
-        const currentProgress = 40 + (attempts / maxAttempts) * 50;
-        setProgresso(Math.min(currentProgress, 90));
+      toast({
+        title: "✅ Declaração importada com sucesso!",
+        description: `Declaração de ${anoDeclaracao} importada.`,
+        duration: 5000
+      });
 
-        const { data: declaracao, error: queryError } = await supabase
-          .from('declaracoes_irpf')
-          .select('status')
-          .eq('id', declaracaoId)
-          .single();
-
-        if (queryError || !declaracao) {
-          clearInterval(pollInterval);
-          throw new Error('Erro ao verificar status da declaração');
-        }
-
-        if (declaracao.status === 'Importada') {
-          clearInterval(pollInterval);
-          setProgresso(100);
-          setEtapaAtual("Concluído!");
-
-          toast({
-            title: "✅ Declaração importada com sucesso!",
-            description: `Declaração de ${anoDeclaracao} processada. Atualize a página para ver os dados.`,
-            duration: 8000
-          });
-
-          // Notify parent component
-          onDeclaracaoImportada({
-            id: declaracaoId,
-            ano: parseInt(anoDeclaracao),
-            status: "Importada",
-            prazoLimite: `${anoDeclaracao}-04-30`,
-            arquivoOriginal: arquivo.name,
-            dataImportacao: new Date().toISOString(),
-            observacoes
-          });
-
-          // Reset and close
-          setCarregando(false);
-          setArquivo(null);
-          setTipoArquivo("");
-          setAnoDeclaracao("");
-          setObservacoes("");
-          setProgresso(0);
-          setEtapaAtual("");
-          setTempoEstimado("");
-          onOpenChange(false);
-          
-          // Reload page after 2 seconds
-          setTimeout(() => {
-            window.location.reload();
-          }, 2000);
-        } else if (declaracao.status.startsWith('Erro')) {
-          clearInterval(pollInterval);
-          throw new Error(declaracao.status);
-        } else if (attempts >= maxAttempts) {
-          clearInterval(pollInterval);
-          throw new Error('Timeout: O processamento está demorando mais que o esperado. Verifique novamente em alguns minutos.');
-        }
-      }, 5000); // Poll every 5 seconds
-      
-      // Force reload after a short delay to ensure data is visible
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
+      // Notify parent component
+      onDeclaracaoImportada({
+        id: declaracaoId,
+        ano: parseInt(anoDeclaracao),
+        status: "Importada",
+        prazoLimite: `${anoDeclaracao}-04-30`,
+        arquivoOriginal: arquivo.name,
+        dataImportacao: new Date().toISOString(),
+        observacoes
+      });
 
       // Reset form
       setArquivo(null);
@@ -202,7 +146,13 @@ export default function ImportarDeclaracaoModal({
       setObservacoes("");
       setProgresso(0);
       setEtapaAtual("");
+      setTempoEstimado("");
       onOpenChange(false);
+
+      // Reload page after short delay
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
 
     } catch (error: any) {
       console.error('Import error:', error);
@@ -261,7 +211,7 @@ export default function ImportarDeclaracaoModal({
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Importe declarações em PDF. O sistema extrairá automaticamente os dados usando OCR e categorizará rendimentos, bens, dívidas e aplicações.
+              Importe declarações do Imposto de Renda em diversos formatos. O arquivo será armazenado de forma segura.
             </AlertDescription>
           </Alert>
 
