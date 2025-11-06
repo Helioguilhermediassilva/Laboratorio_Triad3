@@ -83,10 +83,12 @@ serve(async (req) => {
       });
     }
 
-    // Start background processing
+    // Start background processing with proper error tracking
     const processDeclaration = async () => {
+      let currentStep = 'inicio';
       try {
-        console.log('Starting background processing for declaration:', declaracao.id);
+        currentStep = 'reading-file';
+        console.log('🚀 Starting background processing for declaration:', declaracao.id);
 
         // Read file content as base64
         const arrayBuffer = await file.arrayBuffer();
@@ -100,11 +102,14 @@ serve(async (req) => {
         }
         const base64 = btoa(binary);
         
-        console.log('File size:', arrayBuffer.byteLength, 'bytes');
-        console.log('Base64 length:', base64.length);
+        console.log('📄 File size:', arrayBuffer.byteLength, 'bytes');
+        console.log('📄 Base64 length:', base64.length);
+        
+        currentStep = 'calling-ai';
 
         // Call Lovable AI with simplified prompt
         const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+        console.log('🤖 Calling AI API...');
         
         const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
@@ -299,9 +304,10 @@ Lembre-se: retorne APENAS o JSON no formato especificado, sem nenhum texto adici
           }),
         });
 
+        currentStep = 'processing-ai-response';
         if (!aiResponse.ok) {
           const errorText = await aiResponse.text();
-          console.error('AI API error:', aiResponse.status, errorText);
+          console.error('❌ AI API error:', aiResponse.status, errorText);
           
           // Update declaration with error status
           await supabaseClient
@@ -313,10 +319,12 @@ Lembre-se: retorne APENAS o JSON no formato especificado, sem nenhum texto adici
         }
 
         const responseText = await aiResponse.text();
-        console.log('AI response received, length:', responseText.length);
+        console.log('✅ AI response received, length:', responseText.length);
+        
+        currentStep = 'validating-response';
         
         if (!responseText || responseText.trim().length === 0) {
-          console.error('Empty AI response');
+          console.error('❌ Empty AI response');
           await supabaseClient
             .from('declaracoes_irpf')
             .update({ status: 'Erro: Resposta vazia da IA' })
@@ -324,11 +332,12 @@ Lembre-se: retorne APENAS o JSON no formato especificado, sem nenhum texto adici
           return;
         }
 
+        currentStep = 'parsing-ai-result';
         let aiResult;
         try {
           aiResult = JSON.parse(responseText);
         } catch (parseError) {
-          console.error('Failed to parse AI response as JSON:', parseError);
+          console.error('❌ Failed to parse AI response as JSON:', parseError);
           console.error('Response text:', responseText.substring(0, 500));
           await supabaseClient
             .from('declaracoes_irpf')
@@ -337,10 +346,11 @@ Lembre-se: retorne APENAS o JSON no formato especificado, sem nenhum texto adici
           return;
         }
     
+        currentStep = 'extracting-data';
         let extractedData;
         try {
           const content = aiResult.choices[0].message.content;
-          console.log('=== RAW AI CONTENT ===');
+          console.log('🔍 === RAW AI CONTENT ===');
           console.log(content.substring(0, 1000));
           console.log('=== END RAW CONTENT ===');
       
@@ -386,6 +396,7 @@ Lembre-se: retorne APENAS o JSON no formato especificado, sem nenhum texto adici
             (extractedData.contas_bancarias?.length || 0) +
             (extractedData.dividas?.length || 0);
           
+          currentStep = 'validating-extracted-data';
           if (totalItems === 0) {
             console.error('❌ Nenhum dado extraído do PDF');
             await supabaseClient
@@ -397,7 +408,7 @@ Lembre-se: retorne APENAS o JSON no formato especificado, sem nenhum texto adici
           
           console.log('✅ Total de itens extraídos:', totalItems);
         } catch (parseError) {
-          console.error('Failed to parse AI response:', parseError);
+          console.error('❌ Failed to parse AI response:', parseError);
           await supabaseClient
             .from('declaracoes_irpf')
             .update({ status: 'Erro ao processar dados' })
@@ -406,6 +417,8 @@ Lembre-se: retorne APENAS o JSON no formato especificado, sem nenhum texto adici
         }
 
         // Update declaration with extracted data
+        currentStep = 'updating-declaration';
+        console.log('💾 Updating declaration record...');
         const declaracaoData = extractedData.declaracao_irpf || {};
         const { error: updateError } = await supabaseClient
           .from('declaracoes_irpf')
@@ -420,7 +433,7 @@ Lembre-se: retorne APENAS o JSON no formato especificado, sem nenhum texto adici
           .eq('id', declaracao.id);
 
         if (updateError) {
-          console.error('Declaration update error:', updateError);
+          console.error('❌ Declaration update error:', updateError);
           return;
         }
 
@@ -436,6 +449,8 @@ Lembre-se: retorne APENAS o JSON no formato especificado, sem nenhum texto adici
         const dataAtual = new Date().toISOString().split('T')[0];
 
         // Insert rendimentos_irpf
+        currentStep = 'inserting-rendimentos';
+        console.log('💰 Inserting rendimentos...');
         if (extractedData.rendimentos_irpf && extractedData.rendimentos_irpf.length > 0) {
           const rendimentosToInsert = extractedData.rendimentos_irpf.map((r: any) => ({
             user_id: user.id,
@@ -462,6 +477,8 @@ Lembre-se: retorne APENAS o JSON no formato especificado, sem nenhum texto adici
         }
 
         // Insert bens_direitos_irpf
+        currentStep = 'inserting-bens-direitos';
+        console.log('🏠 Inserting bens e direitos...');
         if (extractedData.bens_direitos_irpf && extractedData.bens_direitos_irpf.length > 0) {
           const bensDireitosToInsert = extractedData.bens_direitos_irpf.map((b: any) => ({
             user_id: user.id,
@@ -485,6 +502,8 @@ Lembre-se: retorne APENAS o JSON no formato especificado, sem nenhum texto adici
         }
 
         // Insert dividas_irpf
+        currentStep = 'inserting-dividas-irpf';
+        console.log('💳 Inserting dívidas IRPF...');
         if (extractedData.dividas_irpf && extractedData.dividas_irpf.length > 0) {
           const dividasIrpfToInsert = extractedData.dividas_irpf.map((d: any) => ({
             user_id: user.id,
@@ -507,6 +526,8 @@ Lembre-se: retorne APENAS o JSON no formato especificado, sem nenhum texto adici
         }
 
         // Insert bens imobilizados
+        currentStep = 'inserting-bens-imobilizados';
+        console.log('🏢 Inserting bens imobilizados...');
         if (extractedData.bens_imobilizados && extractedData.bens_imobilizados.length > 0) {
           const bensToInsert = extractedData.bens_imobilizados.map((b: any) => ({
             user_id: user.id,
@@ -532,6 +553,8 @@ Lembre-se: retorne APENAS o JSON no formato especificado, sem nenhum texto adici
         }
 
         // Insert aplicações
+        currentStep = 'inserting-aplicacoes';
+        console.log('📈 Inserting aplicações...');
         if (extractedData.aplicacoes && extractedData.aplicacoes.length > 0) {
           const aplicacoesToInsert = extractedData.aplicacoes.map((a: any) => ({
             user_id: user.id,
@@ -559,6 +582,8 @@ Lembre-se: retorne APENAS o JSON no formato especificado, sem nenhum texto adici
         }
 
         // Insert previdência
+        currentStep = 'inserting-previdencia';
+        console.log('🏦 Inserting planos previdência...');
         if (extractedData.planos_previdencia && extractedData.planos_previdencia.length > 0) {
           const previdenciaToInsert = extractedData.planos_previdencia.map((p: any) => ({
             user_id: user.id,
@@ -586,6 +611,8 @@ Lembre-se: retorne APENAS o JSON no formato especificado, sem nenhum texto adici
         }
 
         // Insert contas bancárias
+        currentStep = 'inserting-contas-bancarias';
+        console.log('🏧 Inserting contas bancárias...');
         if (extractedData.contas_bancarias && extractedData.contas_bancarias.length > 0) {
           const contasToInsert = extractedData.contas_bancarias.map((c: any) => ({
             user_id: user.id,
@@ -610,6 +637,8 @@ Lembre-se: retorne APENAS o JSON no formato especificado, sem nenhum texto adici
         }
 
         // Insert dívidas
+        currentStep = 'inserting-dividas';
+        console.log('💸 Inserting dívidas...');
         if (extractedData.dividas && extractedData.dividas.length > 0) {
           const dividasToInsert = extractedData.dividas.map((d: any) => ({
             user_id: user.id,
@@ -638,7 +667,8 @@ Lembre-se: retorne APENAS o JSON no formato especificado, sem nenhum texto adici
           }
         }
 
-        console.log('=== PROCESSAMENTO CONCLUÍDO ===');
+        currentStep = 'completed';
+        console.log('🎉 === PROCESSAMENTO CONCLUÍDO ===');
         console.log(`RESUMO DE INSERÇÃO:`);
         console.log(`  - Rendimentos IRPF: ${rendimentosCount}`);
         console.log(`  - Bens e Direitos IRPF: ${bensDireitosCount}`);
@@ -650,16 +680,24 @@ Lembre-se: retorne APENAS o JSON no formato especificado, sem nenhum texto adici
         console.log(`  - Dívidas: ${dividasCount}`);
         console.log('==============================');
       } catch (error) {
-        console.error('Background processing error:', error);
+        console.error(`❌ Background processing error at step [${currentStep}]:`, error);
+        console.error('Error details:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        });
+        
         await supabaseClient
           .from('declaracoes_irpf')
-          .update({ status: 'Erro no processamento' })
+          .update({ 
+            status: `Erro (${currentStep}): ${error.message?.substring(0, 200) || 'Erro desconhecido'}` 
+          })
           .eq('id', declaracao.id);
       }
     };
 
-    // Start background processing without blocking response
-    processDeclaration().catch(console.error);
+    // Start background processing using EdgeRuntime.waitUntil to ensure completion
+    EdgeRuntime.waitUntil(processDeclaration());
 
     // Return immediate response
     return new Response(JSON.stringify({
