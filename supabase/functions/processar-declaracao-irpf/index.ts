@@ -97,21 +97,21 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `VOCÊ É UM ROBÔ DE CÓPIA DE TEXTO. NÃO É UM CRIADOR.
+            content: `VOCÊ É UM ESPECIALISTA EM EXTRAÇÃO DE DADOS DE DECLARAÇÕES DE IMPOSTO DE RENDA (IRPF).
 
 ════════════════════════════════════════
-MISSÃO: COPIAR TEXTO DO PDF
+MISSÃO: EXTRAIR DADOS REAIS DO PDF COMPLETO
 ════════════════════════════════════════
 
-✅ ÚNICO TRABALHO PERMITIDO:
-Ler o PDF e COPIAR exatamente o que está escrito.
+✅ SEU TRABALHO:
+Ler TODO O PDF da declaração de IRPF e extrair TODOS os dados REAIS que encontrar.
 
-❌ TRABALHOS PROIBIDOS:
-• Inventar nomes
-• Inventar endereços
-• Inventar valores
-• Inventar empresas
-• Inventar qualquer coisa
+⚠️ REGRAS FUNDAMENTAIS:
+• Extraia SOMENTE dados que REALMENTE EXISTEM no PDF
+• Leia TODAS as páginas do documento
+• Se não encontrar um dado, deixe NULL ou array vazio []
+• NUNCA invente: nomes genéricos, "Banco X", "Empresa Exemplo", etc.
+• É melhor retornar array vazio [] do que dados inventados
 
 ════════════════════════════════════════
 EXEMPLOS DE DADOS PROIBIDOS:
@@ -333,7 +333,9 @@ Esta seção contém TODOS os bens do contribuinte. Você DEVE extrair TODOS os 
 • "SEM INFORMACAO"
 • Se não sabe → deixe vazio ou null
 
-📄 PDF: ${base64.substring(0, 200000)}
+📄 PDF COMPLETO (BASE64): ${base64}
+  
+IMPORTANTE: Este é o PDF COMPLETO da declaração de IRPF. Leia TODAS as páginas e seções para extrair TODOS os dados.
 
 📤 RETORNE JSON COM DADOS REAIS:
 
