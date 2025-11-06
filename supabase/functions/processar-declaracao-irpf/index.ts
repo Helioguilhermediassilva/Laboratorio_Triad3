@@ -92,73 +92,177 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `Você é um assistente da plataforma financeira TRIAD.
+            content: `Você é um assistente de extração de dados da plataforma financeira TRIAD.
 
-Fluxo do sistema:
+Fluxo:
 - O usuário está na tela "Imposto de Renda" da TRIAD.
-- Ele clica em "Importar Declaração", escolhe um arquivo PDF da declaração de IRPF e informa o ano da declaração.
-- O sistema faz OCR do PDF e envia PARA VOCÊ o texto completo extraído da declaração.
+- Ele clica em "Importar Declaração", escolhe um PDF do IRPF e informa o ano-base (ex.: 2023).
+- O sistema faz OCR do PDF e envia PARA VOCÊ o texto completo da declaração de IRPF.
 
 Sua tarefa:
-1. Ler o texto da declaração de IRPF.
-2. Identificar todos os ITENS PATRIMONIAIS e FINANCEIROS que tenham VALORES EM REAIS.
-3. Para cada item encontrado, criar um registro e classificá-lo em UMA das categorias da TRIAD:
-   - imobilizado
-   - aplicacoes
-   - previdencias
-   - contas_bancarias
-   - dividas
-4. Retornar um JSON simples, pronto para ser gravado na sessão do usuário e no banco de dados da TRIAD.
+Ler TODO o texto da declaração e devolver um JSON pronto para ser gravado nas tabelas do banco de dados da TRIAD, com a seguinte estrutura:
 
-Regra importante de extração:
-- Sempre que houver um valor em reais associado a um bem, conta, aplicação, previdência ou dívida, ESSE ITEM DEVE SER INCLUÍDO no JSON.
-- Considere valor em reais qualquer número no formato típico brasileiro de dinheiro, como:
-  - com "R$" (ex: "R$ 10.000,00")
-  - ou com separador de milhar e vírgula como centavos (ex: "10.000,00", "250.000,00")
-- Se houver mais de um valor para o mesmo item, use como "valor" preferencialmente o saldo em 31/12 do ano-base. Se isso não estiver explícito, use o valor mais recente mencionado para aquele item.
+- declaracoes_irpf
+- rendimentos_irpf
+- bens_direitos_irpf
+- dividas_irpf
+- bens_imobilizados
+- aplicacoes
+- planos_previdencia
+- contas_bancarias
+- dividas
 
-Regras de classificação (resumidas):
-- "contas_bancarias": contas correntes, contas poupança, depósitos em banco.
-- "aplicacoes": CDB, LCI, LCA, Tesouro Direto, fundos, ações, ETFs e outros investimentos.
-- "previdencias": PGBL, VGBL, planos de previdência privada.
-- "imobilizado": imóveis (casa, apartamento, terreno), veículos, máquinas, bens duráveis, participações societárias.
-- "dividas": financiamentos, empréstimos, dívidas em geral (Dívidas e Ônus Reais).
+Você NÃO grava nada; apenas monta os objetos para que o backend da TRIAD persista.
 
-Se tiver dúvida, escolha a categoria mais provável com base na descrição.
+IMPORTANTE:
+- Sempre que houver um item patrimonial ou financeiro com valor em reais, ele DEVE ser incluído em alguma das estruturas.
+- Use os títulos e seções da declaração oficial de IRPF (ex.: "RENDIMENTOS TRIBUTÁVEIS RECEBIDOS DE PESSOA JURÍDICA PELO TITULAR", "DECLARAÇÃO DE BENS E DIREITOS", "DÍVIDAS E ÔNUS REAIS", "RESUMO") para identificar onde cada informação se encaixa.
 
-Formato de saída (OBRIGATÓRIO):
-- Responda APENAS com um JSON válido, no formato:
+--------------------------------
+MAPEAMENTO PARA AS TABELAS TRIAD
+--------------------------------
+
+1) declaracoes_irpf
+Campos: ano, status, prazo_limite, valor_pagar, valor_restituir, recibo, dados_brutos
+
+Regras:
+- "ano": o ano-base da declaração (por ex.: ${ano}).
+- "status": use "Importada".
+- "valor_pagar": se no RESUMO houver "SALDO DE IMPOSTO A PAGAR", use esse valor. Se estiver 0, use 0.
+- "valor_restituir": se no RESUMO houver "IMPOSTO A RESTITUIR", use esse valor. Se não houver, use 0.
+- "recibo": se houver número de recibo da declaração, copie o valor textual.
+- "prazo_limite": deixe null.
+- "dados_brutos": coloque TODO o texto da declaração em uma string.
+
+2) rendimentos_irpf
+Campos: fonte_pagadora, cnpj, tipo, valor, irrf, contribuicao_previdenciaria, decimo_terceiro, ano
+
+Fonte: seções de rendimentos:
+- "RENDIMENTOS TRIBUTÁVEIS RECEBIDOS DE PESSOA JURÍDICA PELO TITULAR"
+- "RENDIMENTOS TRIBUTÁVEIS RECEBIDOS DE PESSOA FÍSICA E DO EXTERIOR PELO TITULAR"
+- "RENDIMENTOS ISENTOS E NÃO TRIBUTÁVEIS"
+- "RENDIMENTOS SUJEITOS À TRIBUTAÇÃO EXCLUSIVA / DEFINITIVA"
+
+Regras:
+- Crie um item para cada linha de fonte pagadora ou categoria de rendimento.
+- "fonte_pagadora": nome da fonte.
+- "cnpj": CNPJ informado.
+- "tipo": "PJ_titular", "PF_exterior_titular", "isento", "tributacao_exclusiva".
+- "valor": valor principal do rendimento.
+- "irrf": imposto retido na fonte.
+- "contribuicao_previdenciaria": contribuição previdenciária oficial.
+- "decimo_terceiro": valor do 13º se explícito.
+- "ano": ${ano}.
+
+3) bens_direitos_irpf
+Campos: codigo, categoria, discriminacao, situacao_ano_anterior, situacao_ano_atual
+
+Fonte: seção "DECLARAÇÃO DE BENS E DIREITOS".
+
+Regras:
+- Para cada linha de bem/direito:
+  - "codigo": código do bem (ex.: 01, 04, 06, 07, 99).
+  - "categoria": grupo ou descrição resumida.
+  - "discriminacao": texto completo da discriminação.
+  - "situacao_ano_anterior": valor de 31/12 do ano anterior.
+  - "situacao_ano_atual": valor de 31/12 do ano-base.
+
+4) dividas_irpf
+Campos: credor, discriminacao, valor_ano_anterior, valor_ano_atual
+
+Fonte: seção "DÍVIDAS E ÔNUS REAIS".
+
+Regras:
+- Se "Sem Informações", retorne lista vazia.
+- Crie um item para cada dívida:
+  - "credor": nome do credor.
+  - "discriminacao": texto completo.
+  - "valor_ano_anterior": valor em 31/12 do ano anterior.
+  - "valor_ano_atual": valor em 31/12 do ano-base.
+
+5) Normalização para as tabelas patrimoniais da TRIAD
+
+5.1) bens_imobilizados
+Campos: nome, categoria, descricao, valor_aquisicao, valor_atual, data_aquisicao, localizacao, status
+
+Regra:
+- Inclua imóveis, veículos e bens duráveis.
+- "nome": título curto.
+- "categoria": "veiculo", "imovel", etc.
+- "descricao": texto completo.
+- "valor_aquisicao": valor de aquisição ou ano anterior.
+- "valor_atual": valor em 31/12 do ano-base.
+- "data_aquisicao", "localizacao": use null se não houver.
+- "status": "Ativo".
+
+5.2) aplicacoes
+Campos: nome, tipo, instituicao, valor_aplicado, valor_atual, data_aplicacao, data_vencimento, taxa_rentabilidade, rentabilidade_tipo, liquidez
+
+Regra:
+- Inclua CDB, fundos, aplicações bancárias, renda fixa.
+- "nome": nome curto.
+- "tipo": "renda_fixa", "poupanca", "fundo", etc.
+- "instituicao": banco ou corretora.
+- "valor_aplicado": valor do ano anterior.
+- "valor_atual": valor em 31/12 do ano-base.
+- Outros campos null se não houver.
+
+5.3) planos_previdencia
+Campos: nome, tipo, instituicao, valor_acumulado, contribuicao_mensal, data_inicio, idade_resgate, taxa_administracao, rentabilidade_acumulada, ativo
+
+Regra:
+- Inclua PGBL, VGBL.
+- "valor_acumulado": situação em 31/12 do ano-base.
+- "ativo": true.
+
+5.4) contas_bancarias
+Campos: banco, agencia, numero_conta, tipo_conta, saldo_atual, limite_credito, ativo
+
+Regra:
+- Inclua contas correntes e poupanças.
+- Procure "Banco:", "Agência:", "Conta:" na discriminação.
+- "saldo_atual": situação em 31/12 do ano-base.
+- "tipo_conta": "Corrente" ou "Poupança".
+- "ativo": true.
+
+5.5) dividas
+Campos: nome, tipo, credor, valor_original, saldo_devedor, valor_parcela, numero_parcelas, parcelas_pagas, taxa_juros, data_contratacao, data_vencimento, status
+
+Regra:
+- A partir de "dividas_irpf", crie registros.
+- "nome": título curto.
+- "tipo": "Financiamento", "Empréstimo", etc.
+- "credor": nome do credor.
+- "saldo_devedor": valor em 31/12 do ano-base.
+- "status": "Ativo".
+
+--------------------------------
+FORMATO FINAL DE SAÍDA
+--------------------------------
 
 {
-  "ano_base": ${ano},
-  "imobilizado": [
-    { "descricao": "", "valor": 0 }
-  ],
-  "aplicacoes": [
-    { "descricao": "", "valor": 0 }
-  ],
-  "previdencias": [
-    { "descricao": "", "valor": 0 }
-  ],
-  "contas_bancarias": [
-    { "descricao": "", "valor": 0 }
-  ],
-  "dividas": [
-    { "descricao": "", "valor": 0 }
-  ]
+  "declaracao_irpf": { ... },
+  "rendimentos_irpf": [ ... ],
+  "bens_direitos_irpf": [ ... ],
+  "dividas_irpf": [ ... ],
+  "bens_imobilizados": [ ... ],
+  "aplicacoes": [ ... ],
+  "planos_previdencia": [ ... ],
+  "contas_bancarias": [ ... ],
+  "dividas": [ ... ]
 }
 
 Regras finais:
-- Use o ano ${ano} da declaração como "ano_base".
-- Se não encontrar itens em alguma categoria, retorne lista vazia [].
-- "descricao" deve ser um resumo curto do item na declaração (por exemplo: "Conta corrente Banco X ag 1234 c/c 56789-0").
-- "valor" deve ser, sempre que possível, o saldo em 31/12 do ano-base. Se não for possível identificar, use o valor monetário mais claro associado ao item.
-- Só use valor 0 se o texto indicar explicitamente valor zerado. Se não encontrar valor, use null.
-- Não escreva NENHUM texto fora do JSON.`
+- Não escreva NENHUM texto fora do JSON.
+- Se alguma lista não tiver itens, retorne-a como [].
+- Nunca invente valores; use apenas os da declaração.
+- Use valores monetários em reais da declaração (saldos em 31/12).`
           },
           {
             role: 'user',
-            content: `Analise a declaração de IRPF abaixo e extraia todos os itens financeiros.
+            content: `Analise a declaração de IRPF abaixo e extraia TODOS os dados conforme as regras especificadas.
+
+ANO DA DECLARAÇÃO: ${ano}
 
 PDF DA DECLARAÇÃO (BASE64):
 ${base64}
@@ -248,18 +352,24 @@ Lembre-se: retorne APENAS o JSON no formato especificado, sem nenhum texto adici
       }
       
       console.log('=== EXTRACTED DATA ===');
-      console.log('Ano base:', extractedData.ano_base);
-      console.log('Imobilizado:', extractedData.imobilizado?.length || 0, 'itens');
+      console.log('Declaração:', extractedData.declaracao_irpf ? 'OK' : 'MISSING');
+      console.log('Rendimentos:', extractedData.rendimentos_irpf?.length || 0, 'itens');
+      console.log('Bens e Direitos:', extractedData.bens_direitos_irpf?.length || 0, 'itens');
+      console.log('Dívidas IRPF:', extractedData.dividas_irpf?.length || 0, 'itens');
+      console.log('Imobilizado:', extractedData.bens_imobilizados?.length || 0, 'itens');
       console.log('Aplicações:', extractedData.aplicacoes?.length || 0, 'itens');
-      console.log('Previdências:', extractedData.previdencias?.length || 0, 'itens');
+      console.log('Previdências:', extractedData.planos_previdencia?.length || 0, 'itens');
       console.log('Contas Bancárias:', extractedData.contas_bancarias?.length || 0, 'itens');
       console.log('Dívidas:', extractedData.dividas?.length || 0, 'itens');
       
       // Validate minimum data
       const totalItems = 
-        (extractedData.imobilizado?.length || 0) +
+        (extractedData.rendimentos_irpf?.length || 0) +
+        (extractedData.bens_direitos_irpf?.length || 0) +
+        (extractedData.dividas_irpf?.length || 0) +
+        (extractedData.bens_imobilizados?.length || 0) +
         (extractedData.aplicacoes?.length || 0) +
-        (extractedData.previdencias?.length || 0) +
+        (extractedData.planos_previdencia?.length || 0) +
         (extractedData.contas_bancarias?.length || 0) +
         (extractedData.dividas?.length || 0);
       
@@ -283,14 +393,19 @@ Lembre-se: retorne APENAS o JSON no formato especificado, sem nenhum texto adici
     }
 
     // Insert declaration
+    const declaracaoData = extractedData.declaracao_irpf || {};
     const { data: declaracao, error: declError } = await supabaseClient
       .from('declaracoes_irpf')
       .insert({
         user_id: user.id,
         ano: parseInt(ano),
-        status: 'Importada',
+        status: declaracaoData.status || 'Importada',
         arquivo_original: file.name,
-        dados_brutos: extractedData
+        recibo: declaracaoData.recibo || null,
+        prazo_limite: declaracaoData.prazo_limite || null,
+        valor_pagar: declaracaoData.valor_pagar || 0,
+        valor_restituir: declaracaoData.valor_restituir || 0,
+        dados_brutos: declaracaoData.dados_brutos || extractedData
       })
       .select()
       .single();
@@ -303,6 +418,9 @@ Lembre-se: retorne APENAS o JSON no formato especificado, sem nenhum texto adici
       });
     }
 
+    let rendimentosCount = 0;
+    let bensDireitosCount = 0;
+    let dividasIrpfCount = 0;
     let bensImobilizadosCount = 0;
     let aplicacoesCount = 0;
     let previdenciaCount = 0;
@@ -311,18 +429,89 @@ Lembre-se: retorne APENAS o JSON no formato especificado, sem nenhum texto adici
 
     const dataAtual = new Date().toISOString().split('T')[0];
 
-    // Insert bens imobilizados
-    if (extractedData.imobilizado && extractedData.imobilizado.length > 0) {
-      const bensToInsert = extractedData.imobilizado.map((b: any) => ({
+    // Insert rendimentos_irpf
+    if (extractedData.rendimentos_irpf && extractedData.rendimentos_irpf.length > 0) {
+      const rendimentosToInsert = extractedData.rendimentos_irpf.map((r: any) => ({
         user_id: user.id,
-        nome: b.descricao.substring(0, 100),
-        categoria: 'Outro',
-        descricao: b.descricao,
-        valor_aquisicao: b.valor || 0,
-        valor_atual: b.valor || 0,
-        data_aquisicao: dataAtual,
-        localizacao: 'Brasil',
-        status: 'Ativo'
+        declaracao_id: declaracao.id,
+        fonte_pagadora: r.fonte_pagadora || 'Não informada',
+        cnpj: r.cnpj || null,
+        tipo: r.tipo || 'Outro',
+        valor: r.valor || 0,
+        irrf: r.irrf || 0,
+        contribuicao_previdenciaria: r.contribuicao_previdenciaria || 0,
+        decimo_terceiro: r.decimo_terceiro || 0,
+        ano: parseInt(ano)
+      }));
+
+      const { error: rendimentosError } = await supabaseClient
+        .from('rendimentos_irpf')
+        .insert(rendimentosToInsert);
+
+      if (!rendimentosError) {
+        rendimentosCount = rendimentosToInsert.length;
+      } else {
+        console.error('Rendimentos insert error:', rendimentosError);
+      }
+    }
+
+    // Insert bens_direitos_irpf
+    if (extractedData.bens_direitos_irpf && extractedData.bens_direitos_irpf.length > 0) {
+      const bensDireitosToInsert = extractedData.bens_direitos_irpf.map((b: any) => ({
+        user_id: user.id,
+        declaracao_id: declaracao.id,
+        codigo: b.codigo || '99',
+        categoria: b.categoria || 'Outro',
+        discriminacao: b.discriminacao || '',
+        situacao_ano_anterior: b.situacao_ano_anterior || 0,
+        situacao_ano_atual: b.situacao_ano_atual || 0
+      }));
+
+      const { error: bensDireitosError } = await supabaseClient
+        .from('bens_direitos_irpf')
+        .insert(bensDireitosToInsert);
+
+      if (!bensDireitosError) {
+        bensDireitosCount = bensDireitosToInsert.length;
+      } else {
+        console.error('Bens e Direitos insert error:', bensDireitosError);
+      }
+    }
+
+    // Insert dividas_irpf
+    if (extractedData.dividas_irpf && extractedData.dividas_irpf.length > 0) {
+      const dividasIrpfToInsert = extractedData.dividas_irpf.map((d: any) => ({
+        user_id: user.id,
+        declaracao_id: declaracao.id,
+        credor: d.credor || 'Não informado',
+        discriminacao: d.discriminacao || '',
+        valor_ano_anterior: d.valor_ano_anterior || 0,
+        valor_ano_atual: d.valor_ano_atual || 0
+      }));
+
+      const { error: dividasIrpfError } = await supabaseClient
+        .from('dividas_irpf')
+        .insert(dividasIrpfToInsert);
+
+      if (!dividasIrpfError) {
+        dividasIrpfCount = dividasIrpfToInsert.length;
+      } else {
+        console.error('Dívidas IRPF insert error:', dividasIrpfError);
+      }
+    }
+
+    // Insert bens imobilizados
+    if (extractedData.bens_imobilizados && extractedData.bens_imobilizados.length > 0) {
+      const bensToInsert = extractedData.bens_imobilizados.map((b: any) => ({
+        user_id: user.id,
+        nome: (b.nome || 'Sem nome').substring(0, 100),
+        categoria: b.categoria || 'Outro',
+        descricao: b.descricao || b.nome || '',
+        valor_aquisicao: b.valor_aquisicao || b.valor_atual || 0,
+        valor_atual: b.valor_atual || 0,
+        data_aquisicao: b.data_aquisicao || dataAtual,
+        localizacao: b.localizacao || 'Brasil',
+        status: b.status || 'Ativo'
       }));
 
       const { error: bensError } = await supabaseClient
@@ -340,12 +529,16 @@ Lembre-se: retorne APENAS o JSON no formato especificado, sem nenhum texto adici
     if (extractedData.aplicacoes && extractedData.aplicacoes.length > 0) {
       const aplicacoesToInsert = extractedData.aplicacoes.map((a: any) => ({
         user_id: user.id,
-        nome: a.descricao.substring(0, 100),
-        tipo: 'Outro',
-        instituicao: 'Não informada',
-        valor_aplicado: a.valor || 0,
-        valor_atual: a.valor || 0,
-        data_aplicacao: dataAtual
+        nome: (a.nome || 'Aplicação').substring(0, 100),
+        tipo: a.tipo || 'Outro',
+        instituicao: a.instituicao || 'Não informada',
+        valor_aplicado: a.valor_aplicado || a.valor_atual || 0,
+        valor_atual: a.valor_atual || 0,
+        data_aplicacao: a.data_aplicacao || dataAtual,
+        data_vencimento: a.data_vencimento || null,
+        taxa_rentabilidade: a.taxa_rentabilidade || null,
+        rentabilidade_tipo: a.rentabilidade_tipo || null,
+        liquidez: a.liquidez || null
       }));
 
       const { error: aplicacoesError } = await supabaseClient
@@ -360,16 +553,19 @@ Lembre-se: retorne APENAS o JSON no formato especificado, sem nenhum texto adici
     }
 
     // Insert previdência
-    if (extractedData.previdencias && extractedData.previdencias.length > 0) {
-      const previdenciaToInsert = extractedData.previdencias.map((p: any) => ({
+    if (extractedData.planos_previdencia && extractedData.planos_previdencia.length > 0) {
+      const previdenciaToInsert = extractedData.planos_previdencia.map((p: any) => ({
         user_id: user.id,
-        nome: p.descricao.substring(0, 100),
-        tipo: 'VGBL',
-        instituicao: 'Não informada',
-        valor_acumulado: p.valor || 0,
-        contribuicao_mensal: 0,
-        data_inicio: dataAtual,
-        ativo: true
+        nome: (p.nome || 'Plano de Previdência').substring(0, 100),
+        tipo: p.tipo || 'VGBL',
+        instituicao: p.instituicao || 'Não informada',
+        valor_acumulado: p.valor_acumulado || 0,
+        contribuicao_mensal: p.contribuicao_mensal || 0,
+        data_inicio: p.data_inicio || dataAtual,
+        idade_resgate: p.idade_resgate || null,
+        taxa_administracao: p.taxa_administracao || null,
+        rentabilidade_acumulada: p.rentabilidade_acumulada || null,
+        ativo: p.ativo !== false
       }));
 
       const { error: previdenciaError } = await supabaseClient
@@ -387,12 +583,13 @@ Lembre-se: retorne APENAS o JSON no formato especificado, sem nenhum texto adici
     if (extractedData.contas_bancarias && extractedData.contas_bancarias.length > 0) {
       const contasToInsert = extractedData.contas_bancarias.map((c: any) => ({
         user_id: user.id,
-        banco: c.descricao.substring(0, 100),
-        agencia: '0000',
-        numero_conta: '00000-0',
-        tipo_conta: 'Corrente',
-        saldo_atual: c.valor || 0,
-        ativo: true
+        banco: (c.banco || 'Banco não informado').substring(0, 100),
+        agencia: c.agencia || '0000',
+        numero_conta: c.numero_conta || '00000-0',
+        tipo_conta: c.tipo_conta || 'Corrente',
+        saldo_atual: c.saldo_atual || 0,
+        limite_credito: c.limite_credito || 0,
+        ativo: c.ativo !== false
       }));
 
       const { error: contasError } = await supabaseClient
@@ -410,16 +607,18 @@ Lembre-se: retorne APENAS o JSON no formato especificado, sem nenhum texto adici
     if (extractedData.dividas && extractedData.dividas.length > 0) {
       const dividasToInsert = extractedData.dividas.map((d: any) => ({
         user_id: user.id,
-        nome: d.descricao.substring(0, 100),
-        tipo: 'Outro',
-        credor: 'Não informado',
-        valor_original: d.valor || 0,
-        saldo_devedor: d.valor || 0,
-        valor_parcela: d.valor || 0,
-        numero_parcelas: 1,
-        parcelas_pagas: 0,
-        data_contratacao: dataAtual,
-        status: 'Ativo'
+        nome: (d.nome || 'Dívida').substring(0, 100),
+        tipo: d.tipo || 'Outro',
+        credor: d.credor || 'Não informado',
+        valor_original: d.valor_original || d.saldo_devedor || 0,
+        saldo_devedor: d.saldo_devedor || 0,
+        valor_parcela: d.valor_parcela || 0,
+        numero_parcelas: d.numero_parcelas || 1,
+        parcelas_pagas: d.parcelas_pagas || 0,
+        taxa_juros: d.taxa_juros || null,
+        data_contratacao: d.data_contratacao || dataAtual,
+        data_vencimento: d.data_vencimento || null,
+        status: d.status || 'Ativo'
       }));
 
       const { error: dividasError } = await supabaseClient
@@ -435,6 +634,9 @@ Lembre-se: retorne APENAS o JSON no formato especificado, sem nenhum texto adici
 
     console.log('=== PROCESSAMENTO CONCLUÍDO ===');
     console.log(`RESUMO DE INSERÇÃO:`);
+    console.log(`  - Rendimentos IRPF: ${rendimentosCount}`);
+    console.log(`  - Bens e Direitos IRPF: ${bensDireitosCount}`);
+    console.log(`  - Dívidas IRPF: ${dividasIrpfCount}`);
     console.log(`  - Bens Imobilizados: ${bensImobilizadosCount}`);
     console.log(`  - Aplicações: ${aplicacoesCount}`);
     console.log(`  - Previdência: ${previdenciaCount}`);
@@ -446,6 +648,9 @@ Lembre-se: retorne APENAS o JSON no formato especificado, sem nenhum texto adici
       success: true,
       declaracao_id: declaracao.id,
       dados_extraidos: {
+        rendimentos_irpf: rendimentosCount,
+        bens_direitos_irpf: bensDireitosCount,
+        dividas_irpf: dividasIrpfCount,
         bens_imobilizados: bensImobilizadosCount,
         aplicacoes: aplicacoesCount,
         previdencia: previdenciaCount,
