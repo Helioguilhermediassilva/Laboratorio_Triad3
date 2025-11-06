@@ -89,8 +89,8 @@ export default function ImportarDeclaracaoModal({
       }
 
       setProgresso(20);
-      setEtapaAtual("Analisando PDF com inteligência artificial...");
-      setTempoEstimado("Esta etapa pode levar 60-90 segundos");
+      setEtapaAtual("Processando declaração...");
+      setTempoEstimado("Aguarde, isso pode levar de 1 a 3 minutos");
 
       // Prepare form data
       const formData = new FormData();
@@ -98,85 +98,97 @@ export default function ImportarDeclaracaoModal({
       formData.append('ano', anoDeclaracao);
 
       setProgresso(30);
-      
-      // Simular progresso durante o processamento da IA
-      const progressInterval = setInterval(() => {
-        setProgresso(prev => {
-          if (prev < 70) return prev + 5;
-          return prev;
-        });
-      }, 4000);
 
       // Call edge function to process the declaration
       const { data, error } = await supabase.functions.invoke('processar-declaracao-irpf', {
         body: formData,
       });
-      
-      clearInterval(progressInterval);
 
       if (error) {
         console.error('Edge function error:', error);
-        clearInterval(progressInterval);
-        
-        // Try to get more details from the response
-        let errorMessage = 'Erro ao processar declaração';
-        if (error.message) {
-          errorMessage = error.message;
-        }
-        
-        throw new Error(errorMessage);
+        throw new Error(error.message || 'Erro ao enviar declaração para processamento');
       }
 
       if (data?.error) {
-        clearInterval(progressInterval);
         throw new Error(data.error);
       }
 
-      setProgresso(80);
-      setEtapaAtual("Categorizando e salvando dados...");
-      setTempoEstimado("");
-
       if (!data?.success) {
-        throw new Error(data?.error || 'Falha ao processar a declaração');
+        throw new Error('Falha ao enviar a declaração');
       }
 
-      setProgresso(100);
-      setEtapaAtual("Concluído!");
+      // Declaration is being processed, start polling
+      const declaracaoId = data.declaracao_id;
+      setProgresso(40);
+      setEtapaAtual("Aguardando processamento com IA...");
+      setTempoEstimado("Analisando PDF e extraindo dados");
 
-      const dadosExtraidos = data.dados_extraidos;
-      
-      toast({
-        title: "✅ Declaração importada com sucesso!",
-        description: (
-          <div className="space-y-2">
-            <p className="font-semibold">Declaração de {anoDeclaracao} processada.</p>
-            <p className="text-amber-600 font-semibold text-sm">📊 Dados categorizados automaticamente:</p>
-            <ul className="text-sm space-y-1 ml-2">
-              <li>• <span className="font-medium">Imobilizado:</span> {dadosExtraidos.bens_imobilizados} itens</li>
-              <li>• <span className="font-medium">Aplicações:</span> {dadosExtraidos.aplicacoes} itens</li>
-              <li>• <span className="font-medium">Previdência:</span> {dadosExtraidos.previdencia} planos</li>
-              <li>• <span className="font-medium">Contas Bancárias:</span> {dadosExtraidos.contas_bancarias} contas</li>
-              <li>• <span className="font-medium">Dívidas:</span> {dadosExtraidos.dividas} itens</li>
-              <li>• <span className="font-medium">Rendimentos:</span> {dadosExtraidos.rendimentos} itens</li>
-            </ul>
-            <p className="text-xs text-muted-foreground mt-2">
-              🔄 A página recarregará automaticamente. Depois navegue para cada guia para conferir os dados.
-            </p>
-          </div>
-        ),
-        duration: 12000
-      });
+      // Poll for status
+      let attempts = 0;
+      const maxAttempts = 60; // 5 minutos (60 * 5 segundos)
+      const pollInterval = setInterval(async () => {
+        attempts++;
+        
+        // Update progress
+        const currentProgress = 40 + (attempts / maxAttempts) * 50;
+        setProgresso(Math.min(currentProgress, 90));
 
-      // Notify parent component
-      onDeclaracaoImportada({
-        id: data.declaracao_id,
-        ano: parseInt(anoDeclaracao),
-        status: "Importada",
-        prazoLimite: `${anoDeclaracao}-04-30`,
-        arquivoOriginal: arquivo.name,
-        dataImportacao: new Date().toISOString(),
-        observacoes
-      });
+        const { data: declaracao, error: queryError } = await supabase
+          .from('declaracoes_irpf')
+          .select('status')
+          .eq('id', declaracaoId)
+          .single();
+
+        if (queryError || !declaracao) {
+          clearInterval(pollInterval);
+          throw new Error('Erro ao verificar status da declaração');
+        }
+
+        if (declaracao.status === 'Importada') {
+          clearInterval(pollInterval);
+          setProgresso(100);
+          setEtapaAtual("Concluído!");
+
+          toast({
+            title: "✅ Declaração importada com sucesso!",
+            description: `Declaração de ${anoDeclaracao} processada. Atualize a página para ver os dados.`,
+            duration: 8000
+          });
+
+          // Notify parent component
+          onDeclaracaoImportada({
+            id: declaracaoId,
+            ano: parseInt(anoDeclaracao),
+            status: "Importada",
+            prazoLimite: `${anoDeclaracao}-04-30`,
+            arquivoOriginal: arquivo.name,
+            dataImportacao: new Date().toISOString(),
+            observacoes
+          });
+
+          // Reset and close
+          setCarregando(false);
+          setArquivo(null);
+          setTipoArquivo("");
+          setAnoDeclaracao("");
+          setObservacoes("");
+          setProgresso(0);
+          setEtapaAtual("");
+          setTempoEstimado("");
+          onOpenChange(false);
+          
+          // Reload page after 2 seconds
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+        } else if (declaracao.status.startsWith('Erro')) {
+          clearInterval(pollInterval);
+          throw new Error(declaracao.status);
+        } else if (attempts >= maxAttempts) {
+          clearInterval(pollInterval);
+          throw new Error('Timeout: O processamento está demorando mais que o esperado. Verifique novamente em alguns minutos.');
+        }
+      }, 5000); // Poll every 5 seconds
       
       // Force reload after a short delay to ensure data is visible
       setTimeout(() => {
