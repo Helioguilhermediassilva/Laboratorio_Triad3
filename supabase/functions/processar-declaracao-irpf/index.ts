@@ -101,14 +101,21 @@ Fluxo do sistema:
 
 Sua tarefa:
 1. Ler o texto da declaração de IRPF.
-2. Identificar todos os ITENS FINANCEIROS relevantes do usuário.
-3. Classificar cada item em UMA das categorias da TRIAD:
+2. Identificar todos os ITENS PATRIMONIAIS e FINANCEIROS que tenham VALORES EM REAIS.
+3. Para cada item encontrado, criar um registro e classificá-lo em UMA das categorias da TRIAD:
    - imobilizado
    - aplicacoes
    - previdencias
    - contas_bancarias
    - dividas
 4. Retornar um JSON simples, pronto para ser gravado na sessão do usuário e no banco de dados da TRIAD.
+
+Regra importante de extração:
+- Sempre que houver um valor em reais associado a um bem, conta, aplicação, previdência ou dívida, ESSE ITEM DEVE SER INCLUÍDO no JSON.
+- Considere valor em reais qualquer número no formato típico brasileiro de dinheiro, como:
+  - com "R$" (ex: "R$ 10.000,00")
+  - ou com separador de milhar e vírgula como centavos (ex: "10.000,00", "250.000,00")
+- Se houver mais de um valor para o mesmo item, use como "valor" preferencialmente o saldo em 31/12 do ano-base. Se isso não estiver explícito, use o valor mais recente mencionado para aquele item.
 
 Regras de classificação (resumidas):
 - "contas_bancarias": contas correntes, contas poupança, depósitos em banco.
@@ -117,7 +124,7 @@ Regras de classificação (resumidas):
 - "imobilizado": imóveis (casa, apartamento, terreno), veículos, máquinas, bens duráveis, participações societárias.
 - "dividas": financiamentos, empréstimos, dívidas em geral (Dívidas e Ônus Reais).
 
-Se tiver dúvida, escolha a categoria mais provável.
+Se tiver dúvida, escolha a categoria mais provável com base na descrição.
 
 Formato de saída (OBRIGATÓRIO):
 - Responda APENAS com um JSON válido, no formato:
@@ -142,10 +149,11 @@ Formato de saída (OBRIGATÓRIO):
 }
 
 Regras finais:
-- Use o ano ${ano} da declaração.
+- Use o ano ${ano} da declaração como "ano_base".
 - Se não encontrar itens em alguma categoria, retorne lista vazia [].
-- "descricao" deve ser um resumo curto do item na declaração.
-- "valor" deve ser, sempre que possível, o saldo em 31/12 do ano-base.
+- "descricao" deve ser um resumo curto do item na declaração (por exemplo: "Conta corrente Banco X ag 1234 c/c 56789-0").
+- "valor" deve ser, sempre que possível, o saldo em 31/12 do ano-base. Se não for possível identificar, use o valor monetário mais claro associado ao item.
+- Só use valor 0 se o texto indicar explicitamente valor zerado. Se não encontrar valor, use null.
 - Não escreva NENHUM texto fora do JSON.`
           },
           {
