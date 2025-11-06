@@ -324,6 +324,8 @@ Esta seção contém TODOS os bens do contribuinte. Você DEVE extrair TODOS os 
 • Use "situacao_ano_anterior" e "situacao_ano_atual" para bens_direitos_irpf
 • Use "valor_ano_anterior" e "valor_ano_atual" para dívidas
 • NUNCA deixe arrays vazios se houver dados no PDF
+• SEMPRE use nomes REAIS de bancos/instituições do PDF (ex: Itaú, Bradesco, Santander)
+• Se não conseguir identificar o nome real, deixe NULL - NUNCA use "BANCO X" ou termos genéricos
 
 ❌ NUNCA ESCREVA:
 • "NAO INFORMADO"
@@ -682,8 +684,8 @@ FORMATO FINAL: Retorne apenas o objeto JSON começando com { e terminando com },
         'VEICULO SEM PLACA', 'CARRO NAO IDENTIFICADO',
         
         // Instituições fictícias
-        'BANCO X', 'BANCO Y', 'INSTITUICAO Y', 'BANCO EXEMPLO',
-        'CORRETORA X', 'FINANCEIRA EXEMPLO',
+        'BANCO EXEMPLO', 'INSTITUICAO EXEMPLO',
+        'CORRETORA EXEMPLO', 'FINANCEIRA EXEMPLO',
         
         // Empresas genéricas
         'EMPRESA MODELO', 'COMPANHIA EXEMPLO', 'EMPRESA EXEMPLO',
