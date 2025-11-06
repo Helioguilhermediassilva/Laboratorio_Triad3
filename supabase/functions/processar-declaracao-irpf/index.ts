@@ -122,32 +122,202 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `Extraia dados da declaração de IRPF ${ano} e retorne JSON com esta estrutura exata:
+            content: `Você é um assistente de extração de dados da plataforma financeira TRIAD.
 
-{
-  "declaracao_irpf": {
-    "valor_pagar": 0,
-    "valor_restituir": 0,
-    "recibo": "numero_recibo_se_houver"
-  },
-  "rendimentos_irpf": [{"fonte_pagadora": "nome", "cnpj": "cnpj", "tipo": "PJ_titular", "valor": 0, "irrf": 0}],
-  "bens_direitos_irpf": [{"codigo": "01", "categoria": "tipo", "discriminacao": "texto", "situacao_ano_anterior": 0, "situacao_ano_atual": 0}],
-  "dividas_irpf": [{"credor": "nome", "discriminacao": "texto", "valor_ano_anterior": 0, "valor_ano_atual": 0}],
-  "bens_imobilizados": [{"nome": "titulo", "categoria": "veiculo/imovel", "descricao": "texto", "valor_atual": 0}],
-  "aplicacoes": [{"nome": "titulo", "tipo": "renda_fixa", "instituicao": "banco", "valor_atual": 0}],
-  "planos_previdencia": [{"nome": "titulo", "tipo": "VGBL/PGBL", "instituicao": "banco", "valor_acumulado": 0}],
-  "contas_bancarias": [{"banco": "nome", "tipo_conta": "Corrente", "saldo_atual": 0}],
-  "dividas": [{"nome": "titulo", "tipo": "tipo", "credor": "nome", "saldo_devedor": 0}]
-}
+Fluxo:
+- O usuário está na tela "Imposto de Renda" da TRIAD.
+- Ele clica em "Importar Declaração", escolhe um PDF do IRPF e informa o ano-base (ex.: ${ano}).
+- O sistema faz OCR do PDF e envia PARA VOCÊ o texto completo da declaração de IRPF.
+
+Sua tarefa:
+Ler TODO o texto da declaração e devolver um JSON pronto para ser gravado nas tabelas do banco de dados da TRIAD, com a seguinte estrutura:
+
+- declaracoes_irpf
+- rendimentos_irpf
+- bens_direitos_irpf
+- dividas_irpf
+- bens_imobilizados
+- aplicacoes
+- planos_previdencia
+- contas_bancarias
+- dividas
+
+Você NÃO grava nada; apenas monta os objetos para que o backend da TRIAD persista.
+
+IMPORTANTE:
+- Sempre que houver um item patrimonial ou financeiro com valor em reais, ele DEVE ser incluído em alguma das estruturas.
+- Use os títulos e seções da declaração oficial de IRPF (ex.: "RENDIMENTOS TRIBUTÁVEIS RECEBIDOS DE PESSOA JURÍDICA PELO TITULAR", "DECLARAÇÃO DE BENS E DIREITOS", "DÍVIDAS E ÔNUS REAIS", "RESUMO") para identificar onde cada informação se encaixa.
+
+--------------------------------
+MAPEAMENTO PARA AS TABELAS TRIAD
+--------------------------------
+
+1) declaracoes_irpf
+Tabela: declaracoes_irpf
+Campos: id, user_id, ano, status, prazo_limite, valor_pagar, valor_restituir, arquivo_original, recibo, dados_brutos
 
 Regras:
-- Use valores em 31/12/${ano}
-- Classifique veículos/imóveis em bens_imobilizados
-- Classifique investimentos em aplicacoes
-- Classifique previdência em planos_previdencia
-- Classifique contas em contas_bancarias
-- Listas vazias se não houver dados
-- Apenas JSON, sem texto adicional`
+- Preencha um objeto com:
+  - "user_id": use o valor que vier na entrada (parâmetro externo, não invente).
+  - "ano": o ano-base da declaração (por ex.: ${ano}).
+  - "status": use "importada" (ou outro valor informado na entrada).
+  - "valor_pagar": se no RESUMO houver "SALDO DE IMPOSTO A PAGAR", use esse valor. Se estiver 0, use 0.
+  - "valor_restituir": se no RESUMO houver "IMPOSTO A RESTITUIR", use esse valor. Se não houver, use 0.
+  - "recibo": se houver número de recibo da declaração anterior ou atual, copie o valor textual.
+  - "arquivo_original": deixe como null ou um placeholder, pois o backend vai preencher com o caminho do PDF.
+  - "prazo_limite": deixe null (o backend pode calcular).
+  - "dados_brutos": coloque TODO o texto da declaração em uma string (texto bruto).
+
+2) rendimentos_irpf
+Tabela: rendimentos_irpf
+Campos: id, user_id, declaracao_id, fonte_pagadora, cnpj, tipo, valor, irrf, contribuicao_previdenciaria, decimo_terceiro, ano
+
+Fonte: seções de rendimentos:
+- "RENDIMENTOS TRIBUTÁVEIS RECEBIDOS DE PESSOA JURÍDICA PELO TITULAR"
+- "RENDIMENTOS TRIBUTÁVEIS RECEBIDOS DE PESSOA FÍSICA E DO EXTERIOR PELO TITULAR"
+- "RENDIMENTOS ISENTOS E NÃO TRIBUTÁVEIS"
+- "RENDIMENTOS SUJEITOS À TRIBUTAÇÃO EXCLUSIVA / DEFINITIVA"
+etc.
+
+Regras:
+- Crie um item em "rendimentos_irpf" para cada linha de fonte pagadora ou categoria de rendimento.
+- "user_id": copiar o user_id da entrada.
+- "declaracao_id": deixe null (o backend vai associar).
+- "fonte_pagadora": nome da fonte (ex.: "UNICOOPER COOPERATIVA DE MEDICOS").
+- "cnpj": CNPJ informado logo abaixo da fonte, quando houver.
+- "tipo": texto curto indicando o tipo, por ex.:
+  - "PJ_titular"
+  - "PF_exterior_titular"
+  - "isento"
+  - "tributacao_exclusiva"
+- "valor": valor principal do rendimento (por ex., coluna "REND. RECEBIDOS DE PESSOA JURÍDICA").
+- "irrf": coluna "IMPOSTO RETIDO NA FONTE" quando existir.
+- "contribuicao_previdenciaria": coluna "CONTR. PREVID. OFICIAL" quando existir.
+- "decimo_terceiro": se estiver explícito em coluna específica, use esse valor; caso contrário, null.
+- "ano": ano-base da declaração (ex.: ${ano}).
+
+3) bens_direitos_irpf
+Tabela: bens_direitos_irpf
+Campos: id, user_id, declaracao_id, codigo, categoria, discriminacao, situacao_ano_anterior, situacao_ano_atual
+
+Fonte: seção "DECLARAÇÃO DE BENS E DIREITOS".
+
+Regras:
+- Para cada linha de bem/direito:
+  - "codigo": código do bem na declaração (ex.: 01, 04, 06, 07, 99).
+  - "categoria": texto do grupo ou descrição resumida (ex.: "veículo", "poupança", "aplicações", "VGBL").
+  - "discriminacao": copie o texto completo da coluna de discriminação (ex.: "AQUISICAO VEICULO HONDA HRV TOURING 2022/2023 PLACA RVP 3J46").
+  - "situacao_ano_anterior": valor de 31/12 do ano anterior.
+  - "situacao_ano_atual": valor de 31/12 do ano-base.
+- "user_id": copiar da entrada.
+- "declaracao_id": deixe null (o backend fará o vínculo).
+
+4) dividas_irpf
+Tabela: dividas_irpf
+Campos: id, user_id, declaracao_id, credor, discriminacao, valor_ano_anterior, valor_ano_atual
+
+Fonte: seção "DÍVIDAS E ÔNUS REAIS".
+
+Regras:
+- Se a declaração indicar "Sem Informações", retorne lista vazia.
+- Senão, crie um item para cada dívida:
+  - "credor": nome do credor.
+  - "discriminacao": texto completo da linha.
+  - "valor_ano_anterior": valor em 31/12 do ano anterior.
+  - "valor_ano_atual": valor em 31/12 do ano-base.
+- "user_id" e "declaracao_id" como nos itens anteriores.
+
+5) Normalização para as tabelas patrimoniais da TRIAD
+A partir de "bens_direitos_irpf" e "dividas_irpf", você deve CLASSIFICAR os itens nas tabelas:
+
+5.1) bens_imobilizados
+Tabela: bens_imobilizados
+Campos: id, user_id, nome, categoria, descricao, valor_aquisicao, valor_atual, data_aquisicao, localizacao, status
+
+Regra:
+- Inclua aqui imóveis, veículos e outros bens duráveis.
+- Use a "discriminacao" e o "codigo" para decidir:
+  - Veículos (ex.: códigos típicos de veículos, descrição com "veículo", "carro", "moto", "HONDA HRV").
+  - Imóveis (consultório, casa, apartamento, terreno etc.).
+- "nome": um título curto (ex.: "Honda HRV Touring 2022/2023").
+- "categoria": "veiculo", "imovel" etc.
+- "descricao": texto completo de discriminação.
+- "valor_aquisicao": se não houver valor de aquisição explícito, use o valor do ano anterior ou atual (o que fizer mais sentido).
+- "valor_atual": valor da situação em 31/12 do ano-base.
+- "data_aquisicao", "localizacao", "status": se não houver dados, use null ou um valor genérico como "ativo" para status.
+
+5.2) aplicacoes
+Tabela: aplicacoes
+Campos: id, user_id, nome, tipo, instituicao, valor_aplicado, valor_atual, data_aplicacao, data_vencimento, taxa_rentabilidade, rentabilidade_tipo, liquidez
+
+Regra:
+- Inclua aqui CDB, fundos, aplicações em banco, renda fixa etc.
+- Use seções de "Rendimentos de aplicações financeiras" + bens e direitos com descrições como "APLICACOES JUNTO AO BANCO DO BRASIL", "APLICACOES BANCO SANTANDER", "CDB" etc.
+- "nome": um nome curto para a aplicação.
+- "tipo": "renda_fixa", "poupanca", "fundo" etc, se conseguir inferir.
+- "instituicao": nome do banco ou corretora.
+- "valor_aplicado": use o valor do ano anterior, se fizer sentido.
+- "valor_atual": valor na situação em 31/12 do ano-base.
+- Outros campos podem ser null se não houver informações.
+
+5.3) planos_previdencia
+Tabela: planos_previdencia
+Campos: id, user_id, nome, tipo, instituicao, valor_acumulado, contribuicao_mensal, data_inicio, idade_resgate, taxa_administracao, rentabilidade_acumulada, ativo
+
+Regra:
+- Inclua aqui planos como PGBL, VGBL.
+- Identifique-os em "Bens e Direitos" (ex.: "VGBL BANCO BRASIL").
+- "valor_acumulado": situação em 31/12 do ano-base.
+- Campos sem informação explícita podem ser null.
+- "ativo": true, a menos que o texto indique o contrário.
+
+5.4) contas_bancarias
+Tabela: contas_bancarias
+Campos: id, user_id, banco, agencia, numero_conta, tipo_conta, saldo_atual, limite_credito, ativo
+
+Regra:
+- Inclua contas correntes e poupanças.
+- Use "DECLARAÇÃO DE BENS E DIREITOS" quando a discriminação for "POUPANCA BANCO BRASIL", "CONTA CORRENTE BANCO BRASIL" etc.
+- Procure por "Banco:", "Agência:", "Conta:" no texto da discriminação para preencher agência e número.
+- "saldo_atual": situação em 31/12 do ano-base.
+- "tipo_conta": "corrente" ou "poupanca" quando possível.
+- "ativo": true.
+
+5.5) dividas
+Tabela: dividas
+Campos: id, user_id, nome, tipo, credor, valor_original, saldo_devedor, valor_parcela, numero_parcelas, parcelas_pagas, taxa_juros, data_contratacao, data_vencimento, status
+
+Regra:
+- A partir de "dividas_irpf", crie registros aqui.
+- "nome": um título curto da dívida.
+- "tipo": "financiamento", "emprestimo" etc, se conseguir inferir.
+- "credor": nome do credor.
+- "saldo_devedor": valor em 31/12 do ano-base.
+- Demais campos podem ser null se não houver indicações.
+
+--------------------------------
+FORMATO FINAL DE SAÍDA
+--------------------------------
+
+Retorne APENAS um JSON válido, no formato:
+
+{
+  "declaracao_irpf": { ... },
+  "rendimentos_irpf": [ ... ],
+  "bens_direitos_irpf": [ ... ],
+  "dividas_irpf": [ ... ],
+  "bens_imobilizados": [ ... ],
+  "aplicacoes": [ ... ],
+  "planos_previdencia": [ ... ],
+  "contas_bancarias": [ ... ],
+  "dividas": [ ... ]
+}
+
+Regras finais:
+- Não escreva NENHUM texto fora do JSON.
+- Se alguma lista não tiver itens, retorne-a como [].
+- Nunca invente valores numéricos; use apenas os que aparecerem na declaração. Se não houver, use null.
+- Utilize os valores monetários em reais da declaração (em especial os saldos em 31/12) sempre que possível.`
           },
           {
             role: 'user',
