@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Shield, Plus, Eye, Trash2, Calendar, DollarSign, TrendingUp, Clock } from "lucide-react";
+import { Shield, Plus, Eye, Trash2, Calendar, DollarSign, TrendingUp, Clock, Edit } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,15 +9,17 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import NovoPlanoPrevidenciaModal from "@/components/NovoPlanoPrevidenciaModal";
 import VisualizarPlanoModal from "@/components/VisualizarPlanoModal";
+import { EditarPlanoPrevidenciaModal } from "@/components/EditarPlanoPrevidenciaModal";
 import { supabase } from "@/integrations/supabase/client";
 
 interface PensionCardProps {
   plano: any;
   onView: (id: string) => void;
+  onUpdate: (plano: any) => void;
   onDelete: (id: string) => void;
 }
 
-function PensionCard({ plano, onView, onDelete }: PensionCardProps) {
+function PensionCard({ plano, onView, onUpdate, onDelete }: PensionCardProps) {
   const idadeAtual = 45; // Default age
   const beneficiarioIdeal = plano.idade_resgate || 65;
   const anosParaBeneficio = beneficiarioIdeal - idadeAtual;
@@ -146,6 +148,14 @@ function PensionCard({ plano, onView, onDelete }: PensionCardProps) {
               Detalhes
             </Button>
           </VisualizarPlanoModal>
+          <EditarPlanoPrevidenciaModal plano={plano} onUpdate={onUpdate}>
+            <Button
+              size="sm"
+              variant="outline"
+            >
+              <Edit className="w-4 h-4" />
+            </Button>
+          </EditarPlanoPrevidenciaModal>
           <Button
             size="sm"
             variant="outline"
@@ -189,6 +199,38 @@ export default function Previdencia() {
 
   const handleView = (id: string) => {
     console.log("Visualizar plano:", id);
+  };
+
+  const handleUpdate = async (updatedPlano: any) => {
+    const { error } = await supabase
+      .from('planos_previdencia')
+      .update({
+        nome: updatedPlano.nome,
+        tipo: updatedPlano.tipo,
+        instituicao: updatedPlano.instituicao,
+        valor_acumulado: updatedPlano.valor_acumulado,
+        contribuicao_mensal: updatedPlano.contribuicao_mensal,
+        data_inicio: updatedPlano.data_inicio,
+        idade_resgate: updatedPlano.idade_resgate,
+        taxa_administracao: updatedPlano.taxa_administracao,
+        rentabilidade_acumulada: updatedPlano.rentabilidade_acumulada,
+        ativo: updatedPlano.ativo,
+      })
+      .eq('id', updatedPlano.id);
+
+    if (!error) {
+      setPlanos(prev => prev.map(p => p.id === updatedPlano.id ? updatedPlano : p));
+      toast({
+        title: "Plano atualizado",
+        description: "O plano previdenciário foi atualizado com sucesso.",
+      });
+    } else {
+      toast({
+        title: "Erro ao atualizar",
+        description: "Não foi possível atualizar o plano.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDelete = (id: string) => {
@@ -301,6 +343,7 @@ export default function Previdencia() {
               key={plano.id}
               plano={plano}
               onView={handleView}
+              onUpdate={handleUpdate}
               onDelete={handleDelete}
             />
           ))}
