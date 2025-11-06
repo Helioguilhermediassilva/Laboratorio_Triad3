@@ -18,6 +18,7 @@ export default function Auth() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("login");
   
   // Login state
   const [loginEmail, setLoginEmail] = useState("");
@@ -29,11 +30,18 @@ export default function Auth() {
   const [signupNome, setSignupNome] = useState("");
 
   useEffect(() => {
+    // Check URL params for tab selection
+    const searchParams = new URLSearchParams(window.location.search);
+    const tab = searchParams.get('tab');
+    if (tab === 'signup') {
+      setActiveTab('signup');
+    }
+
     // Check if user is already logged in
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        navigate("/");
+        navigate("/dashboard");
       }
     };
     checkUser();
@@ -75,7 +83,7 @@ export default function Auth() {
           title: "Login realizado!",
           description: "Bem-vindo de volta ao Triad3.",
         });
-        navigate("/");
+        navigate("/dashboard");
       }
     } catch (error: any) {
       toast({
@@ -141,7 +149,7 @@ export default function Auth() {
         });
 
         if (!loginError) {
-          navigate("/");
+          navigate("/dashboard");
         }
       }
     } catch (error: any) {
@@ -157,6 +165,16 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/20 to-background p-4">
+      <div className="absolute top-4 left-4">
+        <Button 
+          variant="ghost" 
+          onClick={() => navigate('/')}
+          className="hover:bg-muted"
+        >
+          ← Voltar ao site
+        </Button>
+      </div>
+      
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
           <div className="flex items-center justify-center mb-4">
@@ -170,7 +188,7 @@ export default function Auth() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="login" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">Login</TabsTrigger>
               <TabsTrigger value="signup">Cadastro</TabsTrigger>
