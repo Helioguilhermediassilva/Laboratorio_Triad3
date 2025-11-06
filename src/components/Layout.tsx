@@ -29,7 +29,7 @@ interface LayoutProps {
 }
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Imobilizado", href: "/imobilizado", icon: Building2 },
   { name: "Aplicações", href: "/aplicacoes", icon: TrendingUp },
   { name: "Previdência", href: "/previdencia", icon: Shield },
