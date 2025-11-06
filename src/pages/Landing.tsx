@@ -69,13 +69,20 @@ export default function Landing() {
             </div>
             <span className="font-semibold text-lg">TRIAD3</span>
           </div>
-          <Button 
-            variant="ghost" 
-            onClick={() => navigate('/auth')}
-            className="hover:bg-muted"
-          >
-            Entrar na minha conta
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="ghost" 
+              onClick={() => navigate('/auth')}
+              className="hover:bg-muted"
+            >
+              Login
+            </Button>
+            <Button 
+              onClick={() => navigate('/auth?tab=signup')}
+            >
+              Cadastro
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -257,24 +264,13 @@ export default function Landing() {
       {/* Footer */}
       <footer className="border-t bg-card/50 py-8">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                <span className="text-white font-bold text-xs">T3</span>
-              </div>
-              <span className="text-sm text-muted-foreground">
-                TRIAD3 © 2025 • Patrimonial Informática e Sistemas
-              </span>
+          <div className="flex items-center justify-center gap-2">
+            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+              <span className="text-white font-bold text-xs">T3</span>
             </div>
-            
-            <div className="flex gap-4">
-              <Button variant="ghost" size="sm" onClick={() => navigate('/auth')}>
-                Login
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/auth?tab=signup')}>
-                Cadastro
-              </Button>
-            </div>
+            <span className="text-sm text-muted-foreground">
+              TRIAD3 © 2025
+            </span>
           </div>
         </div>
       </footer>
