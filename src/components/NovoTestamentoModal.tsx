@@ -10,18 +10,22 @@ import { Plus, Trash2 } from "lucide-react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 
+interface PartilhaBem {
+  beneficiario_nome: string;
+  percentual: string;
+}
+
 interface Bem {
   descricao: string;
   valor_estimado: string;
   tipo_bem: string; // "Comum" ou "Particular"
+  partilhas: PartilhaBem[];
 }
 
 interface Beneficiario {
   nome: string;
   cpf: string;
   parentesco: string;
-  percentual_heranca: string;
-  bens: Bem[];
   observacoes: string;
 }
 
@@ -45,18 +49,22 @@ const testamentoSchema = z.object({
   path: ["regimeBens"],
 });
 
+const partilhaBemSchema = z.object({
+  beneficiario_nome: z.string().min(1, "Beneficiário é obrigatório"),
+  percentual: z.string().min(1, "Percentual é obrigatório"),
+});
+
 const bemSchema = z.object({
   descricao: z.string().min(1, "Descrição do bem é obrigatória"),
   valor_estimado: z.string().optional(),
   tipo_bem: z.string().min(1, "Tipo do bem é obrigatório"),
+  partilhas: z.array(partilhaBemSchema).min(1, "Pelo menos um beneficiário deve receber este bem"),
 });
 
 const beneficiarioSchema = z.object({
   nome: z.string().min(1, "Nome do beneficiário é obrigatório"),
   cpf: z.string().min(11, "CPF deve ter 11 dígitos"),
   parentesco: z.string().min(1, "Parentesco é obrigatório"),
-  percentual_heranca: z.string().min(1, "Percentual é obrigatório"),
-  bens: z.array(bemSchema).min(1, "Pelo menos um bem deve ser incluído"),
   observacoes: z.string().optional(),
 });
 
@@ -83,13 +91,20 @@ export default function NovoTestamentoModal({ children, onAdd }: NovoTestamentoM
       nome: "",
       cpf: "",
       parentesco: "",
-      percentual_heranca: "",
-      bens: [{ descricao: "", valor_estimado: "", tipo_bem: "" }],
       observacoes: "",
+    }
+  ]);
+  const [bens, setBens] = useState<Bem[]>([
+    {
+      descricao: "",
+      valor_estimado: "",
+      tipo_bem: "",
+      partilhas: [{ beneficiario_nome: "", percentual: "" }]
     }
   ]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [beneficiarioErrors, setBeneficiarioErrors] = useState<Record<number, Record<string, string>>>({});
+  const [bemErrors, setBemErrors] = useState<Record<number, Record<string, string>>>({});
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,11 +139,55 @@ export default function NovoTestamentoModal({ children, onAdd }: NovoTestamentoM
         }
       });
 
+      // Validate bens
+      const newBemErrors: Record<number, Record<string, string>> = {};
+      let hasBemErrors = false;
+
+      bens.forEach((bem, index) => {
+        try {
+          bemSchema.parse(bem);
+          
+          // Validar soma de percentuais
+          const totalPercentual = bem.partilhas.reduce((sum, p) => sum + parseFloat(p.percentual || "0"), 0);
+          const maxPercentual = bem.tipo_bem === "Comum" && (formData.estadoCivil === "Casado(a)" || formData.estadoCivil === "União Estável") 
+            ? 50 // Se for bem comum, apenas 50% disponível
+            : 100; // Se for particular, 100% disponível
+          
+          if (totalPercentual > maxPercentual) {
+            newBemErrors[index] = { 
+              partilhas: `A soma dos percentuais (${totalPercentual}%) excede o disponível para partilha (${maxPercentual}%)` 
+            };
+            hasBemErrors = true;
+          }
+        } catch (error) {
+          if (error instanceof z.ZodError) {
+            const benErrs: Record<string, string> = {};
+            error.errors.forEach((err) => {
+              if (err.path[0]) {
+                benErrs[err.path[0] as string] = err.message;
+              }
+            });
+            newBemErrors[index] = benErrs;
+            hasBemErrors = true;
+          }
+        }
+      });
+
       if (hasBeneficiarioErrors) {
         setBeneficiarioErrors(newBeneficiarioErrors);
         toast({
           title: "Erro de validação",
           description: "Por favor, corrija os erros nos beneficiários.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (hasBemErrors) {
+        setBemErrors(newBemErrors);
+        toast({
+          title: "Erro de validação dos bens",
+          description: "Por favor, corrija os erros na partilha dos bens.",
           variant: "destructive",
         });
         return;
@@ -168,20 +227,14 @@ export default function NovoTestamentoModal({ children, onAdd }: NovoTestamentoM
       }
 
       // Insert beneficiarios
-      const beneficiariosToInsert = beneficiarios.map(ben => {
-        const bensFormatted = ben.bens.map(b => 
-          `- ${b.descricao}${b.valor_estimado ? ` (R$ ${b.valor_estimado})` : ''} - ${b.tipo_bem}`
-        ).join('\n');
-        
-        return {
-          testamento_id: testamentoData.id,
-          nome: ben.nome,
-          cpf: ben.cpf,
-          parentesco: ben.parentesco,
-          percentual_heranca: parseFloat(ben.percentual_heranca),
-          observacoes: `Bens:\n${bensFormatted}\n\n${ben.observacoes ? `Observações:\n${ben.observacoes}` : ''}`.trim(),
-        };
-      });
+      const beneficiariosToInsert = beneficiarios.map(ben => ({
+        testamento_id: testamentoData.id,
+        nome: ben.nome,
+        cpf: ben.cpf,
+        parentesco: ben.parentesco,
+        percentual_heranca: 0, // Será calculado com base nos bens
+        observacoes: ben.observacoes || null,
+      }));
 
       const { error: beneficiariosError } = await supabase
         .from('beneficiarios_testamento')
@@ -190,6 +243,31 @@ export default function NovoTestamentoModal({ children, onAdd }: NovoTestamentoM
       if (beneficiariosError) {
         throw beneficiariosError;
       }
+
+      // Formatar bens para salvar nas observações do testamento
+      const bensFormatados = bens.map((bem, idx) => {
+        const partilhasText = bem.partilhas
+          .map(p => `  - ${p.beneficiario_nome}: ${p.percentual}%`)
+          .join('\n');
+        
+        const percentualConjuge = bem.tipo_bem === "Comum" && formData.nomeConjuge 
+          ? `\n  - ${formData.nomeConjuge} (Cônjuge): 50% (meação)`
+          : '';
+        
+        return `Bem ${idx + 1}: ${bem.descricao}
+Tipo: ${bem.tipo_bem}
+${bem.valor_estimado ? `Valor Estimado: R$ ${bem.valor_estimado}` : ''}
+Partilha:${percentualConjuge}
+${partilhasText}`;
+      }).join('\n\n');
+
+      // Atualizar observações do testamento com os bens
+      const observacoesCompletas = `${data.observacoes ? data.observacoes + '\n\n' : ''}BENS E PARTILHAS:\n\n${bensFormatados}`;
+      
+      await supabase
+        .from('testamentos')
+        .update({ observacoes: observacoesCompletas })
+        .eq('id', testamentoData.id);
 
       onAdd(testamentoData);
       setOpen(false);
@@ -207,12 +285,17 @@ export default function NovoTestamentoModal({ children, onAdd }: NovoTestamentoM
         nome: "",
         cpf: "",
         parentesco: "",
-        percentual_heranca: "",
-        bens: [{ descricao: "", valor_estimado: "", tipo_bem: "" }],
         observacoes: "",
+      }]);
+      setBens([{
+        descricao: "",
+        valor_estimado: "",
+        tipo_bem: "",
+        partilhas: [{ beneficiario_nome: "", percentual: "" }]
       }]);
       setErrors({});
       setBeneficiarioErrors({});
+      setBemErrors({});
 
       toast({
         title: "Testamento criado!",
@@ -265,36 +348,66 @@ export default function NovoTestamentoModal({ children, onAdd }: NovoTestamentoM
       nome: "",
       cpf: "",
       parentesco: "",
-      percentual_heranca: "",
-      bens: [{ descricao: "", valor_estimado: "", tipo_bem: "" }],
       observacoes: "",
     }]);
   };
 
-  const handleBemChange = (beneficiarioIndex: number, bemIndex: number, field: keyof Bem, value: string) => {
-    const newBeneficiarios = [...beneficiarios];
-    newBeneficiarios[beneficiarioIndex].bens[bemIndex] = {
-      ...newBeneficiarios[beneficiarioIndex].bens[bemIndex],
-      [field]: value
-    };
-    setBeneficiarios(newBeneficiarios);
-  };
-
-  const addBem = (beneficiarioIndex: number) => {
-    const newBeneficiarios = [...beneficiarios];
-    newBeneficiarios[beneficiarioIndex].bens.push({
+  const addBem = () => {
+    setBens([...bens, {
       descricao: "",
       valor_estimado: "",
-      tipo_bem: ""
-    });
-    setBeneficiarios(newBeneficiarios);
+      tipo_bem: "",
+      partilhas: [{ beneficiario_nome: "", percentual: "" }]
+    }]);
   };
 
-  const removeBem = (beneficiarioIndex: number, bemIndex: number) => {
-    const newBeneficiarios = [...beneficiarios];
-    if (newBeneficiarios[beneficiarioIndex].bens.length > 1) {
-      newBeneficiarios[beneficiarioIndex].bens = newBeneficiarios[beneficiarioIndex].bens.filter((_, i) => i !== bemIndex);
-      setBeneficiarios(newBeneficiarios);
+  const removeBem = (bemIndex: number) => {
+    if (bens.length > 1) {
+      setBens(bens.filter((_, i) => i !== bemIndex));
+      
+      // Remove errors for this bem
+      const newErrors = { ...bemErrors };
+      delete newErrors[bemIndex];
+      setBemErrors(newErrors);
+    }
+  };
+
+  const handleBemChange = (bemIndex: number, field: keyof Bem, value: string) => {
+    const newBens = [...bens];
+    newBens[bemIndex] = { ...newBens[bemIndex], [field]: value };
+    setBens(newBens);
+
+    // Clear error
+    if (bemErrors[bemIndex]?.[field]) {
+      const newErrors = { ...bemErrors };
+      delete newErrors[bemIndex][field];
+      if (Object.keys(newErrors[bemIndex]).length === 0) {
+        delete newErrors[bemIndex];
+      }
+      setBemErrors(newErrors);
+    }
+  };
+
+  const handlePartilhaChange = (bemIndex: number, partilhaIndex: number, field: keyof PartilhaBem, value: string) => {
+    const newBens = [...bens];
+    newBens[bemIndex].partilhas[partilhaIndex] = {
+      ...newBens[bemIndex].partilhas[partilhaIndex],
+      [field]: value
+    };
+    setBens(newBens);
+  };
+
+  const addPartilha = (bemIndex: number) => {
+    const newBens = [...bens];
+    newBens[bemIndex].partilhas.push({ beneficiario_nome: "", percentual: "" });
+    setBens(newBens);
+  };
+
+  const removePartilha = (bemIndex: number, partilhaIndex: number) => {
+    const newBens = [...bens];
+    if (newBens[bemIndex].partilhas.length > 1) {
+      newBens[bemIndex].partilhas = newBens[bemIndex].partilhas.filter((_, i) => i !== partilhaIndex);
+      setBens(newBens);
     }
   };
 
@@ -549,109 +662,6 @@ export default function NovoTestamentoModal({ children, onAdd }: NovoTestamentoM
                       <p className="text-sm text-red-500">{beneficiarioErrors[index].parentesco}</p>
                     )}
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor={`percentual-${index}`}>Percentual da Herança (%)</Label>
-                    <Input
-                      id={`percentual-${index}`}
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      value={beneficiario.percentual_heranca}
-                      onChange={(e) => handleBeneficiarioChange(index, "percentual_heranca", e.target.value)}
-                      placeholder="Ex: 50"
-                      className={beneficiarioErrors[index]?.percentual_heranca ? "border-red-500" : ""}
-                    />
-                    {beneficiarioErrors[index]?.percentual_heranca && (
-                      <p className="text-sm text-red-500">{beneficiarioErrors[index].percentual_heranca}</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Bens do Beneficiário */}
-                <div className="space-y-3 border-t pt-4">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm font-semibold">Bens a Receber</Label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => addBem(index)}
-                    >
-                      <Plus className="mr-1 h-3 w-3" />
-                      Adicionar Bem
-                    </Button>
-                  </div>
-
-                  {beneficiario.bens.map((bem, bemIndex) => (
-                    <div key={bemIndex} className="border rounded p-3 space-y-3 bg-muted/30 relative">
-                      {beneficiario.bens.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="absolute top-1 right-1 h-6 w-6 p-0"
-                          onClick={() => removeBem(index, bemIndex)}
-                        >
-                          <Trash2 className="h-3 w-3 text-red-500" />
-                        </Button>
-                      )}
-
-                      <div className="space-y-2">
-                        <Label htmlFor={`bem-desc-${index}-${bemIndex}`} className="text-xs">
-                          Descrição do Bem
-                        </Label>
-                        <Textarea
-                          id={`bem-desc-${index}-${bemIndex}`}
-                          value={bem.descricao}
-                          onChange={(e) => handleBemChange(index, bemIndex, "descricao", e.target.value)}
-                          placeholder="Ex: Imóvel residencial na Rua X, nº 123, Bairro Y"
-                          rows={2}
-                          className="text-sm"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-2">
-                          <Label htmlFor={`bem-valor-${index}-${bemIndex}`} className="text-xs">
-                            Valor Estimado (Opcional)
-                          </Label>
-                          <Input
-                            id={`bem-valor-${index}-${bemIndex}`}
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={bem.valor_estimado}
-                            onChange={(e) => handleBemChange(index, bemIndex, "valor_estimado", e.target.value)}
-                            placeholder="Ex: 500000"
-                            className="text-sm"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor={`bem-tipo-${index}-${bemIndex}`} className="text-xs">
-                            Tipo do Bem
-                          </Label>
-                          <Select
-                            value={bem.tipo_bem}
-                            onValueChange={(value) => handleBemChange(index, bemIndex, "tipo_bem", value)}
-                          >
-                            <SelectTrigger className="text-sm">
-                              <SelectValue placeholder="Selecione" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Comum">Comum (do casal)</SelectItem>
-                              <SelectItem value="Particular">Particular</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {beneficiarioErrors[index]?.bens && (
-                    <p className="text-sm text-red-500">{beneficiarioErrors[index].bens}</p>
-                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -663,6 +673,173 @@ export default function NovoTestamentoModal({ children, onAdd }: NovoTestamentoM
                     placeholder="Observações específicas sobre este beneficiário"
                     rows={2}
                   />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Bens e Partilhas */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Bens e Partilhas</h3>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addBem}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Adicionar Bem
+              </Button>
+            </div>
+
+            {bens.map((bem, bemIndex) => (
+              <div key={bemIndex} className="border-2 rounded-lg p-4 space-y-4 relative bg-muted/20">
+                {bens.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute top-2 right-2"
+                    onClick={() => removeBem(bemIndex)}
+                  >
+                    <Trash2 className="h-4 w-4 text-red-500" />
+                  </Button>
+                )}
+
+                <h4 className="font-medium text-sm text-muted-foreground">
+                  Bem {bemIndex + 1}
+                </h4>
+
+                <div className="space-y-2">
+                  <Label htmlFor={`bem-desc-${bemIndex}`}>Descrição do Bem</Label>
+                  <Textarea
+                    id={`bem-desc-${bemIndex}`}
+                    value={bem.descricao}
+                    onChange={(e) => handleBemChange(bemIndex, "descricao", e.target.value)}
+                    placeholder="Ex: Imóvel residencial localizado na Rua X, nº 123, Bairro Y, Cidade Z"
+                    rows={3}
+                    className={bemErrors[bemIndex]?.descricao ? "border-red-500" : ""}
+                  />
+                  {bemErrors[bemIndex]?.descricao && (
+                    <p className="text-sm text-red-500">{bemErrors[bemIndex].descricao}</p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor={`bem-valor-${bemIndex}`}>Valor Estimado (Opcional)</Label>
+                    <Input
+                      id={`bem-valor-${bemIndex}`}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={bem.valor_estimado}
+                      onChange={(e) => handleBemChange(bemIndex, "valor_estimado", e.target.value)}
+                      placeholder="Ex: 500000"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor={`bem-tipo-${bemIndex}`}>Tipo do Bem</Label>
+                    <Select
+                      value={bem.tipo_bem}
+                      onValueChange={(value) => handleBemChange(bemIndex, "tipo_bem", value)}
+                    >
+                      <SelectTrigger className={bemErrors[bemIndex]?.tipo_bem ? "border-red-500" : ""}>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Comum">Comum (do casal)</SelectItem>
+                        <SelectItem value="Particular">Particular</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {bemErrors[bemIndex]?.tipo_bem && (
+                      <p className="text-sm text-red-500">{bemErrors[bemIndex].tipo_bem}</p>
+                    )}
+                  </div>
+                </div>
+
+                {bem.tipo_bem === "Comum" && formData.nomeConjuge && (
+                  <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded p-3 text-sm">
+                    <p className="font-medium text-blue-800 dark:text-blue-200">
+                      Meação: {formData.nomeConjuge} tem direito a 50% deste bem (comunhão de bens)
+                    </p>
+                    <p className="text-blue-700 dark:text-blue-300 mt-1">
+                      Você pode partilhar os outros 50% entre os beneficiários abaixo
+                    </p>
+                  </div>
+                )}
+
+                {/* Partilhas */}
+                <div className="space-y-3 border-t pt-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-semibold">
+                      Partilha entre Beneficiários
+                      {bem.tipo_bem === "Comum" && formData.nomeConjuge && (
+                        <span className="text-muted-foreground ml-2">(máximo 50%)</span>
+                      )}
+                    </Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addPartilha(bemIndex)}
+                    >
+                      <Plus className="mr-1 h-3 w-3" />
+                      Adicionar Beneficiário
+                    </Button>
+                  </div>
+
+                  {bem.partilhas.map((partilha, partilhaIndex) => (
+                    <div key={partilhaIndex} className="flex gap-2 items-start">
+                      <div className="flex-1">
+                        <Select
+                          value={partilha.beneficiario_nome}
+                          onValueChange={(value) => handlePartilhaChange(bemIndex, partilhaIndex, "beneficiario_nome", value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o beneficiário" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {beneficiarios.map((ben, idx) => (
+                              <SelectItem key={idx} value={ben.nome || `beneficiario-${idx}`}>
+                                {ben.nome || `Beneficiário ${idx + 1}`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="w-32">
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.01"
+                          value={partilha.percentual}
+                          onChange={(e) => handlePartilhaChange(bemIndex, partilhaIndex, "percentual", e.target.value)}
+                          placeholder="%"
+                        />
+                      </div>
+
+                      {bem.partilhas.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-10 w-10 p-0"
+                          onClick={() => removePartilha(bemIndex, partilhaIndex)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  
+                  {bemErrors[bemIndex]?.partilhas && (
+                    <p className="text-sm text-red-500">{bemErrors[bemIndex].partilhas}</p>
+                  )}
                 </div>
               </div>
             ))}
