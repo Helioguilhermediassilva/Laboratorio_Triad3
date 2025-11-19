@@ -7,6 +7,7 @@ import { Plus, Eye, Edit, Trash2, FileText, Heart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import Layout from "@/components/Layout";
 import NovoContratoNamoroModal from "@/components/NovoContratoNamoroModal";
 import EditarContratoNamoroModal from "@/components/EditarContratoNamoroModal";
 import VisualizarContratoNamoroModal from "@/components/VisualizarContratoNamoroModal";
@@ -142,7 +143,8 @@ export default function ContratoNamoro() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <Layout>
+      <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Heart className="h-8 w-8 text-primary" />
@@ -283,6 +285,7 @@ export default function ContratoNamoro() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </div>
+    </Layout>
   );
 }
