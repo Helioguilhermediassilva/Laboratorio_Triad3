@@ -16,7 +16,8 @@ import {
   GraduationCap,
   Menu,
   X,
-  LogOut
+  LogOut,
+  Heart
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -43,6 +44,7 @@ const navigation = [
   { name: "Análise Inteligente", href: "/analise-inteligente", icon: Sparkles },
   { name: "Educação Financeira", href: "/educacao-financeira", icon: GraduationCap },
   { name: "Testamento", href: "/testamento", icon: ScrollText },
+  { name: "Contrato de Namoro", href: "/contrato-namoro", icon: Heart },
   { name: "Configurações", href: "/configuracoes", icon: Settings },
 ];
 

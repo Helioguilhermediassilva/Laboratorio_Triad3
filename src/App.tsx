@@ -18,6 +18,7 @@ import Dividas from "./pages/Dividas";
 import Relatorios from "./pages/Relatorios";
 import PlanoDoMilhao from "./pages/PlanoDoMilhao";
 import Testamento from "./pages/Testamento";
+import ContratoNamoro from "./pages/ContratoNamoro";
 import Configuracoes from "./pages/Configuracoes";
 import AnaliseInteligente from "./pages/AnaliseInteligente";
 import EducacaoFinanceira from "./pages/EducacaoFinanceira";
@@ -46,6 +47,7 @@ const App = () => (
           <Route path="/relatorios" element={<AuthGuard><Relatorios /></AuthGuard>} />
           <Route path="/plano-do-milhao" element={<AuthGuard><PlanoDoMilhao /></AuthGuard>} />
           <Route path="/testamento" element={<AuthGuard><Testamento /></AuthGuard>} />
+          <Route path="/contrato-namoro" element={<AuthGuard><ContratoNamoro /></AuthGuard>} />
           <Route path="/analise-inteligente" element={<AuthGuard><AnaliseInteligente /></AuthGuard>} />
           <Route path="/educacao-financeira" element={<AuthGuard><EducacaoFinanceira /></AuthGuard>} />
           <Route path="/configuracoes" element={<AuthGuard><Configuracoes /></AuthGuard>} />
