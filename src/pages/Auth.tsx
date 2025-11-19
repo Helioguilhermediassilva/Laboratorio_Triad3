@@ -142,42 +142,25 @@ export default function Auth() {
       }
 
       if (data.user) {
-        // Check if email confirmation is required
-        const needsEmailConfirmation = data.user.identities && data.user.identities.length === 0;
+        // Auto-login após cadastro
+        toast({
+          title: "Cadastro realizado com sucesso!",
+          description: "Entrando automaticamente...",
+        });
         
-        if (needsEmailConfirmation) {
-          // Email confirmation is required
-          toast({
-            title: "Cadastro realizado!",
-            description: "Verifique seu email e clique no link de confirmação para ativar sua conta. Depois disso, você poderá fazer login.",
-            duration: 8000,
-          });
-          
-          // Switch to login tab after showing the message
-          setTimeout(() => {
-            setActiveTab("login");
-          }, 2000);
-        } else {
-          // No email confirmation needed, try auto-login
-          toast({
-            title: "Cadastro realizado!",
-            description: "Entrando automaticamente...",
-          });
-          
-          const { error: loginError } = await supabase.auth.signInWithPassword({
-            email: signupEmail,
-            password: signupPassword,
-          });
+        const { error: loginError } = await supabase.auth.signInWithPassword({
+          email: signupEmail,
+          password: signupPassword,
+        });
 
-          if (loginError) {
-            toast({
-              title: "Cadastro realizado!",
-              description: "Você já pode fazer login com suas credenciais.",
-            });
-            setActiveTab("login");
-          } else {
-            navigate("/dashboard");
-          }
+        if (!loginError) {
+          navigate("/dashboard");
+        } else {
+          toast({
+            title: "Cadastro realizado!",
+            description: "Você já pode fazer login com suas credenciais.",
+          });
+          setActiveTab("login");
         }
       }
     } catch (error: any) {
