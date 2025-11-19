@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { z } from "zod";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,19 +16,32 @@ interface NovoContratoNamoroModalProps {
   onSuccess: () => void;
 }
 
+// CPF validation schema
+const cpfSchema = z.string()
+  .min(11, "CPF deve ter 11 dígitos")
+  .max(14, "CPF inválido")
+  .regex(/^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$/, "Formato de CPF inválido");
+
+const optionalCpfSchema = z.string()
+  .optional()
+  .refine(
+    (val) => !val || /^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$/.test(val),
+    "Formato de CPF inválido"
+  );
+
 interface ContratoFormData {
   titulo: string;
+  data_inicio: string;
+  regime_bens: string;
   parte_1_nome: string;
   parte_1_cpf: string;
   parte_1_endereco: string;
+  deveres_parte_1: string;
+  direitos_parte_1: string;
   parte_2_nome: string;
   parte_2_cpf: string;
   parte_2_endereco: string;
-  regime_bens: string;
-  data_inicio: string;
-  deveres_parte_1: string;
   deveres_parte_2: string;
-  direitos_parte_1: string;
   direitos_parte_2: string;
   clausulas_adicionais: string;
   testemunha_1_nome: string;
@@ -44,6 +58,22 @@ export default function NovoContratoNamoroModal({ open, onOpenChange, onSuccess 
   const onSubmit = async (data: ContratoFormData) => {
     try {
       setLoading(true);
+
+      // Validate CPFs client-side
+      try {
+        cpfSchema.parse(data.parte_1_cpf);
+        cpfSchema.parse(data.parte_2_cpf);
+        if (data.testemunha_1_cpf) optionalCpfSchema.parse(data.testemunha_1_cpf);
+        if (data.testemunha_2_cpf) optionalCpfSchema.parse(data.testemunha_2_cpf);
+      } catch (validationError: any) {
+        toast({
+          title: "Erro de validação",
+          description: validationError.errors?.[0]?.message || "CPF inválido",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
       
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
