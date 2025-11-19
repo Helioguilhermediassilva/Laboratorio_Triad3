@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
     console.log(`Sending welcome email to: ${email}`);
 
     const { data, error } = await resend.emails.send({
-      from: 'TRIAD3 <helio@nowgo.com.br>',
+      from: 'TRIAD3 <noreply@triad3d-wealth.online>',
       to: [email],
       subject: 'Bem-vindo à TRIAD3! 🎉',
       html: `
