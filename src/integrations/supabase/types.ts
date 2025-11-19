@@ -733,10 +733,13 @@ export type Database = {
           created_at: string
           data_elaboracao: string
           documento_url: string | null
+          estado_civil: string | null
           folha_numero: string | null
           id: string
           livro_numero: string | null
+          nome_conjuge: string | null
           observacoes: string | null
+          regime_bens: string | null
           status: string
           tipo: string
           titulo: string
@@ -748,10 +751,13 @@ export type Database = {
           created_at?: string
           data_elaboracao: string
           documento_url?: string | null
+          estado_civil?: string | null
           folha_numero?: string | null
           id?: string
           livro_numero?: string | null
+          nome_conjuge?: string | null
           observacoes?: string | null
+          regime_bens?: string | null
           status?: string
           tipo: string
           titulo: string
@@ -763,10 +769,13 @@ export type Database = {
           created_at?: string
           data_elaboracao?: string
           documento_url?: string | null
+          estado_civil?: string | null
           folha_numero?: string | null
           id?: string
           livro_numero?: string | null
+          nome_conjuge?: string | null
           observacoes?: string | null
+          regime_bens?: string | null
           status?: string
           tipo?: string
           titulo?: string

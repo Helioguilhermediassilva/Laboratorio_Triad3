@@ -142,6 +142,9 @@ export default function NovoTestamentoModal({ children, onAdd }: NovoTestamentoM
           tipo: data.tipo,
           data_elaboracao: data.dataElaboracao,
           cartorio: data.cartorio,
+          estado_civil: data.estadoCivil,
+          regime_bens: data.regimeBens || null,
+          nome_conjuge: data.nomeConjuge || null,
           observacoes: data.observacoes,
           status: 'Rascunho',
         })
