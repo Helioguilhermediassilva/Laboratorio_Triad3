@@ -142,19 +142,6 @@ export default function Auth() {
       }
 
       if (data.user) {
-        // Send welcome email
-        try {
-          await supabase.functions.invoke('send-welcome-email', {
-            body: {
-              email: signupEmail,
-              name: signupNome
-            }
-          });
-        } catch (emailError) {
-          console.error('Error sending welcome email:', emailError);
-          // Don't block signup if email fails
-        }
-
         // Check if email confirmation is required
         const needsEmailConfirmation = data.user.identities && data.user.identities.length === 0;
         
