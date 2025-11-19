@@ -237,6 +237,93 @@ export type Database = {
         }
         Relationships: []
       }
+      contratos_namoro: {
+        Row: {
+          clausulas_adicionais: string | null
+          created_at: string
+          data_elaboracao: string
+          data_inicio: string
+          deveres_parte_1: string | null
+          deveres_parte_2: string | null
+          direitos_parte_1: string | null
+          direitos_parte_2: string | null
+          documento_url: string | null
+          id: string
+          observacoes: string | null
+          parte_1_cpf: string
+          parte_1_endereco: string | null
+          parte_1_nome: string
+          parte_2_cpf: string
+          parte_2_endereco: string | null
+          parte_2_nome: string
+          regime_bens: string
+          status: string
+          testemunha_1_cpf: string | null
+          testemunha_1_nome: string | null
+          testemunha_2_cpf: string | null
+          testemunha_2_nome: string | null
+          titulo: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          clausulas_adicionais?: string | null
+          created_at?: string
+          data_elaboracao?: string
+          data_inicio: string
+          deveres_parte_1?: string | null
+          deveres_parte_2?: string | null
+          direitos_parte_1?: string | null
+          direitos_parte_2?: string | null
+          documento_url?: string | null
+          id?: string
+          observacoes?: string | null
+          parte_1_cpf: string
+          parte_1_endereco?: string | null
+          parte_1_nome: string
+          parte_2_cpf: string
+          parte_2_endereco?: string | null
+          parte_2_nome: string
+          regime_bens: string
+          status?: string
+          testemunha_1_cpf?: string | null
+          testemunha_1_nome?: string | null
+          testemunha_2_cpf?: string | null
+          testemunha_2_nome?: string | null
+          titulo: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          clausulas_adicionais?: string | null
+          created_at?: string
+          data_elaboracao?: string
+          data_inicio?: string
+          deveres_parte_1?: string | null
+          deveres_parte_2?: string | null
+          direitos_parte_1?: string | null
+          direitos_parte_2?: string | null
+          documento_url?: string | null
+          id?: string
+          observacoes?: string | null
+          parte_1_cpf?: string
+          parte_1_endereco?: string | null
+          parte_1_nome?: string
+          parte_2_cpf?: string
+          parte_2_endereco?: string | null
+          parte_2_nome?: string
+          regime_bens?: string
+          status?: string
+          testemunha_1_cpf?: string | null
+          testemunha_1_nome?: string | null
+          testemunha_2_cpf?: string | null
+          testemunha_2_nome?: string | null
+          titulo?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       declaracoes_irpf: {
         Row: {
           ano: number
