@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
 
     // Send email using Resend
     const { data, error } = await resend.emails.send({
-      from: 'TRIAD3 <onboarding@resend.dev>', // Você deve alterar isso para seu domínio validado
+      from: 'TRIAD3 <onboarding@resend.dev>',
       to: [user.email],
       subject: 'Confirme seu cadastro na TRIAD3',
       html,
