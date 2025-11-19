@@ -735,6 +735,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_access_beneficiary: {
+        Args: { _beneficiary_id: string }
+        Returns: boolean
+      }
       can_access_profile: { Args: { _profile_id: string }; Returns: boolean }
     }
     Enums: {
