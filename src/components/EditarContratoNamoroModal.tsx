@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { z } from "zod";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +40,19 @@ interface EditarContratoNamoroModalProps {
   onSuccess: () => void;
 }
 
+// CPF validation schema
+const cpfSchema = z.string()
+  .min(11, "CPF deve ter 11 dígitos")
+  .max(14, "CPF inválido")
+  .regex(/^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$/, "Formato de CPF inválido");
+
+const optionalCpfSchema = z.string()
+  .optional()
+  .refine(
+    (val) => !val || /^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$/.test(val),
+    "Formato de CPF inválido"
+  );
+
 export default function EditarContratoNamoroModal({ open, onOpenChange, contrato, onSuccess }: EditarContratoNamoroModalProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -55,6 +69,22 @@ export default function EditarContratoNamoroModal({ open, onOpenChange, contrato
   const onSubmit = async (data: ContratoNamoro) => {
     try {
       setLoading(true);
+
+      // Validate CPFs client-side
+      try {
+        cpfSchema.parse(data.parte_1_cpf);
+        cpfSchema.parse(data.parte_2_cpf);
+        if (data.testemunha_1_cpf) optionalCpfSchema.parse(data.testemunha_1_cpf);
+        if (data.testemunha_2_cpf) optionalCpfSchema.parse(data.testemunha_2_cpf);
+      } catch (validationError: any) {
+        toast({
+          title: "Erro de validação",
+          description: validationError.errors?.[0]?.message || "CPF inválido",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
 
       const { error } = await supabase
         .from('contratos_namoro')
