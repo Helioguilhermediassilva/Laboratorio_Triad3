@@ -23,8 +23,20 @@ const testamentoSchema = z.object({
   titulo: z.string().min(1, "Título é obrigatório"),
   tipo: z.string().min(1, "Tipo é obrigatório"),
   dataElaboracao: z.string().min(1, "Data de elaboração é obrigatória"),
+  estadoCivil: z.string().min(1, "Estado civil é obrigatório"),
+  regimeBens: z.string().optional(),
+  nomeConjuge: z.string().optional(),
   cartorio: z.string().optional(),
   observacoes: z.string().optional(),
+}).refine((data) => {
+  // Se for casado ou união estável, regime de bens é obrigatório
+  if (data.estadoCivil === "Casado(a)" || data.estadoCivil === "União Estável") {
+    return !!data.regimeBens;
+  }
+  return true;
+}, {
+  message: "Regime de bens é obrigatório para casados ou em união estável",
+  path: ["regimeBens"],
 });
 
 const beneficiarioSchema = z.object({
@@ -48,6 +60,9 @@ export default function NovoTestamentoModal({ children, onAdd }: NovoTestamentoM
     titulo: "",
     tipo: "",
     dataElaboracao: "",
+    estadoCivil: "",
+    regimeBens: "",
+    nomeConjuge: "",
     cartorio: "",
     observacoes: "",
   });
@@ -161,6 +176,9 @@ export default function NovoTestamentoModal({ children, onAdd }: NovoTestamentoM
         titulo: "",
         tipo: "",
         dataElaboracao: "",
+        estadoCivil: "",
+        regimeBens: "",
+        nomeConjuge: "",
         cartorio: "",
         observacoes: "",
       });
@@ -314,6 +332,83 @@ export default function NovoTestamentoModal({ children, onAdd }: NovoTestamentoM
                   placeholder="Ex: 1º Tabelionato de Notas"
                 />
               </div>
+            </div>
+
+            <div className="space-y-4 border-t pt-4">
+              <h4 className="font-medium text-sm">Situação Civil do Testador</h4>
+              
+              <div className="space-y-2">
+                <Label htmlFor="estadoCivil">Estado Civil</Label>
+                <Select
+                  value={formData.estadoCivil}
+                  onValueChange={(value) => {
+                    handleInputChange("estadoCivil", value);
+                    // Limpar campos de cônjuge se não for casado/união estável
+                    if (value !== "Casado(a)" && value !== "União Estável") {
+                      handleInputChange("regimeBens", "");
+                      handleInputChange("nomeConjuge", "");
+                    }
+                  }}
+                >
+                  <SelectTrigger className={errors.estadoCivil ? "border-red-500" : ""}>
+                    <SelectValue placeholder="Selecione o estado civil" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Solteiro(a)">Solteiro(a)</SelectItem>
+                    <SelectItem value="Casado(a)">Casado(a)</SelectItem>
+                    <SelectItem value="União Estável">União Estável</SelectItem>
+                    <SelectItem value="Divorciado(a)">Divorciado(a)</SelectItem>
+                    <SelectItem value="Viúvo(a)">Viúvo(a)</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.estadoCivil && <p className="text-sm text-red-500">{errors.estadoCivil}</p>}
+              </div>
+
+              {(formData.estadoCivil === "Casado(a)" || formData.estadoCivil === "União Estável") && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="regimeBens">Regime de Bens</Label>
+                    <Select
+                      value={formData.regimeBens}
+                      onValueChange={(value) => handleInputChange("regimeBens", value)}
+                    >
+                      <SelectTrigger className={errors.regimeBens ? "border-red-500" : ""}>
+                        <SelectValue placeholder="Selecione o regime de bens" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Comunhão Universal de Bens">
+                          Comunhão Universal de Bens
+                        </SelectItem>
+                        <SelectItem value="Comunhão Parcial de Bens">
+                          Comunhão Parcial de Bens
+                        </SelectItem>
+                        <SelectItem value="Participação Final nos Aquestos">
+                          Participação Final nos Aquestos
+                        </SelectItem>
+                        <SelectItem value="Separação de Bens (Convencional)">
+                          Separação de Bens (Convencional)
+                        </SelectItem>
+                        <SelectItem value="Separação de Bens (Obrigatória/Legal)">
+                          Separação de Bens (Obrigatória/Legal)
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {errors.regimeBens && <p className="text-sm text-red-500">{errors.regimeBens}</p>}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="nomeConjuge">
+                      Nome do(a) {formData.estadoCivil === "Casado(a)" ? "Cônjuge" : "Companheiro(a)"} (Opcional)
+                    </Label>
+                    <Input
+                      id="nomeConjuge"
+                      value={formData.nomeConjuge}
+                      onChange={(e) => handleInputChange("nomeConjuge", e.target.value)}
+                      placeholder="Nome completo"
+                    />
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="space-y-2">
