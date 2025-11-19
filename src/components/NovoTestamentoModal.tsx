@@ -10,12 +10,18 @@ import { Plus, Trash2 } from "lucide-react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 
+interface Bem {
+  descricao: string;
+  valor_estimado: string;
+  tipo_bem: string; // "Comum" ou "Particular"
+}
+
 interface Beneficiario {
   nome: string;
   cpf: string;
   parentesco: string;
   percentual_heranca: string;
-  bens_incluidos: string;
+  bens: Bem[];
   observacoes: string;
 }
 
@@ -39,12 +45,18 @@ const testamentoSchema = z.object({
   path: ["regimeBens"],
 });
 
+const bemSchema = z.object({
+  descricao: z.string().min(1, "Descrição do bem é obrigatória"),
+  valor_estimado: z.string().optional(),
+  tipo_bem: z.string().min(1, "Tipo do bem é obrigatório"),
+});
+
 const beneficiarioSchema = z.object({
   nome: z.string().min(1, "Nome do beneficiário é obrigatório"),
   cpf: z.string().min(11, "CPF deve ter 11 dígitos"),
   parentesco: z.string().min(1, "Parentesco é obrigatório"),
   percentual_heranca: z.string().min(1, "Percentual é obrigatório"),
-  bens_incluidos: z.string().min(1, "Bens incluídos são obrigatórios"),
+  bens: z.array(bemSchema).min(1, "Pelo menos um bem deve ser incluído"),
   observacoes: z.string().optional(),
 });
 
@@ -72,7 +84,7 @@ export default function NovoTestamentoModal({ children, onAdd }: NovoTestamentoM
       cpf: "",
       parentesco: "",
       percentual_heranca: "",
-      bens_incluidos: "",
+      bens: [{ descricao: "", valor_estimado: "", tipo_bem: "" }],
       observacoes: "",
     }
   ]);
@@ -156,14 +168,20 @@ export default function NovoTestamentoModal({ children, onAdd }: NovoTestamentoM
       }
 
       // Insert beneficiarios
-      const beneficiariosToInsert = beneficiarios.map(ben => ({
-        testamento_id: testamentoData.id,
-        nome: ben.nome,
-        cpf: ben.cpf,
-        parentesco: ben.parentesco,
-        percentual_heranca: parseFloat(ben.percentual_heranca),
-        observacoes: `Bens: ${ben.bens_incluidos}\n\n${ben.observacoes || ''}`.trim(),
-      }));
+      const beneficiariosToInsert = beneficiarios.map(ben => {
+        const bensFormatted = ben.bens.map(b => 
+          `- ${b.descricao}${b.valor_estimado ? ` (R$ ${b.valor_estimado})` : ''} - ${b.tipo_bem}`
+        ).join('\n');
+        
+        return {
+          testamento_id: testamentoData.id,
+          nome: ben.nome,
+          cpf: ben.cpf,
+          parentesco: ben.parentesco,
+          percentual_heranca: parseFloat(ben.percentual_heranca),
+          observacoes: `Bens:\n${bensFormatted}\n\n${ben.observacoes ? `Observações:\n${ben.observacoes}` : ''}`.trim(),
+        };
+      });
 
       const { error: beneficiariosError } = await supabase
         .from('beneficiarios_testamento')
@@ -190,7 +208,7 @@ export default function NovoTestamentoModal({ children, onAdd }: NovoTestamentoM
         cpf: "",
         parentesco: "",
         percentual_heranca: "",
-        bens_incluidos: "",
+        bens: [{ descricao: "", valor_estimado: "", tipo_bem: "" }],
         observacoes: "",
       }]);
       setErrors({});
@@ -248,9 +266,36 @@ export default function NovoTestamentoModal({ children, onAdd }: NovoTestamentoM
       cpf: "",
       parentesco: "",
       percentual_heranca: "",
-      bens_incluidos: "",
+      bens: [{ descricao: "", valor_estimado: "", tipo_bem: "" }],
       observacoes: "",
     }]);
+  };
+
+  const handleBemChange = (beneficiarioIndex: number, bemIndex: number, field: keyof Bem, value: string) => {
+    const newBeneficiarios = [...beneficiarios];
+    newBeneficiarios[beneficiarioIndex].bens[bemIndex] = {
+      ...newBeneficiarios[beneficiarioIndex].bens[bemIndex],
+      [field]: value
+    };
+    setBeneficiarios(newBeneficiarios);
+  };
+
+  const addBem = (beneficiarioIndex: number) => {
+    const newBeneficiarios = [...beneficiarios];
+    newBeneficiarios[beneficiarioIndex].bens.push({
+      descricao: "",
+      valor_estimado: "",
+      tipo_bem: ""
+    });
+    setBeneficiarios(newBeneficiarios);
+  };
+
+  const removeBem = (beneficiarioIndex: number, bemIndex: number) => {
+    const newBeneficiarios = [...beneficiarios];
+    if (newBeneficiarios[beneficiarioIndex].bens.length > 1) {
+      newBeneficiarios[beneficiarioIndex].bens = newBeneficiarios[beneficiarioIndex].bens.filter((_, i) => i !== bemIndex);
+      setBeneficiarios(newBeneficiarios);
+    }
   };
 
   const removeBeneficiario = (index: number) => {
@@ -524,18 +569,88 @@ export default function NovoTestamentoModal({ children, onAdd }: NovoTestamentoM
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor={`bens-${index}`}>Bens Incluídos</Label>
-                  <Textarea
-                    id={`bens-${index}`}
-                    value={beneficiario.bens_incluidos}
-                    onChange={(e) => handleBeneficiarioChange(index, "bens_incluidos", e.target.value)}
-                    placeholder="Descreva os bens destinados a este beneficiário"
-                    rows={3}
-                    className={beneficiarioErrors[index]?.bens_incluidos ? "border-red-500" : ""}
-                  />
-                  {beneficiarioErrors[index]?.bens_incluidos && (
-                    <p className="text-sm text-red-500">{beneficiarioErrors[index].bens_incluidos}</p>
+                {/* Bens do Beneficiário */}
+                <div className="space-y-3 border-t pt-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-semibold">Bens a Receber</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addBem(index)}
+                    >
+                      <Plus className="mr-1 h-3 w-3" />
+                      Adicionar Bem
+                    </Button>
+                  </div>
+
+                  {beneficiario.bens.map((bem, bemIndex) => (
+                    <div key={bemIndex} className="border rounded p-3 space-y-3 bg-muted/30 relative">
+                      {beneficiario.bens.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute top-1 right-1 h-6 w-6 p-0"
+                          onClick={() => removeBem(index, bemIndex)}
+                        >
+                          <Trash2 className="h-3 w-3 text-red-500" />
+                        </Button>
+                      )}
+
+                      <div className="space-y-2">
+                        <Label htmlFor={`bem-desc-${index}-${bemIndex}`} className="text-xs">
+                          Descrição do Bem
+                        </Label>
+                        <Textarea
+                          id={`bem-desc-${index}-${bemIndex}`}
+                          value={bem.descricao}
+                          onChange={(e) => handleBemChange(index, bemIndex, "descricao", e.target.value)}
+                          placeholder="Ex: Imóvel residencial na Rua X, nº 123, Bairro Y"
+                          rows={2}
+                          className="text-sm"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label htmlFor={`bem-valor-${index}-${bemIndex}`} className="text-xs">
+                            Valor Estimado (Opcional)
+                          </Label>
+                          <Input
+                            id={`bem-valor-${index}-${bemIndex}`}
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={bem.valor_estimado}
+                            onChange={(e) => handleBemChange(index, bemIndex, "valor_estimado", e.target.value)}
+                            placeholder="Ex: 500000"
+                            className="text-sm"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor={`bem-tipo-${index}-${bemIndex}`} className="text-xs">
+                            Tipo do Bem
+                          </Label>
+                          <Select
+                            value={bem.tipo_bem}
+                            onValueChange={(value) => handleBemChange(index, bemIndex, "tipo_bem", value)}
+                          >
+                            <SelectTrigger className="text-sm">
+                              <SelectValue placeholder="Selecione" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Comum">Comum (do casal)</SelectItem>
+                              <SelectItem value="Particular">Particular</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {beneficiarioErrors[index]?.bens && (
+                    <p className="text-sm text-red-500">{beneficiarioErrors[index].bens}</p>
                   )}
                 </div>
 
