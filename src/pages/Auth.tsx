@@ -75,7 +75,10 @@ export default function Auth() {
 
       if (error) {
         if (error.message.includes("Invalid login credentials")) {
-          throw new Error("Email ou senha incorretos");
+          throw new Error("Email ou senha incorretos. Verifique suas credenciais e tente novamente.");
+        }
+        if (error.message.includes("Email not confirmed")) {
+          throw new Error("Por favor, confirme seu email antes de fazer login. Verifique sua caixa de entrada.");
         }
         throw error;
       }
@@ -133,25 +136,48 @@ export default function Auth() {
 
       if (error) {
         if (error.message.includes("User already registered")) {
-          throw new Error("Este email já está cadastrado");
+          throw new Error("Este email já está cadastrado. Por favor, faça login ou recupere sua senha.");
         }
         throw error;
       }
 
       if (data.user) {
-        toast({
-          title: "Cadastro realizado!",
-          description: "Você já pode fazer login com suas credenciais.",
-        });
+        // Check if email confirmation is required
+        const needsEmailConfirmation = data.user.identities && data.user.identities.length === 0;
         
-        // Auto login after signup
-        const { error: loginError } = await supabase.auth.signInWithPassword({
-          email: signupEmail,
-          password: signupPassword,
-        });
+        if (needsEmailConfirmation) {
+          // Email confirmation is required
+          toast({
+            title: "Cadastro realizado!",
+            description: "Verifique seu email e clique no link de confirmação para ativar sua conta. Depois disso, você poderá fazer login.",
+            duration: 8000,
+          });
+          
+          // Switch to login tab after showing the message
+          setTimeout(() => {
+            setActiveTab("login");
+          }, 2000);
+        } else {
+          // No email confirmation needed, try auto-login
+          toast({
+            title: "Cadastro realizado!",
+            description: "Entrando automaticamente...",
+          });
+          
+          const { error: loginError } = await supabase.auth.signInWithPassword({
+            email: signupEmail,
+            password: signupPassword,
+          });
 
-        if (!loginError) {
-          navigate("/dashboard");
+          if (loginError) {
+            toast({
+              title: "Cadastro realizado!",
+              description: "Você já pode fazer login com suas credenciais.",
+            });
+            setActiveTab("login");
+          } else {
+            navigate("/dashboard");
+          }
         }
       }
     } catch (error: any) {
