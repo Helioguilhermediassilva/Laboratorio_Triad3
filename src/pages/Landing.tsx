@@ -64,10 +64,11 @@ export default function Landing() {
       <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-              <span className="text-white font-bold text-sm">T3</span>
-            </div>
-            <span className="font-semibold text-lg">TRIAD3</span>
+            <img 
+              src="/triad3-logo-new.png" 
+              alt="Triad3 Logo" 
+              className="h-8 w-auto"
+            />
           </div>
           <div className="flex gap-2">
             <Button 
