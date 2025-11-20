@@ -59,11 +59,28 @@ export default function EditarContratoNamoroModal({ open, onOpenChange, contrato
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<ContratoNamoro>();
 
   useEffect(() => {
-    if (contrato && open) {
-      reset(contrato);
-      setValue("regime_bens", contrato.regime_bens);
-      setValue("status", contrato.status);
-    }
+    const loadDecryptedData = async () => {
+      if (contrato && open) {
+        // Decrypt CPF data before displaying
+        const [cpf1Result, cpf2Result, testemunha1Result, testemunha2Result] = await Promise.all([
+          supabase.rpc('decrypt_cpf', { cpf_encrypted: contrato.parte_1_cpf }),
+          supabase.rpc('decrypt_cpf', { cpf_encrypted: contrato.parte_2_cpf }),
+          contrato.testemunha_1_cpf ? supabase.rpc('decrypt_cpf', { cpf_encrypted: contrato.testemunha_1_cpf }) : Promise.resolve({ data: null }),
+          contrato.testemunha_2_cpf ? supabase.rpc('decrypt_cpf', { cpf_encrypted: contrato.testemunha_2_cpf }) : Promise.resolve({ data: null })
+        ]);
+
+        reset({
+          ...contrato,
+          parte_1_cpf: cpf1Result.data || '',
+          parte_2_cpf: cpf2Result.data || '',
+          testemunha_1_cpf: testemunha1Result.data || '',
+          testemunha_2_cpf: testemunha2Result.data || ''
+        });
+        setValue("regime_bens", contrato.regime_bens);
+        setValue("status", contrato.status);
+      }
+    };
+    loadDecryptedData();
   }, [contrato, open, reset, setValue]);
 
   const onSubmit = async (data: ContratoNamoro) => {
@@ -86,9 +103,34 @@ export default function EditarContratoNamoroModal({ open, onOpenChange, contrato
         return;
       }
 
+      // Encrypt CPF data before updating
+      const { data: encryptedCpf1, error: encryptError1 } = await supabase.rpc('encrypt_cpf', { cpf_plain: data.parte_1_cpf });
+      const { data: encryptedCpf2, error: encryptError2 } = await supabase.rpc('encrypt_cpf', { cpf_plain: data.parte_2_cpf });
+      
+      if (encryptError1 || encryptError2) throw new Error("Erro ao criptografar CPF");
+
+      const updateData: any = {
+        ...data,
+        parte_1_cpf: encryptedCpf1,
+        parte_2_cpf: encryptedCpf2
+      };
+
+      // Encrypt witness CPFs if provided
+      if (data.testemunha_1_cpf) {
+        const { data: encryptedTestemunha1, error: errorT1 } = await supabase.rpc('encrypt_cpf', { cpf_plain: data.testemunha_1_cpf });
+        if (errorT1) throw new Error("Erro ao criptografar CPF da testemunha 1");
+        updateData.testemunha_1_cpf = encryptedTestemunha1;
+      }
+
+      if (data.testemunha_2_cpf) {
+        const { data: encryptedTestemunha2, error: errorT2 } = await supabase.rpc('encrypt_cpf', { cpf_plain: data.testemunha_2_cpf });
+        if (errorT2) throw new Error("Erro ao criptografar CPF da testemunha 2");
+        updateData.testemunha_2_cpf = encryptedTestemunha2;
+      }
+
       const { error } = await supabase
         .from('contratos_namoro')
-        .update(data)
+        .update(updateData)
         .eq('id', contrato.id);
 
       if (error) throw error;
