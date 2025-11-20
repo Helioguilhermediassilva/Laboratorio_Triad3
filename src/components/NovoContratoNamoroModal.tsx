@@ -78,10 +78,46 @@ export default function NovoContratoNamoroModal({ open, onOpenChange, onSuccess 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
-      const { error } = await supabase.from('contratos_namoro').insert([{
+      // Encrypt CPF data before storing
+      const { data: encryptedCpf1, error: encryptError1 } = await supabase.rpc('encrypt_cpf', { cpf_plain: data.parte_1_cpf });
+      const { data: encryptedCpf2, error: encryptError2 } = await supabase.rpc('encrypt_cpf', { cpf_plain: data.parte_2_cpf });
+      
+      if (encryptError1 || encryptError2) throw new Error("Erro ao criptografar CPF");
+
+      const contratoData: any = {
         user_id: user.id,
-        ...data
-      }]);
+        titulo: data.titulo,
+        data_inicio: data.data_inicio,
+        regime_bens: data.regime_bens,
+        parte_1_nome: data.parte_1_nome,
+        parte_1_cpf: encryptedCpf1,
+        parte_1_endereco: data.parte_1_endereco,
+        deveres_parte_1: data.deveres_parte_1,
+        direitos_parte_1: data.direitos_parte_1,
+        parte_2_nome: data.parte_2_nome,
+        parte_2_cpf: encryptedCpf2,
+        parte_2_endereco: data.parte_2_endereco,
+        deveres_parte_2: data.deveres_parte_2,
+        direitos_parte_2: data.direitos_parte_2,
+        clausulas_adicionais: data.clausulas_adicionais,
+        testemunha_1_nome: data.testemunha_1_nome,
+        testemunha_2_nome: data.testemunha_2_nome,
+      };
+
+      // Encrypt witness CPFs if provided
+      if (data.testemunha_1_cpf) {
+        const { data: encryptedTestemunha1, error: errorT1 } = await supabase.rpc('encrypt_cpf', { cpf_plain: data.testemunha_1_cpf });
+        if (errorT1) throw new Error("Erro ao criptografar CPF da testemunha 1");
+        contratoData.testemunha_1_cpf = encryptedTestemunha1;
+      }
+
+      if (data.testemunha_2_cpf) {
+        const { data: encryptedTestemunha2, error: errorT2 } = await supabase.rpc('encrypt_cpf', { cpf_plain: data.testemunha_2_cpf });
+        if (errorT2) throw new Error("Erro ao criptografar CPF da testemunha 2");
+        contratoData.testemunha_2_cpf = encryptedTestemunha2;
+      }
+
+      const { error } = await supabase.from('contratos_namoro').insert([contratoData]);
 
       if (error) throw error;
 
