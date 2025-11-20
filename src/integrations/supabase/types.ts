@@ -250,10 +250,10 @@ export type Database = {
           documento_url: string | null
           id: string
           observacoes: string | null
-          parte_1_cpf: string
+          parte_1_cpf: string | null
           parte_1_endereco: string | null
           parte_1_nome: string
-          parte_2_cpf: string
+          parte_2_cpf: string | null
           parte_2_endereco: string | null
           parte_2_nome: string
           regime_bens: string
@@ -278,10 +278,10 @@ export type Database = {
           documento_url?: string | null
           id?: string
           observacoes?: string | null
-          parte_1_cpf: string
+          parte_1_cpf?: string | null
           parte_1_endereco?: string | null
           parte_1_nome: string
-          parte_2_cpf: string
+          parte_2_cpf?: string | null
           parte_2_endereco?: string | null
           parte_2_nome: string
           regime_bens: string
@@ -306,10 +306,10 @@ export type Database = {
           documento_url?: string | null
           id?: string
           observacoes?: string | null
-          parte_1_cpf?: string
+          parte_1_cpf?: string | null
           parte_1_endereco?: string | null
           parte_1_nome?: string
-          parte_2_cpf?: string
+          parte_2_cpf?: string | null
           parte_2_endereco?: string | null
           parte_2_nome?: string
           regime_bens?: string

@@ -83,7 +83,27 @@ export default function ContratoNamoro() {
 
       if (error) throw error;
 
-      setContratos(data || []);
+      // Decrypt CPF data for all contracts
+      const decryptedContratos = await Promise.all(
+        (data || []).map(async (contrato) => {
+          const [cpf1, cpf2, test1, test2] = await Promise.all([
+            supabase.rpc('decrypt_cpf', { cpf_encrypted: contrato.parte_1_cpf }),
+            supabase.rpc('decrypt_cpf', { cpf_encrypted: contrato.parte_2_cpf }),
+            contrato.testemunha_1_cpf ? supabase.rpc('decrypt_cpf', { cpf_encrypted: contrato.testemunha_1_cpf }) : Promise.resolve({ data: null }),
+            contrato.testemunha_2_cpf ? supabase.rpc('decrypt_cpf', { cpf_encrypted: contrato.testemunha_2_cpf }) : Promise.resolve({ data: null })
+          ]);
+          
+          return {
+            ...contrato,
+            parte_1_cpf: cpf1.data || '',
+            parte_2_cpf: cpf2.data || '',
+            testemunha_1_cpf: test1.data || '',
+            testemunha_2_cpf: test2.data || ''
+          };
+        })
+      );
+
+      setContratos(decryptedContratos);
     } catch (error: any) {
       toast({
         title: "Erro ao carregar contratos",
