@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   ArrowRight
 } from "lucide-react";
+import triad3Logo from "@/assets/triad3-logo.png";
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -265,10 +266,12 @@ export default function Landing() {
       {/* Footer */}
       <footer className="border-t bg-card/50 py-8">
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-              <span className="text-white font-bold text-xs">T3</span>
-            </div>
+          <div className="flex items-center justify-center gap-3">
+            <img 
+              src={triad3Logo} 
+              alt="Triad3 Logo" 
+              className="h-8 w-auto"
+            />
             <span className="text-sm text-muted-foreground">
               TRIAD3 © 2025
             </span>
