@@ -273,7 +273,7 @@ export default function Landing() {
               className="h-8 w-auto"
             />
             <span className="text-sm text-muted-foreground">
-              TRIAD3 © 2025
+              © 2025
             </span>
           </div>
         </div>
