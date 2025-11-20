@@ -650,6 +650,7 @@ export type Database = {
           id: string
           nome_completo: string | null
           telefone: string | null
+          terms_accepted_at: string | null
           updated_at: string
         }
         Insert: {
@@ -660,6 +661,7 @@ export type Database = {
           id: string
           nome_completo?: string | null
           telefone?: string | null
+          terms_accepted_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -670,6 +672,7 @@ export type Database = {
           id?: string
           nome_completo?: string | null
           telefone?: string | null
+          terms_accepted_at?: string | null
           updated_at?: string
         }
         Relationships: []
