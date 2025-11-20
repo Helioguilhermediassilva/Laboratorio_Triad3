@@ -93,10 +93,11 @@ export default function Layout({ children }: LayoutProps) {
           {/* Logo */}
           <div className="flex h-16 items-center justify-between px-6 border-b border-border">
             <div className="flex items-center">
-              <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center text-white font-bold">
-                T3
-              </div>
-              <span className="ml-3 text-xl font-bold text-foreground">Triad3</span>
+              <img 
+                src="/triad3-logo-new.png" 
+                alt="Triad3 Logo" 
+                className="h-8 w-auto"
+              />
             </div>
             <Button
               variant="ghost"
