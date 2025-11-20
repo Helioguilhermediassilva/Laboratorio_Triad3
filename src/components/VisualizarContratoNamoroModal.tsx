@@ -1,3 +1,5 @@
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -36,6 +38,34 @@ interface VisualizarContratoNamoroModalProps {
 }
 
 export default function VisualizarContratoNamoroModal({ open, onOpenChange, contrato }: VisualizarContratoNamoroModalProps) {
+  const [decryptedCpfs, setDecryptedCpfs] = useState({
+    parte_1_cpf: '',
+    parte_2_cpf: '',
+    testemunha_1_cpf: '',
+    testemunha_2_cpf: ''
+  });
+
+  useEffect(() => {
+    const loadDecryptedCpfs = async () => {
+      if (contrato && open) {
+        const [cpf1Result, cpf2Result, testemunha1Result, testemunha2Result] = await Promise.all([
+          supabase.rpc('decrypt_cpf', { cpf_encrypted: contrato.parte_1_cpf }),
+          supabase.rpc('decrypt_cpf', { cpf_encrypted: contrato.parte_2_cpf }),
+          contrato.testemunha_1_cpf ? supabase.rpc('decrypt_cpf', { cpf_encrypted: contrato.testemunha_1_cpf }) : Promise.resolve({ data: null }),
+          contrato.testemunha_2_cpf ? supabase.rpc('decrypt_cpf', { cpf_encrypted: contrato.testemunha_2_cpf }) : Promise.resolve({ data: null })
+        ]);
+
+        setDecryptedCpfs({
+          parte_1_cpf: cpf1Result.data || '',
+          parte_2_cpf: cpf2Result.data || '',
+          testemunha_1_cpf: testemunha1Result.data || '',
+          testemunha_2_cpf: testemunha2Result.data || ''
+        });
+      }
+    };
+    loadDecryptedCpfs();
+  }, [contrato, open]);
+
   const getStatusBadge = (status: string) => {
     const variants: { [key: string]: "default" | "secondary" | "destructive" } = {
       "Vigente": "default",
@@ -92,7 +122,7 @@ export default function VisualizarContratoNamoroModal({ open, onOpenChange, cont
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-muted-foreground">CPF</p>
-                  <p className="font-medium">{contrato.parte_1_cpf}</p>
+                  <p className="font-medium">{decryptedCpfs.parte_1_cpf}</p>
                 </div>
                 {contrato.parte_1_endereco && (
                   <div>
@@ -129,7 +159,7 @@ export default function VisualizarContratoNamoroModal({ open, onOpenChange, cont
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-muted-foreground">CPF</p>
-                  <p className="font-medium">{contrato.parte_2_cpf}</p>
+                  <p className="font-medium">{decryptedCpfs.parte_2_cpf}</p>
                 </div>
                 {contrato.parte_2_endereco && (
                   <div>
@@ -164,8 +194,8 @@ export default function VisualizarContratoNamoroModal({ open, onOpenChange, cont
                     <div>
                       <p className="text-muted-foreground">Testemunha 1</p>
                       <p className="font-medium">{contrato.testemunha_1_nome}</p>
-                      {contrato.testemunha_1_cpf && (
-                        <p className="text-xs text-muted-foreground">CPF: {contrato.testemunha_1_cpf}</p>
+                      {decryptedCpfs.testemunha_1_cpf && (
+                        <p className="text-xs text-muted-foreground">CPF: {decryptedCpfs.testemunha_1_cpf}</p>
                       )}
                     </div>
                   )}
@@ -173,8 +203,8 @@ export default function VisualizarContratoNamoroModal({ open, onOpenChange, cont
                     <div>
                       <p className="text-muted-foreground">Testemunha 2</p>
                       <p className="font-medium">{contrato.testemunha_2_nome}</p>
-                      {contrato.testemunha_2_cpf && (
-                        <p className="text-xs text-muted-foreground">CPF: {contrato.testemunha_2_cpf}</p>
+                      {decryptedCpfs.testemunha_2_cpf && (
+                        <p className="text-xs text-muted-foreground">CPF: {decryptedCpfs.testemunha_2_cpf}</p>
                       )}
                     </div>
                   )}
