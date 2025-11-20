@@ -839,6 +839,8 @@ export type Database = {
         Returns: boolean
       }
       can_access_profile: { Args: { _profile_id: string }; Returns: boolean }
+      decrypt_cpf: { Args: { cpf_encrypted: string }; Returns: string }
+      encrypt_cpf: { Args: { cpf_plain: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never
