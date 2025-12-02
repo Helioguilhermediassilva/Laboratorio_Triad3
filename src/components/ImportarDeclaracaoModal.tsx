@@ -11,6 +11,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Configure PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 interface ImportarDeclaracaoModalProps {
   open: boolean;
@@ -58,6 +62,29 @@ export default function ImportarDeclaracaoModal({
       }
     }
   }, [open]);
+
+  // Function to extract text from PDF using pdfjs-dist
+  const extractTextFromPdf = async (file: File): Promise<string> => {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+      const pdf = await loadingTask.promise;
+
+      let fullText = '';
+
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map((item: any) => item.str).join(' ');
+        fullText += pageText + '\n\n';
+      }
+
+      return fullText;
+    } catch (error) {
+      console.error('Erro ao extrair texto do PDF:', error);
+      throw new Error('Não foi possível ler o arquivo PDF. Verifique se o arquivo está correto.');
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -107,7 +134,7 @@ export default function ImportarDeclaracaoModal({
 
     setCarregando(true);
     setProgresso(0);
-    setEtapaAtual("Enviando arquivo...");
+    setEtapaAtual("Lendo arquivo PDF...");
     setResumoImportacao(null);
 
     try {
@@ -117,20 +144,26 @@ export default function ImportarDeclaracaoModal({
         throw new Error("Você precisa estar autenticado para importar declarações");
       }
 
-      setProgresso(20);
-      setEtapaAtual("Validando arquivo PDF...");
+      setProgresso(10);
+      setEtapaAtual("Extraindo texto do PDF...");
 
-      // Prepare form data
-      const formData = new FormData();
-      formData.append('file', arquivo);
-      formData.append('ano', anoDeclaracao);
+      // Extract text from PDF on client side
+      const pdfText = await extractTextFromPdf(arquivo);
 
-      setProgresso(40);
-      setEtapaAtual("Extraindo dados do PDF...");
+      if (!pdfText || pdfText.trim().length < 100) {
+        throw new Error('O PDF parece estar vazio ou não contém texto legível.');
+      }
 
-      // Call edge function to process the declaration
+      setProgresso(30);
+      setEtapaAtual("Enviando dados para processamento...");
+
+      // Send extracted text (not FormData) to edge function
       const { data, error } = await supabase.functions.invoke('processar-declaracao-irpf', {
-        body: formData,
+        body: {
+          pdfText: pdfText,
+          ano: parseInt(anoDeclaracao),
+          fileName: arquivo.name
+        },
       });
 
       if (error) {
@@ -211,9 +244,9 @@ export default function ImportarDeclaracaoModal({
         if (error.message.includes('Não autorizado') || error.message.includes('Unauthorized')) {
           errorTitle = "🔒 Sessão expirada";
           errorMessage = "Sua sessão expirou. Por favor, faça login novamente.";
-        } else if (error.message.includes('PDF válido')) {
+        } else if (error.message.includes('PDF') || error.message.includes('ler o arquivo')) {
           errorTitle = "📄 Arquivo inválido";
-          errorMessage = "O arquivo enviado não é um PDF válido. Verifique e tente novamente.";
+          errorMessage = "O arquivo enviado não é um PDF válido ou está corrompido. Verifique e tente novamente.";
         }
       }
       
@@ -241,9 +274,9 @@ export default function ImportarDeclaracaoModal({
   });
 
   const etapasProcessamento = [
-    { id: 1, label: "Enviando arquivo", icon: Upload },
-    { id: 2, label: "Extraindo texto", icon: FileSearch },
-    { id: 3, label: "Processando dados", icon: Database },
+    { id: 1, label: "Lendo PDF", icon: FileText },
+    { id: 2, label: "Extraindo dados", icon: FileSearch },
+    { id: 3, label: "Salvando", icon: Database },
     { id: 4, label: "Concluído", icon: CheckCircle2 }
   ];
 
@@ -276,7 +309,7 @@ export default function ImportarDeclaracaoModal({
           {carregando && (
             <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
               <div className="flex items-center justify-between">
-                {etapasProcessamento.map((etapa, index) => {
+                {etapasProcessamento.map((etapa) => {
                   const Icon = etapa.icon;
                   const isActive = getEtapaAtiva() === etapa.id;
                   const isComplete = getEtapaAtiva() > etapa.id;
@@ -310,87 +343,65 @@ export default function ImportarDeclaracaoModal({
             </div>
           )}
 
-          {resumoImportacao && progresso === 100 && (
-            <div className="p-4 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
-              <div className="flex items-center gap-2 mb-3">
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
-                <span className="font-medium text-green-800 dark:text-green-200">Dados Extraídos</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="secondary" className="bg-green-100 dark:bg-green-900">
-                  {resumoImportacao.rendimentos_importados} Rendimentos
-                </Badge>
-                <Badge variant="secondary" className="bg-green-100 dark:bg-green-900">
-                  {resumoImportacao.bens_importados} Bens Imobilizados
-                </Badge>
-                <Badge variant="secondary" className="bg-green-100 dark:bg-green-900">
-                  {resumoImportacao.aplicacoes_importadas || 0} Aplicações
-                </Badge>
-                <Badge variant="secondary" className="bg-green-100 dark:bg-green-900">
-                  {resumoImportacao.contas_importadas || 0} Contas
-                </Badge>
-                {(resumoImportacao.dividas_importadas || 0) > 0 && (
-                  <Badge variant="secondary" className="bg-green-100 dark:bg-green-900">
-                    {resumoImportacao.dividas_importadas} Dívidas
-                  </Badge>
-                )}
-              </div>
-            </div>
+          {resumoImportacao && (
+            <Alert className="border-green-500 bg-green-50 dark:bg-green-950/30">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800 dark:text-green-200">
+                <strong>Dados importados com sucesso!</strong>
+                <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                  <div>✅ {resumoImportacao.rendimentos_importados} rendimentos</div>
+                  <div>✅ {resumoImportacao.bens_importados} bens</div>
+                  <div>✅ {resumoImportacao.aplicacoes_importadas} aplicações</div>
+                  <div>✅ {resumoImportacao.contas_importadas} contas</div>
+                  <div>✅ {resumoImportacao.transacoes_importadas} transações</div>
+                  <div>✅ {resumoImportacao.dividas_importadas} dívidas</div>
+                </div>
+              </AlertDescription>
+            </Alert>
           )}
 
           {!carregando && (
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="arquivo">Arquivo da Declaração (PDF)</Label>
-                <div className="flex items-center gap-2 mt-1">
-                  <Input
-                    id="arquivo"
-                    type="file"
-                    onChange={handleFileChange}
-                    accept=".pdf,.dec,.rec,.txt,.bkp"
-                    className="cursor-pointer"
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="arquivo">Arquivo da Declaração *</Label>
+                <Input
+                  id="arquivo"
+                  type="file"
+                  accept=".pdf,.dec,.txt,.rec,.bkp"
+                  onChange={handleFileChange}
+                  disabled={carregando}
+                />
                 {arquivo && (
-                  <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
-                    <FileText className="h-4 w-4" />
-                    <span>{arquivo.name}</span>
-                    <Badge variant="outline" className="text-xs">
-                      {(arquivo.size / 1024 / 1024).toFixed(2)} MB
-                    </Badge>
-                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {arquivo.name} ({(arquivo.size / 1024 / 1024).toFixed(2)} MB)
+                  </p>
                 )}
               </div>
 
-              <div>
-                <Label htmlFor="tipo-arquivo">Tipo de Arquivo</Label>
-                <Select value={tipoArquivo} onValueChange={setTipoArquivo}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o tipo de arquivo" />
+              <div className="space-y-2">
+                <Label htmlFor="tipoArquivo">Tipo de Arquivo *</Label>
+                <Select value={tipoArquivo} onValueChange={setTipoArquivo} disabled={carregando}>
+                  <SelectTrigger id="tipoArquivo">
+                    <SelectValue placeholder="Selecione o tipo" />
                   </SelectTrigger>
                   <SelectContent>
-                    {tiposArquivoSuportados.map(tipo => (
+                    {tiposArquivoSuportados.map((tipo) => (
                       <SelectItem key={tipo.value} value={tipo.value}>
                         {tipo.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {tipoArquivo === "pdf" && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    ✨ O sistema extrairá automaticamente os dados do PDF usando padrões regex.
-                  </p>
-                )}
               </div>
 
-              <div>
-                <Label htmlFor="ano">Ano da Declaração</Label>
-                <Select value={anoDeclaracao} onValueChange={setAnoDeclaracao}>
-                  <SelectTrigger>
+              <div className="space-y-2">
+                <Label htmlFor="anoDeclaracao">Ano-Calendário *</Label>
+                <Select value={anoDeclaracao} onValueChange={setAnoDeclaracao} disabled={carregando}>
+                  <SelectTrigger id="anoDeclaracao">
                     <SelectValue placeholder="Selecione o ano" />
                   </SelectTrigger>
                   <SelectContent>
-                    {anosDisponiveis.map(ano => (
+                    {anosDisponiveis.map((ano) => (
                       <SelectItem key={ano} value={ano}>
                         {ano}
                       </SelectItem>
@@ -399,40 +410,43 @@ export default function ImportarDeclaracaoModal({
                 </Select>
               </div>
 
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="observacoes">Observações (opcional)</Label>
                 <Textarea
                   id="observacoes"
+                  placeholder="Adicione observações sobre esta declaração..."
                   value={observacoes}
                   onChange={(e) => setObservacoes(e.target.value)}
-                  placeholder="Adicione observações sobre esta importação..."
-                  rows={2}
+                  disabled={carregando}
+                  rows={3}
                 />
               </div>
             </div>
           )}
 
-          <div className="flex justify-end gap-3">
-            <Button 
-              variant="outline" 
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={carregando}
+              className="flex-1"
             >
               Cancelar
             </Button>
-            <Button 
+            <Button
               onClick={handleImportar}
-              disabled={carregando || !arquivo || !tipoArquivo || !anoDeclaracao}
+              disabled={!arquivo || !tipoArquivo || !anoDeclaracao || carregando}
+              className="flex-1"
             >
               {carregando ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Processando...
                 </>
               ) : (
                 <>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Importar Declaração
+                  <Upload className="mr-2 h-4 w-4" />
+                  Importar
                 </>
               )}
             </Button>

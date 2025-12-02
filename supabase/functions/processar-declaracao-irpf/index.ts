@@ -803,14 +803,14 @@ serve(async (req) => {
 
     console.log('👤 Usuário autenticado:', user.id);
 
-    const formData = await req.formData();
-    const file = formData.get('file') as File;
-    const anoFornecido = formData.get('ano') as string;
+    // Parse JSON body (pdfText already extracted on client side)
+    const body = await req.json();
+    const { pdfText, ano: anoFornecido, fileName } = body;
 
-    if (!file) {
+    if (!pdfText || typeof pdfText !== 'string') {
       return new Response(JSON.stringify({ 
         success: false, 
-        error: 'Arquivo é obrigatório' 
+        error: 'Texto do PDF é obrigatório' 
       }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -827,42 +827,12 @@ serve(async (req) => {
       });
     }
 
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
-      return new Response(JSON.stringify({ 
-        success: false, 
-        error: 'Apenas arquivos PDF são aceitos' 
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    console.log('📁 Processando arquivo:', file.name, 'Ano fornecido:', anoFornecido);
-
-    const fileBuffer = await file.arrayBuffer();
-    
-    let pdfText = '';
-    try {
-      pdfText = await extractTextFromPDF(fileBuffer);
-      console.log('📝 Texto extraído, tamanho:', pdfText.length);
-    } catch (extractError) {
-      console.error('Erro na extração do PDF:', extractError);
-    }
+    console.log('📁 Processando declaração - Ano fornecido:', anoFornecido, 'Nome arquivo:', fileName || 'não informado');
+    console.log('📝 Texto recebido, tamanho:', pdfText.length);
+    console.log('📝 Preview do texto (primeiros 2000 chars):', pdfText.substring(0, 2000));
 
     // Extrair dados usando o ano fornecido como fallback
-    const extractedData = extrairDadosPDF(pdfText, parseInt(anoFornecido));
-
-    // Upload do arquivo original
-    const fileExt = file.name.split('.').pop();
-    const filePath = `${user.id}/${Date.now()}.${fileExt}`;
-    
-    const { error: uploadError } = await supabaseClient.storage
-      .from('declaracoes-irpf')
-      .upload(filePath, file, { contentType: file.type, upsert: false });
-
-    if (uploadError) {
-      console.error('Erro no upload:', uploadError);
-    }
+    const extractedData = extrairDadosPDF(pdfText, anoFornecido);
 
     // Criar registro da declaração
     const { data: declaracao, error: declError } = await supabaseClient
@@ -871,7 +841,7 @@ serve(async (req) => {
         user_id: user.id,
         ano: extractedData.declaracao.ano,
         status: extractedData.declaracao.status,
-        arquivo_original: file.name,
+        arquivo_original: fileName || 'declaracao-irpf.pdf',
         valor_pagar: extractedData.declaracao.valor_pagar,
         valor_restituir: extractedData.declaracao.valor_restituir,
         dados_brutos: { text_length: pdfText.length, extracted: true }
