@@ -21,6 +21,9 @@ interface ImportarDeclaracaoModalProps {
 interface ImportResumo {
   rendimentos_importados: number;
   bens_importados: number;
+  aplicacoes_importadas: number;
+  contas_importadas: number;
+  transacoes_importadas: number;
   dividas_importadas: number;
 }
 
@@ -157,13 +160,15 @@ export default function ImportarDeclaracaoModal({
       // Show success with details
       const totalItens = (resumo?.rendimentos_importados || 0) + 
                         (resumo?.bens_importados || 0) + 
+                        (resumo?.aplicacoes_importadas || 0) +
+                        (resumo?.contas_importadas || 0) +
                         (resumo?.dividas_importadas || 0);
 
       toast({
         title: "✅ Declaração importada com sucesso!",
         description: totalItens > 0 
-          ? `${resumo.rendimentos_importados} rendimentos, ${resumo.bens_importados} bens e ${resumo.dividas_importadas} dívidas extraídos.`
-          : `Declaração de ${anoDeclaracao} importada. Você pode adicionar dados manualmente.`,
+          ? `Ano ${data.ano || anoDeclaracao}: ${resumo.rendimentos_importados} rendimentos, ${resumo.bens_importados} bens, ${resumo.aplicacoes_importadas} aplicações extraídos.`
+          : `Declaração de ${data.ano || anoDeclaracao} importada. Você pode adicionar dados manualmente.`,
         duration: 6000
       });
 
@@ -316,11 +321,19 @@ export default function ImportarDeclaracaoModal({
                   {resumoImportacao.rendimentos_importados} Rendimentos
                 </Badge>
                 <Badge variant="secondary" className="bg-green-100 dark:bg-green-900">
-                  {resumoImportacao.bens_importados} Bens/Direitos
+                  {resumoImportacao.bens_importados} Bens Imobilizados
                 </Badge>
                 <Badge variant="secondary" className="bg-green-100 dark:bg-green-900">
-                  {resumoImportacao.dividas_importadas} Dívidas
+                  {resumoImportacao.aplicacoes_importadas || 0} Aplicações
                 </Badge>
+                <Badge variant="secondary" className="bg-green-100 dark:bg-green-900">
+                  {resumoImportacao.contas_importadas || 0} Contas
+                </Badge>
+                {(resumoImportacao.dividas_importadas || 0) > 0 && (
+                  <Badge variant="secondary" className="bg-green-100 dark:bg-green-900">
+                    {resumoImportacao.dividas_importadas} Dívidas
+                  </Badge>
+                )}
               </div>
             </div>
           )}
