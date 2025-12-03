@@ -21,11 +21,10 @@ const bancosDisponiveis = [
 ];
 
 const tiposConta = [
-  { value: "Conta Corrente", label: "Conta Corrente" },
+  { value: "Corrente", label: "Conta Corrente" },
   { value: "Poupança", label: "Poupança" },
-  { value: "Conta Investimento", label: "Conta Investimento" },
-  { value: "Conta Salário", label: "Conta Salário" },
-  { value: "Conta Digital", label: "Conta Digital" }
+  { value: "Investimento", label: "Conta Investimento" },
+  { value: "Salário", label: "Conta Salário" }
 ];
 
 const coresDisponiveis = [
