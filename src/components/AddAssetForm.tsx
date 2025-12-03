@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AddAssetFormProps {
   onSubmit?: (asset: any) => void;
@@ -14,6 +15,7 @@ interface AddAssetFormProps {
 
 export default function AddAssetForm({ onSubmit, onCancel }: AddAssetFormProps) {
   const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     category: "",
     type: "",
@@ -40,11 +42,31 @@ export default function AddAssetForm({ onSubmit, onCancel }: AddAssetFormProps) 
     plate: ""
   });
 
+  const formatCurrency = (value: string): string => {
+    const numericValue = value.replace(/[^\d]/g, '');
+    if (!numericValue) return '';
+    const formattedValue = (parseFloat(numericValue) / 100).toFixed(2);
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(parseFloat(formattedValue));
+  };
+
+  const parseCurrencyToNumber = (value: string): number => {
+    const numericValue = value.replace(/[^\d,]/g, '').replace(',', '.');
+    return parseFloat(numericValue) || 0;
+  };
+
+  const handleCurrencyChange = (field: string, value: string) => {
+    const formatted = formatCurrency(value);
+    setFormData(prev => ({ ...prev, [field]: formatted }));
+  };
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.category || !formData.name || !formData.type) {
@@ -56,69 +78,161 @@ export default function AddAssetForm({ onSubmit, onCancel }: AddAssetFormProps) 
       return;
     }
 
-    const newAsset = {
-      id: Date.now().toString(),
-      category: formData.category,
-      type: formData.type,
-      name: formData.name,
-      description: formData.description,
-      value: parseFloat(formData.value) || 0,
-      quantity: parseInt(formData.quantity) || 1,
-      location: formData.location,
-      purchaseDate: formData.purchaseDate,
-      document: formData.document,
-      notes: formData.notes,
-      // Campos específicos baseados na categoria
-      ...(formData.category === 'aplicacoes' && {
+    setLoading(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Erro de autenticação",
+          description: "Você precisa estar logado para adicionar um item.",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
+
+      let savedData: any = null;
+
+      // Persistir no Supabase baseado na categoria
+      if (formData.category === 'aplicacoes') {
+        const valorAplicado = parseCurrencyToNumber(formData.purchasePrice) * (parseInt(formData.quantity) || 1);
+        const valorAtual = parseCurrencyToNumber(formData.currentPrice || formData.purchasePrice) * (parseInt(formData.quantity) || 1);
+
+        const { data, error } = await supabase
+          .from('aplicacoes')
+          .insert({
+            user_id: user.id,
+            nome: formData.name,
+            tipo: formData.type,
+            instituicao: formData.broker || formData.location || 'N/A',
+            valor_aplicado: valorAplicado,
+            valor_atual: valorAtual,
+            data_aplicacao: formData.purchaseDate || new Date().toISOString().split('T')[0],
+            liquidez: 'D+1',
+            rentabilidade_tipo: 'Variável',
+            taxa_rentabilidade: 0
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        savedData = data;
+
+      } else if (formData.category === 'imobilizado') {
+        const valorNumerico = parseCurrencyToNumber(formData.value);
+
+        const { data, error } = await supabase
+          .from('bens_imobilizados')
+          .insert({
+            user_id: user.id,
+            nome: formData.name,
+            categoria: formData.type === 'imovel' ? 'Imóvel' : 
+                       formData.type === 'veiculo' ? 'Veículo' :
+                       formData.type === 'maquina' ? 'Equipamento' :
+                       formData.type === 'movel' ? 'Móveis' : 'Outros',
+            localizacao: formData.address || formData.location || 'N/A',
+            valor_aquisicao: valorNumerico,
+            valor_atual: valorNumerico,
+            data_aquisicao: formData.purchaseDate || new Date().toISOString().split('T')[0],
+            status: 'Próprio',
+            descricao: formData.notes || formData.description || ''
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        savedData = data;
+
+      } else if (formData.category === 'contas-bancarias') {
+        const saldoNumerico = parseCurrencyToNumber(formData.value);
+
+        const { data, error } = await supabase
+          .from('contas_bancarias')
+          .insert({
+            user_id: user.id,
+            banco: formData.name,
+            agencia: formData.location || '',
+            numero_conta: formData.document || '',
+            tipo_conta: formData.type === 'corrente' ? 'Conta Corrente' :
+                        formData.type === 'poupanca' ? 'Poupança' :
+                        formData.type === 'salario' ? 'Conta Salário' : 'Conta Digital',
+            saldo_atual: saldoNumerico,
+            ativo: true
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        savedData = data;
+
+      } else {
+        // Para outras categorias, criar um objeto local por enquanto
+        savedData = {
+          id: Date.now().toString(),
+          ...formData,
+          value: parseCurrencyToNumber(formData.value)
+        };
+      }
+
+      const newAsset = {
+        id: savedData?.id || Date.now().toString(),
+        category: formData.category,
+        type: formData.type,
+        name: formData.name,
+        description: formData.description,
+        value: parseCurrencyToNumber(formData.value) || parseCurrencyToNumber(formData.currentPrice) * (parseInt(formData.quantity) || 1),
+        quantity: parseInt(formData.quantity) || 1,
+        location: formData.location || formData.broker || formData.address,
+        purchaseDate: formData.purchaseDate,
+        document: formData.document,
+        notes: formData.notes,
         ticker: formData.ticker?.toUpperCase(),
-        purchasePrice: parseFloat(formData.purchasePrice) || 0,
-        currentPrice: parseFloat(formData.currentPrice) || parseFloat(formData.purchasePrice) || 0,
-        broker: formData.broker,
-        totalValue: (parseInt(formData.quantity) || 1) * (parseFloat(formData.currentPrice) || parseFloat(formData.purchasePrice) || 0),
-        profitLoss: (parseFloat(formData.currentPrice) || parseFloat(formData.purchasePrice) || 0) - (parseFloat(formData.purchasePrice) || 0)
-      }),
-      ...(formData.category === 'imobilizado' && formData.type === 'imovel' && {
-        address: formData.address,
-        area: formData.area
-      }),
-      ...(formData.category === 'imobilizado' && formData.type === 'veiculo' && {
-        brand: formData.brand,
-        model: formData.model,
-        year: formData.year,
-        plate: formData.plate
-      })
-    };
+        purchasePrice: parseCurrencyToNumber(formData.purchasePrice),
+        currentPrice: parseCurrencyToNumber(formData.currentPrice || formData.purchasePrice),
+        broker: formData.broker
+      };
 
-    onSubmit?.(newAsset);
-    
-    toast({
-      title: "Sucesso!",
-      description: `${formData.category === 'aplicacoes' ? 'Aplicação' : 'Patrimônio'} ${formData.name} adicionado com sucesso.`,
-    });
+      onSubmit?.(newAsset);
+      
+      toast({
+        title: "Sucesso!",
+        description: `${formData.category === 'aplicacoes' ? 'Aplicação' : 'Patrimônio'} ${formData.name} adicionado e salvo com sucesso.`,
+      });
 
-    // Reset form
-    setFormData({
-      category: "",
-      type: "",
-      name: "",
-      description: "",
-      value: "",
-      quantity: "",
-      location: "",
-      purchaseDate: "",
-      document: "",
-      notes: "",
-      ticker: "",
-      purchasePrice: "",
-      currentPrice: "",
-      broker: "",
-      address: "",
-      area: "",
-      brand: "",
-      model: "",
-      year: "",
-      plate: ""
-    });
+      // Reset form
+      setFormData({
+        category: "",
+        type: "",
+        name: "",
+        description: "",
+        value: "",
+        quantity: "",
+        location: "",
+        purchaseDate: "",
+        document: "",
+        notes: "",
+        ticker: "",
+        purchasePrice: "",
+        currentPrice: "",
+        broker: "",
+        address: "",
+        area: "",
+        brand: "",
+        model: "",
+        year: "",
+        plate: ""
+      });
+    } catch (error: any) {
+      console.error('Erro ao salvar:', error);
+      toast({
+        title: "Erro ao salvar",
+        description: error.message || "Não foi possível salvar o item. Tente novamente.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -229,11 +343,9 @@ export default function AddAssetForm({ onSubmit, onCancel }: AddAssetFormProps) 
               <Label htmlFor="value">Valor (R$)</Label>
               <Input
                 id="value"
-                type="number"
-                step="0.01"
-                placeholder="0,00"
+                placeholder="R$ 0,00"
                 value={formData.value}
-                onChange={(e) => handleInputChange("value", e.target.value)}
+                onChange={(e) => handleCurrencyChange("value", e.target.value)}
               />
             </div>
           </div>
@@ -280,11 +392,9 @@ export default function AddAssetForm({ onSubmit, onCancel }: AddAssetFormProps) 
                   <Label htmlFor="purchasePrice">Preço de Compra (R$)</Label>
                   <Input
                     id="purchasePrice"
-                    type="number"
-                    step="0.01"
-                    placeholder="25.50"
+                    placeholder="R$ 0,00"
                     value={formData.purchasePrice}
-                    onChange={(e) => handleInputChange("purchasePrice", e.target.value)}
+                    onChange={(e) => handleCurrencyChange("purchasePrice", e.target.value)}
                   />
                 </div>
 
@@ -292,11 +402,9 @@ export default function AddAssetForm({ onSubmit, onCancel }: AddAssetFormProps) 
                   <Label htmlFor="currentPrice">Preço Atual (R$)</Label>
                   <Input
                     id="currentPrice"
-                    type="number"
-                    step="0.01"
-                    placeholder="28.75"
+                    placeholder="R$ 0,00"
                     value={formData.currentPrice}
-                    onChange={(e) => handleInputChange("currentPrice", e.target.value)}
+                    onChange={(e) => handleCurrencyChange("currentPrice", e.target.value)}
                   />
                 </div>
               </div>
@@ -420,11 +528,11 @@ export default function AddAssetForm({ onSubmit, onCancel }: AddAssetFormProps) 
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 pt-4">
-            <Button type="submit" className="flex-1">
-              Adicionar Patrimônio
+            <Button type="submit" className="flex-1" disabled={loading}>
+              {loading ? "Salvando..." : "Adicionar Patrimônio"}
             </Button>
             {onCancel && (
-              <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
+              <Button type="button" variant="outline" onClick={onCancel} className="flex-1" disabled={loading}>
                 Cancelar
               </Button>
             )}
