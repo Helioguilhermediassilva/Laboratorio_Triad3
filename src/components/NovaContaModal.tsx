@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CreditCard, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface NovaContaModalProps {
   open: boolean;
@@ -45,9 +46,10 @@ export default function NovaContaModal({
   const [saldo, setSaldo] = useState("");
   const [limite, setLimite] = useState("");
   const [cor, setCor] = useState(coresDisponiveis[0]);
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!banco || !nome || !agencia || !numero || !tipo) {
@@ -59,39 +61,80 @@ export default function NovaContaModal({
       return;
     }
 
-    const saldoNum = parseFloat(saldo.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
-    const limiteNum = parseFloat(limite.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+    setLoading(true);
 
-    const novaConta = {
-      id: Date.now().toString(),
-      banco,
-      nome,
-      agencia,
-      numero,
-      tipo,
-      saldo: saldoNum,
-      limite: limiteNum,
-      cor,
-      dataCriacao: new Date().toISOString()
-    };
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Erro de autenticação",
+          description: "Você precisa estar logado para adicionar uma conta.",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
 
-    onContaAdicionada(novaConta);
-    
-    toast({
-      title: "Conta adicionada!",
-      description: "A conta foi adicionada com sucesso."
-    });
+      const saldoNum = parseFloat(saldo.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+      const limiteNum = parseFloat(limite.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
 
-    // Reset form
-    setBanco("");
-    setNome("");
-    setAgencia("");
-    setNumero("");
-    setTipo("");
-    setSaldo("");
-    setLimite("");
-    setCor(coresDisponiveis[0]);
-    onOpenChange(false);
+      const { data: savedData, error } = await supabase
+        .from('contas_bancarias')
+        .insert({
+          user_id: user.id,
+          banco: banco,
+          agencia: agencia,
+          numero_conta: numero,
+          tipo_conta: tipo,
+          saldo_atual: saldoNum,
+          limite_credito: limiteNum,
+          ativo: true
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const novaConta = {
+        id: savedData.id,
+        banco,
+        nome,
+        agencia,
+        numero,
+        tipo,
+        saldo: saldoNum,
+        limite: limiteNum,
+        cor,
+        dataCriacao: new Date().toISOString()
+      };
+
+      onContaAdicionada(novaConta);
+      
+      toast({
+        title: "Conta adicionada!",
+        description: "A conta foi salva com sucesso."
+      });
+
+      // Reset form
+      setBanco("");
+      setNome("");
+      setAgencia("");
+      setNumero("");
+      setTipo("");
+      setSaldo("");
+      setLimite("");
+      setCor(coresDisponiveis[0]);
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error('Erro ao salvar:', error);
+      toast({
+        title: "Erro ao salvar",
+        description: error.message || "Não foi possível salvar a conta.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const formatCurrency = (value: string) => {
@@ -233,12 +276,13 @@ export default function NovaContaModal({
               type="button" 
               variant="outline" 
               onClick={() => onOpenChange(false)}
+              disabled={loading}
             >
               Cancelar
             </Button>
-            <Button type="submit">
+            <Button type="submit" disabled={loading}>
               <Plus className="h-4 w-4 mr-2" />
-              Adicionar Conta
+              {loading ? "Salvando..." : "Adicionar Conta"}
             </Button>
           </div>
         </form>
