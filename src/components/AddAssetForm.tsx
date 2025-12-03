@@ -135,7 +135,7 @@ export default function AddAssetForm({ onSubmit, onCancel }: AddAssetFormProps) 
             valor_aquisicao: valorNumerico,
             valor_atual: valorNumerico,
             data_aquisicao: formData.purchaseDate || new Date().toISOString().split('T')[0],
-            status: 'Próprio',
+            status: 'Ativo',
             descricao: formData.notes || formData.description || ''
           })
           .select()
