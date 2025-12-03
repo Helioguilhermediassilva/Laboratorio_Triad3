@@ -38,6 +38,21 @@ const contas = [
   "PayPal"
 ];
 
+const formatCurrency = (value: string): string => {
+  const numericValue = value.replace(/[^\d]/g, '');
+  if (!numericValue) return '';
+  const formattedValue = (parseFloat(numericValue) / 100).toFixed(2);
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(parseFloat(formattedValue));
+};
+
+const parseCurrencyToNumber = (value: string): number => {
+  const numericValue = value.replace(/[^\d,]/g, '').replace(',', '.');
+  return parseFloat(numericValue) || 0;
+};
+
 export default function NovaTransacaoModal({ open, onOpenChange, onTransacaoAdded }: NovaTransacaoModalProps) {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -87,7 +102,7 @@ export default function NovaTransacaoModal({ open, onOpenChange, onTransacaoAdde
             descricao: formData.descricao,
             categoria: formData.categoria,
             tipo: formData.tipo,
-            valor: parseFloat(formData.valor),
+            valor: parseCurrencyToNumber(formData.valor),
             conta: formData.conta,
             observacoes: formData.observacoes || null
           }
@@ -183,11 +198,9 @@ export default function NovaTransacaoModal({ open, onOpenChange, onTransacaoAdde
             <Label htmlFor="valor">Valor (R$)</Label>
             <Input
               id="valor"
-              type="number"
-              step="0.01"
-              placeholder="0,00"
+              placeholder="R$ 0,00"
               value={formData.valor}
-              onChange={(e) => setFormData({ ...formData, valor: e.target.value })}
+              onChange={(e) => setFormData({ ...formData, valor: formatCurrency(e.target.value) })}
               required
             />
           </div>
