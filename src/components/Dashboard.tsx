@@ -12,8 +12,10 @@ import EditAssetModal from "./EditAssetModal";
 import heroImage from "@/assets/hero-bg.jpg";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
+  const { toast } = useToast();
   const [assets, setAssets] = useState<any[]>([]);
   const [filteredAssets, setFilteredAssets] = useState<any[]>([]);
   const [stats, setStats] = useState([
@@ -245,6 +247,61 @@ export default function Dashboard() {
     setEditAsset(null);
   };
 
+  const handleDeleteAsset = async (asset: any) => {
+    try {
+      // Determine which table to delete from based on category
+      const isAplicacao = ['Ação', 'Fundo Imobiliário', 'ETF', 'BDR', 'Tesouro Direto', 'CDB', 'LCI', 'LCA', 'Debênture', 'Criptomoeda', 'acao', 'fii', 'etf', 'bdr', 'tesouro', 'cdb', 'lci', 'lca', 'debenture', 'crypto'].includes(asset.category);
+      const isBemImobilizado = ['Imóvel', 'Veículo', 'Equipamento', 'Móveis', 'Outros', 'imovel', 'veiculo', 'maquina', 'movel', 'joia', 'outro'].includes(asset.category);
+
+      let error = null;
+
+      if (isAplicacao) {
+        const { error: deleteError } = await supabase
+          .from('aplicacoes')
+          .delete()
+          .eq('id', asset.id);
+        error = deleteError;
+      } else if (isBemImobilizado) {
+        const { error: deleteError } = await supabase
+          .from('bens_imobilizados')
+          .delete()
+          .eq('id', asset.id);
+        error = deleteError;
+      } else {
+        // Try both tables
+        const { error: errorAplicacoes } = await supabase
+          .from('aplicacoes')
+          .delete()
+          .eq('id', asset.id);
+        
+        if (errorAplicacoes) {
+          const { error: errorBens } = await supabase
+            .from('bens_imobilizados')
+            .delete()
+            .eq('id', asset.id);
+          error = errorBens;
+        }
+      }
+
+      if (error) throw error;
+
+      toast({
+        title: "Ativo excluído",
+        description: `${asset.name} foi removido com sucesso.`,
+      });
+
+      // Reload data
+      loadDashboardData();
+    } catch (error: any) {
+      console.error('Erro ao excluir:', error);
+      toast({
+        title: "Erro ao excluir",
+        description: error.message || "Não foi possível excluir o ativo.",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <div className="space-y-8">
       {/* Hero Section */}
@@ -354,6 +411,7 @@ export default function Dashboard() {
               asset={asset}
               onEdit={handleEditAsset}
               onView={handleViewAsset}
+              onDelete={handleDeleteAsset}
             />
           ))}
         </div>
