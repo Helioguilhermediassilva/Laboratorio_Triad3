@@ -126,16 +126,14 @@ function TestamentCard({ testamento, onView, onEdit, onDelete }: TestamentCardPr
               Visualizar
             </Button>
           </VisualizarTestamentoModal>
-          {testamento.status === "Ativo" && (
-            <EditarTestamentoModal testamento={testamento} onEdit={onEdit}>
-              <Button
-                size="sm"
-                variant="outline"
-              >
-                <Edit className="w-4 h-4" />
-              </Button>
-            </EditarTestamentoModal>
-          )}
+          <EditarTestamentoModal testamento={testamento} onEdit={onEdit}>
+            <Button
+              size="sm"
+              variant="outline"
+            >
+              <Edit className="w-4 h-4" />
+            </Button>
+          </EditarTestamentoModal>
           <Button
             size="sm"
             variant="outline"

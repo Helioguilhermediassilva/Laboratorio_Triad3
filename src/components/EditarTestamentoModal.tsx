@@ -7,34 +7,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
+import { supabase } from "@/integrations/supabase/client";
 
 const testamentoSchema = z.object({
   titulo: z.string().min(1, "Título é obrigatório"),
   tipo: z.string().min(1, "Tipo é obrigatório"),
+  dataElaboracao: z.string().min(1, "Data de elaboração é obrigatória"),
+  estadoCivil: z.string().min(1, "Estado civil é obrigatório"),
+  regimeBens: z.string().optional(),
+  nomeConjuge: z.string().optional(),
   cartorio: z.string().optional(),
-  testamenteiro: z.string().min(1, "Testamenteiro é obrigatório"),
-  beneficiarios: z.string().min(1, "Pelo menos um beneficiário é obrigatório"),
-  bensIncluidos: z.string().min(1, "Pelo menos um bem deve ser incluído"),
   observacoes: z.string().optional(),
+  status: z.string().min(1, "Status é obrigatório"),
 });
-
-interface Testamento {
-  id: number;
-  titulo: string;
-  tipo: string;
-  dataElaboracao: string;
-  ultimaAtualizacao: string;
-  cartorio: string;
-  testamenteiro: string;
-  status: string;
-  beneficiarios: string[];
-  bensIncluidos: string[];
-  observacoes?: string;
-}
 
 interface EditarTestamentoModalProps {
   children: React.ReactNode;
-  testamento: Testamento;
+  testamento: any;
   onEdit: (testamento: any) => void;
 }
 
@@ -44,52 +33,65 @@ export default function EditarTestamentoModal({ children, testamento, onEdit }: 
   const [formData, setFormData] = useState({
     titulo: "",
     tipo: "",
+    dataElaboracao: "",
+    estadoCivil: "",
+    regimeBens: "",
+    nomeConjuge: "",
     cartorio: "",
-    testamenteiro: "",
-    beneficiarios: "",
-    bensIncluidos: "",
     observacoes: "",
+    status: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (testamento) {
+    if (testamento && open) {
       setFormData({
-        titulo: testamento.titulo,
-        tipo: testamento.tipo,
-        cartorio: testamento.cartorio,
-        testamenteiro: testamento.testamenteiro,
-        beneficiarios: testamento.beneficiarios.join(', '),
-        bensIncluidos: testamento.bensIncluidos.join('\n'),
+        titulo: testamento.titulo || "",
+        tipo: testamento.tipo || "",
+        dataElaboracao: testamento.data_elaboracao || "",
+        estadoCivil: testamento.estado_civil || "",
+        regimeBens: testamento.regime_bens || "",
+        nomeConjuge: testamento.nome_conjuge || "",
+        cartorio: testamento.cartorio || "",
         observacoes: testamento.observacoes || "",
+        status: testamento.status || "Vigente",
       });
     }
-  }, [testamento]);
+  }, [testamento, open]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     
     try {
       const data = {
         ...formData,
-        cartorio: formData.cartorio || "-"
+        cartorio: formData.cartorio || null
       };
 
       testamentoSchema.parse(data);
 
-      const testamentoAtualizado = {
-        ...testamento,
-        titulo: data.titulo,
-        tipo: data.tipo,
-        cartorio: data.cartorio,
-        testamenteiro: data.testamenteiro,
-        ultimaAtualizacao: new Date().toLocaleDateString('pt-BR'),
-        beneficiarios: data.beneficiarios.split(',').map(b => b.trim()).filter(b => b),
-        bensIncluidos: data.bensIncluidos.split('\n').map(b => b.trim()).filter(b => b),
-        observacoes: data.observacoes
-      };
+      const { error } = await supabase
+        .from('testamentos')
+        .update({
+          titulo: data.titulo,
+          tipo: data.tipo,
+          data_elaboracao: data.dataElaboracao,
+          cartorio: data.cartorio,
+          estado_civil: data.estadoCivil,
+          regime_bens: data.regimeBens || null,
+          nome_conjuge: data.nomeConjuge || null,
+          observacoes: data.observacoes,
+          status: data.status,
+        })
+        .eq('id', testamento.id);
 
-      onEdit(testamentoAtualizado);
+      if (error) {
+        throw error;
+      }
+
+      onEdit(testamento);
       setOpen(false);
       setErrors({});
 
@@ -106,7 +108,16 @@ export default function EditarTestamentoModal({ children, testamento, onEdit }: 
           }
         });
         setErrors(newErrors);
+      } else {
+        console.error("Error updating testamento:", error);
+        toast({
+          title: "Erro ao atualizar",
+          description: "Ocorreu um erro ao salvar as alterações.",
+          variant: "destructive",
+        });
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -116,6 +127,8 @@ export default function EditarTestamentoModal({ children, testamento, onEdit }: 
       setErrors(prev => ({ ...prev, [field]: "" }));
     }
   };
+
+  const showRegimeBens = formData.estadoCivil === "Casado(a)" || formData.estadoCivil === "União Estável";
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -151,10 +164,10 @@ export default function EditarTestamentoModal({ children, testamento, onEdit }: 
                   <SelectValue placeholder="Selecione o tipo" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Testamento Público">Testamento Público</SelectItem>
-                  <SelectItem value="Testamento Particular">Testamento Particular</SelectItem>
-                  <SelectItem value="Testamento Cerrado">Testamento Cerrado</SelectItem>
-                  <SelectItem value="Codicilo">Codicilo</SelectItem>
+                  <SelectItem value="Público">Testamento Público</SelectItem>
+                  <SelectItem value="Particular">Testamento Particular</SelectItem>
+                  <SelectItem value="Cerrado">Testamento Cerrado</SelectItem>
+                  <SelectItem value="Vital">Testamento Vital</SelectItem>
                 </SelectContent>
               </Select>
               {errors.tipo && <p className="text-sm text-red-500">{errors.tipo}</p>}
@@ -163,15 +176,15 @@ export default function EditarTestamentoModal({ children, testamento, onEdit }: 
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="testamenteiro">Testamenteiro</Label>
+              <Label htmlFor="dataElaboracao">Data de Elaboração</Label>
               <Input
-                id="testamenteiro"
-                value={formData.testamenteiro}
-                onChange={(e) => handleInputChange("testamenteiro", e.target.value)}
-                placeholder="Nome do testamenteiro"
-                className={errors.testamenteiro ? "border-red-500" : ""}
+                id="dataElaboracao"
+                type="date"
+                value={formData.dataElaboracao}
+                onChange={(e) => handleInputChange("dataElaboracao", e.target.value)}
+                className={errors.dataElaboracao ? "border-red-500" : ""}
               />
-              {errors.testamenteiro && <p className="text-sm text-red-500">{errors.testamenteiro}</p>}
+              {errors.dataElaboracao && <p className="text-sm text-red-500">{errors.dataElaboracao}</p>}
             </div>
 
             <div className="space-y-2">
@@ -180,38 +193,84 @@ export default function EditarTestamentoModal({ children, testamento, onEdit }: 
                 id="cartorio"
                 value={formData.cartorio}
                 onChange={(e) => handleInputChange("cartorio", e.target.value)}
-                placeholder="Ex: 1º Tabelionato de Notas - São Paulo"
+                placeholder="Ex: 1º Tabelionato de Notas"
               />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="beneficiarios">Beneficiários</Label>
-            <Textarea
-              id="beneficiarios"
-              value={formData.beneficiarios}
-              onChange={(e) => handleInputChange("beneficiarios", e.target.value)}
-              placeholder="Separe os nomes por vírgula&#10;Ex: João Silva, Maria Santos, Pedro Costa"
-              rows={3}
-              className={errors.beneficiarios ? "border-red-500" : ""}
-            />
-            {errors.beneficiarios && <p className="text-sm text-red-500">{errors.beneficiarios}</p>}
-            <p className="text-xs text-muted-foreground">Separe os nomes por vírgula</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="estadoCivil">Estado Civil</Label>
+              <Select
+                value={formData.estadoCivil}
+                onValueChange={(value) => handleInputChange("estadoCivil", value)}
+              >
+                <SelectTrigger className={errors.estadoCivil ? "border-red-500" : ""}>
+                  <SelectValue placeholder="Selecione o estado civil" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Solteiro(a)">Solteiro(a)</SelectItem>
+                  <SelectItem value="Casado(a)">Casado(a)</SelectItem>
+                  <SelectItem value="Divorciado(a)">Divorciado(a)</SelectItem>
+                  <SelectItem value="Viúvo(a)">Viúvo(a)</SelectItem>
+                  <SelectItem value="União Estável">União Estável</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.estadoCivil && <p className="text-sm text-red-500">{errors.estadoCivil}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) => handleInputChange("status", value)}
+              >
+                <SelectTrigger className={errors.status ? "border-red-500" : ""}>
+                  <SelectValue placeholder="Selecione o status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Vigente">Vigente</SelectItem>
+                  <SelectItem value="Revogado">Revogado</SelectItem>
+                  <SelectItem value="Modificado">Modificado</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.status && <p className="text-sm text-red-500">{errors.status}</p>}
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="bensIncluidos">Bens Incluídos</Label>
-            <Textarea
-              id="bensIncluidos"
-              value={formData.bensIncluidos}
-              onChange={(e) => handleInputChange("bensIncluidos", e.target.value)}
-              placeholder="Um bem por linha&#10;Ex:&#10;Apartamento - Rua das Flores, 123&#10;Conta Corrente - Banco do Brasil&#10;Investimentos CDB"
-              rows={4}
-              className={errors.bensIncluidos ? "border-red-500" : ""}
-            />
-            {errors.bensIncluidos && <p className="text-sm text-red-500">{errors.bensIncluidos}</p>}
-            <p className="text-xs text-muted-foreground">Coloque um bem por linha</p>
-          </div>
+          {showRegimeBens && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="regimeBens">Regime de Bens</Label>
+                <Select
+                  value={formData.regimeBens}
+                  onValueChange={(value) => handleInputChange("regimeBens", value)}
+                >
+                  <SelectTrigger className={errors.regimeBens ? "border-red-500" : ""}>
+                    <SelectValue placeholder="Selecione o regime" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Comunhão Universal de Bens">Comunhão Universal de Bens</SelectItem>
+                    <SelectItem value="Comunhão Parcial de Bens">Comunhão Parcial de Bens</SelectItem>
+                    <SelectItem value="Separação de Bens (Convencional)">Separação de Bens (Convencional)</SelectItem>
+                    <SelectItem value="Separação de Bens (Obrigatória/Legal)">Separação de Bens (Obrigatória/Legal)</SelectItem>
+                    <SelectItem value="Participação Final nos Aquestos">Participação Final nos Aquestos</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.regimeBens && <p className="text-sm text-red-500">{errors.regimeBens}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="nomeConjuge">Nome do Cônjuge</Label>
+                <Input
+                  id="nomeConjuge"
+                  value={formData.nomeConjuge}
+                  onChange={(e) => handleInputChange("nomeConjuge", e.target.value)}
+                  placeholder="Nome do cônjuge"
+                />
+              </div>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="observacoes">Observações</Label>
@@ -220,7 +279,7 @@ export default function EditarTestamentoModal({ children, testamento, onEdit }: 
               value={formData.observacoes}
               onChange={(e) => handleInputChange("observacoes", e.target.value)}
               placeholder="Informações adicionais sobre o testamento..."
-              rows={3}
+              rows={4}
             />
           </div>
 
@@ -228,8 +287,8 @@ export default function EditarTestamentoModal({ children, testamento, onEdit }: 
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancelar
             </Button>
-            <Button type="submit">
-              Salvar Alterações
+            <Button type="submit" disabled={loading}>
+              {loading ? "Salvando..." : "Salvar Alterações"}
             </Button>
           </div>
         </form>
