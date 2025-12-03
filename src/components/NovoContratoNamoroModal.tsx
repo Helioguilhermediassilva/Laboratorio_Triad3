@@ -18,14 +18,14 @@ interface NovoContratoNamoroModalProps {
 
 // CPF validation schema
 const cpfSchema = z.string()
-  .min(11, "CPF deve ter 11 dígitos")
+  .min(14, "CPF deve ter 11 dígitos")
   .max(14, "CPF inválido")
-  .regex(/^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$/, "Formato de CPF inválido");
+  .regex(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/, "Formato de CPF inválido");
 
 const optionalCpfSchema = z.string()
   .optional()
   .refine(
-    (val) => !val || /^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$/.test(val),
+    (val) => !val || /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(val),
     "Formato de CPF inválido"
   );
 
@@ -50,10 +50,24 @@ interface ContratoFormData {
   testemunha_2_cpf: string;
 }
 
+// Format CPF as user types: 000.000.000-00
+const formatCPF = (value: string): string => {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+  if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+};
+
 export default function NovoContratoNamoroModal({ open, onOpenChange, onSuccess }: NovoContratoNamoroModalProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<ContratoFormData>();
+
+  const handleCPFChange = (field: keyof ContratoFormData) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatCPF(e.target.value);
+    setValue(field, formatted);
+  };
 
   const onSubmit = async (data: ContratoFormData) => {
     try {
@@ -209,6 +223,8 @@ export default function NovoContratoNamoroModal({ open, onOpenChange, onSuccess 
                   id="parte_1_cpf"
                   {...register("parte_1_cpf", { required: "CPF é obrigatório" })}
                   placeholder="000.000.000-00"
+                  onChange={handleCPFChange("parte_1_cpf")}
+                  maxLength={14}
                 />
               </div>
               <div className="space-y-2">
@@ -262,6 +278,8 @@ export default function NovoContratoNamoroModal({ open, onOpenChange, onSuccess 
                   id="parte_2_cpf"
                   {...register("parte_2_cpf", { required: "CPF é obrigatório" })}
                   placeholder="000.000.000-00"
+                  onChange={handleCPFChange("parte_2_cpf")}
+                  maxLength={14}
                 />
               </div>
               <div className="space-y-2">
@@ -314,6 +332,8 @@ export default function NovoContratoNamoroModal({ open, onOpenChange, onSuccess 
                   id="testemunha_1_cpf"
                   {...register("testemunha_1_cpf")}
                   placeholder="000.000.000-00"
+                  onChange={handleCPFChange("testemunha_1_cpf")}
+                  maxLength={14}
                 />
               </div>
             </div>
@@ -333,6 +353,8 @@ export default function NovoContratoNamoroModal({ open, onOpenChange, onSuccess 
                   id="testemunha_2_cpf"
                   {...register("testemunha_2_cpf")}
                   placeholder="000.000.000-00"
+                  onChange={handleCPFChange("testemunha_2_cpf")}
+                  maxLength={14}
                 />
               </div>
             </div>
