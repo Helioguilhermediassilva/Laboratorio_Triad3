@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Calculator, TrendingUp, TrendingDown, DollarSign, Target, Plus, Pencil, Trash2 } from "lucide-react";
+import { Calculator, TrendingUp, DollarSign, Target, Plus, Pencil, Trash2 } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import NovoOrcamentoModal from "@/components/NovoOrcamentoModal";
 import NovaMetaModal from "@/components/NovaMetaModal";
 import EditarOrcamentoModal from "@/components/EditarOrcamentoModal";
+import EditarMetaModal from "@/components/EditarMetaModal";
 import { supabase } from "@/integrations/supabase/client";
 import {
   AlertDialog,
@@ -23,34 +24,80 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-const MetaCard = ({ meta }: { meta: any }) => {
-  const percentual = (meta.valorAtual / meta.valorMeta) * 100;
+interface MetaCardProps {
+  meta: any;
+  onEdit: (meta: any) => void;
+  onDelete: (metaId: string) => void;
+}
+
+const MetaCard = ({ meta, onEdit, onDelete }: MetaCardProps) => {
+  const percentual = meta.valor_objetivo > 0 ? (Number(meta.valor_atual) / Number(meta.valor_objetivo)) * 100 : 0;
   
   return (
     <Card>
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-medium">{meta.nome}</h3>
-          <Badge variant="outline">{meta.prazo}</Badge>
+          <h3 className="font-medium">{meta.titulo}</h3>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline">
+              {new Date(meta.data_objetivo).toLocaleDateString('pt-BR')}
+            </Badge>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => onEdit(meta)}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Tem certeza que deseja excluir a meta "{meta.titulo}"? Esta ação não pode ser desfeita.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={() => onDelete(meta.id)}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Excluir
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
         
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Meta</span>
-            <span>{meta.valorMeta.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+            <span>{Number(meta.valor_objetivo).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
           </div>
           
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Atual</span>
-            <span>{meta.valorAtual.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+            <span>{Number(meta.valor_atual).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
           </div>
           
-          <Progress value={percentual} className="h-2" />
+          <Progress value={Math.min(percentual, 100)} className="h-2" />
           
           <div className="flex justify-between text-xs">
             <span className="text-muted-foreground">{percentual.toFixed(1)}% alcançado</span>
             <span className="text-muted-foreground">
-              Faltam {(meta.valorMeta - meta.valorAtual).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              Faltam {(Number(meta.valor_objetivo) - Number(meta.valor_atual)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </span>
           </div>
         </div>
@@ -65,7 +112,9 @@ export default function Orcamentos() {
   const [novoOrcamentoOpen, setNovoOrcamentoOpen] = useState(false);
   const [novaMetaOpen, setNovaMetaOpen] = useState(false);
   const [editarOrcamentoOpen, setEditarOrcamentoOpen] = useState(false);
+  const [editarMetaOpen, setEditarMetaOpen] = useState(false);
   const [orcamentoSelecionado, setOrcamentoSelecionado] = useState<any>(null);
+  const [metaSelecionada, setMetaSelecionada] = useState<any>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -112,7 +161,7 @@ export default function Orcamentos() {
   const percentualGeral = totalPrevisto > 0 ? (totalRealizado / totalPrevisto) * 100 : 0;
   const saldoGeral = totalPrevisto - totalRealizado;
 
-  const handleOrcamentoAdicionado = (novoOrcamento: any) => {
+  const handleOrcamentoAdicionado = () => {
     loadOrcamentos();
     toast({
       title: "Orçamento criado!",
@@ -120,7 +169,7 @@ export default function Orcamentos() {
     });
   };
 
-  const handleMetaAdicionada = (novaMeta: any) => {
+  const handleMetaAdicionada = () => {
     loadMetas();
     toast({
       title: "Meta criada!",
@@ -133,7 +182,7 @@ export default function Orcamentos() {
     setEditarOrcamentoOpen(true);
   };
 
-  const handleOrcamentoEditado = (orcamentoAtualizado: any) => {
+  const handleOrcamentoEditado = () => {
     loadOrcamentos();
   };
 
@@ -157,6 +206,40 @@ export default function Orcamentos() {
       toast({
         title: "Erro ao excluir",
         description: error.message || "Não foi possível excluir o orçamento.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleEditarMeta = (meta: any) => {
+    setMetaSelecionada(meta);
+    setEditarMetaOpen(true);
+  };
+
+  const handleMetaEditada = () => {
+    loadMetas();
+  };
+
+  const handleExcluirMeta = async (metaId: string) => {
+    try {
+      const { error } = await supabase
+        .from('metas_financeiras')
+        .delete()
+        .eq('id', metaId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Meta excluída",
+        description: "A meta foi removida com sucesso."
+      });
+
+      loadMetas();
+    } catch (error: any) {
+      console.error('Erro ao excluir meta:', error);
+      toast({
+        title: "Erro ao excluir",
+        description: error.message || "Não foi possível excluir a meta.",
         variant: "destructive"
       });
     }
@@ -336,15 +419,14 @@ export default function Orcamentos() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {metas.map((meta) => {
-                  const metaFormatted = {
-                    nome: meta.titulo,
-                    valorMeta: Number(meta.valor_objetivo),
-                    valorAtual: Number(meta.valor_atual),
-                    prazo: new Date(meta.data_objetivo).toLocaleDateString('pt-BR')
-                  };
-                  return <MetaCard key={meta.id} meta={metaFormatted} />;
-                })}
+                {metas.map((meta) => (
+                  <MetaCard 
+                    key={meta.id} 
+                    meta={meta}
+                    onEdit={handleEditarMeta}
+                    onDelete={handleExcluirMeta}
+                  />
+                ))}
               </div>
             )}
           </TabsContent>
@@ -368,6 +450,13 @@ export default function Orcamentos() {
           onOpenChange={setEditarOrcamentoOpen}
           orcamento={orcamentoSelecionado}
           onOrcamentoEditado={handleOrcamentoEditado}
+        />
+
+        <EditarMetaModal
+          open={editarMetaOpen}
+          onOpenChange={setEditarMetaOpen}
+          meta={metaSelecionada}
+          onMetaEditada={handleMetaEditada}
         />
       </div>
     </Layout>
