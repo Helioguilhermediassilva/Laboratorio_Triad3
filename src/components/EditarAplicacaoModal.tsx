@@ -10,6 +10,7 @@ import { CalendarIcon, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { supabase } from "@/integrations/supabase/client";
 
 interface EditarAplicacaoModalProps {
   open: boolean;
@@ -32,6 +33,7 @@ export default function EditarAplicacaoModal({
   const [currentPrice, setCurrentPrice] = useState("");
   const [purchaseDate, setPurchaseDate] = useState<Date>();
   const [status, setStatus] = useState("");
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
   // Populate form with existing data when aplicacao changes
@@ -48,7 +50,7 @@ export default function EditarAplicacaoModal({
     }
   }, [aplicacao]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!ticker || !name || !category || !location || !quantity || !currentPrice || !purchaseDate || !status) {
@@ -81,27 +83,53 @@ export default function EditarAplicacaoModal({
       return;
     }
 
-    const aplicacaoEditada = {
-      ...aplicacao,
-      ticker: ticker.toUpperCase(),
-      name,
-      category,
-      location,
-      quantity: quantityNum,
-      currentPrice: priceNum,
-      value: quantityNum * priceNum, // Recalcular valor total
-      purchaseDate: format(purchaseDate, 'yyyy-MM-dd'),
-      status
-    };
+    setLoading(true);
 
-    onAplicacaoEditada(aplicacaoEditada);
-    
-    toast({
-      title: "Aplicação atualizada!",
-      description: "As alterações foram salvas com sucesso."
-    });
+    try {
+      const { error } = await supabase
+        .from('aplicacoes')
+        .update({
+          nome: ticker.toUpperCase(),
+          tipo: category,
+          instituicao: location,
+          valor_atual: quantityNum * priceNum,
+          data_aplicacao: format(purchaseDate, 'yyyy-MM-dd')
+        })
+        .eq('id', aplicacao.id);
 
-    onOpenChange(false);
+      if (error) throw error;
+
+      const aplicacaoEditada = {
+        ...aplicacao,
+        ticker: ticker.toUpperCase(),
+        name,
+        category,
+        location,
+        quantity: quantityNum,
+        currentPrice: priceNum,
+        value: quantityNum * priceNum,
+        purchaseDate: format(purchaseDate, 'yyyy-MM-dd'),
+        status
+      };
+
+      onAplicacaoEditada(aplicacaoEditada);
+      
+      toast({
+        title: "Aplicação atualizada!",
+        description: "As alterações foram salvas permanentemente."
+      });
+
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error('Erro ao atualizar aplicação:', error);
+      toast({
+        title: "Erro ao salvar",
+        description: error.message || "Não foi possível salvar as alterações. Tente novamente.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!aplicacao) return null;
@@ -275,12 +303,13 @@ export default function EditarAplicacaoModal({
               type="button" 
               variant="outline" 
               onClick={() => onOpenChange(false)}
+              disabled={loading}
             >
               Cancelar
             </Button>
-            <Button type="submit">
+            <Button type="submit" disabled={loading}>
               <Edit className="h-4 w-4 mr-2" />
-              Salvar Alterações
+              {loading ? "Salvando..." : "Salvar Alterações"}
             </Button>
           </div>
         </form>

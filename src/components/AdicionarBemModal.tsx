@@ -11,6 +11,7 @@ import { CalendarIcon, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AdicionarBemModalProps {
   open: boolean;
@@ -31,9 +32,10 @@ export default function AdicionarBemModal({
   const [status, setStatus] = useState("");
   const [condicao, setCondicao] = useState("");
   const [observacoes, setObservacoes] = useState("");
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!nome || !categoria || !endereco || !valor || !dataAquisicao || !status || !condicao) {
@@ -45,35 +47,79 @@ export default function AdicionarBemModal({
       return;
     }
 
-    const novoBem = {
-      id: Date.now().toString(),
-      nome,
-      categoria,
-      endereco,
-      valor: parseFloat(valor.replace(/[^\d,]/g, '').replace(',', '.')),
-      dataAquisicao: format(dataAquisicao, 'yyyy-MM-dd'),
-      status,
-      condicao,
-      observacoes
-    };
+    setLoading(true);
 
-    onBemAdicionado(novoBem);
-    
-    toast({
-      title: "Bem adicionado!",
-      description: "O bem foi adicionado ao patrimônio com sucesso."
-    });
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Erro de autenticação",
+          description: "Você precisa estar logado para adicionar um bem.",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
 
-    // Reset form
-    setNome("");
-    setCategoria("");
-    setEndereco("");
-    setValor("");
-    setDataAquisicao(undefined);
-    setStatus("");
-    setCondicao("");
-    setObservacoes("");
-    onOpenChange(false);
+      const valorNumerico = parseFloat(valor.replace(/[^\d,]/g, '').replace(',', '.'));
+
+      const { data, error } = await supabase
+        .from('bens_imobilizados')
+        .insert({
+          user_id: user.id,
+          nome,
+          categoria,
+          localizacao: endereco,
+          valor_aquisicao: valorNumerico,
+          valor_atual: valorNumerico,
+          data_aquisicao: format(dataAquisicao, 'yyyy-MM-dd'),
+          status,
+          descricao: observacoes
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const novoBem = {
+        id: data.id,
+        nome: data.nome,
+        categoria: data.categoria,
+        endereco: data.localizacao,
+        valor: Number(data.valor_atual),
+        dataAquisicao: data.data_aquisicao,
+        status: data.status,
+        condicao,
+        observacoes: data.descricao
+      };
+
+      onBemAdicionado(novoBem);
+      
+      toast({
+        title: "Bem adicionado!",
+        description: "O bem foi salvo permanentemente no sistema."
+      });
+
+      // Reset form
+      setNome("");
+      setCategoria("");
+      setEndereco("");
+      setValor("");
+      setDataAquisicao(undefined);
+      setStatus("");
+      setCondicao("");
+      setObservacoes("");
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error('Erro ao salvar bem:', error);
+      toast({
+        title: "Erro ao salvar",
+        description: error.message || "Não foi possível salvar o bem. Tente novamente.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const formatCurrency = (value: string) => {
@@ -231,12 +277,13 @@ export default function AdicionarBemModal({
               type="button" 
               variant="outline" 
               onClick={() => onOpenChange(false)}
+              disabled={loading}
             >
               Cancelar
             </Button>
-            <Button type="submit">
+            <Button type="submit" disabled={loading}>
               <Plus className="h-4 w-4 mr-2" />
-              Adicionar Bem
+              {loading ? "Salvando..." : "Adicionar Bem"}
             </Button>
           </div>
         </form>

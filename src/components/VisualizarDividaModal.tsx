@@ -10,7 +10,7 @@ import { CalendarDays, DollarSign, Percent, Receipt, Building, Calendar, Wallet 
 import { useToast } from "@/hooks/use-toast";
 
 interface Divida {
-  id: number;
+  id: string;
   tipo: string;
   credor: string;
   valorTotal: number;
@@ -28,7 +28,7 @@ interface Divida {
 interface VisualizarDividaModalProps {
   children: React.ReactNode;
   divida: Divida;
-  onPagamentoRegistrado?: (dividaId: number, valorPago: number, categoria: string) => void;
+  onPagamentoRegistrado?: (dividaId: string, valorPago: number, categoria: string) => void;
 }
 
 export default function VisualizarDividaModal({ children, divida, onPagamentoRegistrado }: VisualizarDividaModalProps) {

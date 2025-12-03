@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
+import { supabase } from "@/integrations/supabase/client";
 
 const dividaSchema = z.object({
   tipo: z.string().min(1, "Tipo é obrigatório"),
@@ -27,6 +28,7 @@ interface NovaDividaModalProps {
 
 export default function NovaDividaModal({ children, onAdd }: NovaDividaModalProps) {
   const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     tipo: "",
@@ -41,7 +43,7 @@ export default function NovaDividaModal({ children, onAdd }: NovaDividaModalProp
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
@@ -55,13 +57,56 @@ export default function NovaDividaModal({ children, onAdd }: NovaDividaModalProp
 
       dividaSchema.parse(data);
 
+      setLoading(true);
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Erro de autenticação",
+          description: "Você precisa estar logado para adicionar uma dívida.",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Inserir no Supabase
+      const { data: dividaData, error } = await supabase
+        .from('dividas')
+        .insert({
+          user_id: user.id,
+          nome: data.tipo,
+          tipo: data.categoria,
+          credor: data.credor,
+          valor_original: data.valorTotal,
+          saldo_devedor: data.valorTotal,
+          valor_parcela: data.valorPrestacao,
+          numero_parcelas: data.parcelas,
+          parcelas_pagas: 0,
+          taxa_juros: data.juros,
+          data_contratacao: new Date().toISOString().split('T')[0],
+          data_vencimento: data.vencimento,
+          status: 'Ativo'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
       const novaDivida = {
-        id: Date.now(),
-        ...data,
-        valorPendente: data.valorTotal,
-        proximoVencimento: data.vencimento,
-        parcelasPagas: 0,
-        status: "Em dia"
+        id: dividaData.id,
+        tipo: dividaData.nome,
+        credor: dividaData.credor,
+        valorTotal: Number(dividaData.valor_original),
+        valorPendente: Number(dividaData.saldo_devedor),
+        valorPrestacao: Number(dividaData.valor_parcela),
+        vencimento: dividaData.data_vencimento || 'Não informado',
+        proximoVencimento: dividaData.data_vencimento || 'Não informado',
+        parcelas: dividaData.numero_parcelas,
+        parcelasPagas: dividaData.parcelas_pagas,
+        juros: Number(dividaData.taxa_juros) || 0,
+        status: dividaData.status,
+        categoria: dividaData.tipo
       };
 
       onAdd(novaDivida);
@@ -81,7 +126,7 @@ export default function NovaDividaModal({ children, onAdd }: NovaDividaModalProp
 
       toast({
         title: "Dívida adicionada!",
-        description: "A nova dívida foi adicionada com sucesso.",
+        description: "A dívida foi salva permanentemente no sistema.",
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -92,7 +137,16 @@ export default function NovaDividaModal({ children, onAdd }: NovaDividaModalProp
           }
         });
         setErrors(newErrors);
+      } else {
+        console.error('Erro ao salvar dívida:', error);
+        toast({
+          title: "Erro ao salvar",
+          description: "Não foi possível salvar a dívida. Tente novamente.",
+          variant: "destructive"
+        });
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -245,11 +299,11 @@ export default function NovaDividaModal({ children, onAdd }: NovaDividaModalProp
           </div>
 
           <div className="flex justify-end space-x-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={loading}>
               Cancelar
             </Button>
-            <Button type="submit">
-              Adicionar Dívida
+            <Button type="submit" disabled={loading}>
+              {loading ? "Salvando..." : "Adicionar Dívida"}
             </Button>
           </div>
         </form>
