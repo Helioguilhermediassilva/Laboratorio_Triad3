@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Minus, Calculator } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface NovoOrcamentoModalProps {
   open: boolean;
@@ -40,9 +41,10 @@ export default function NovoOrcamentoModal({
   const [categorias, setCategorias] = useState<Categoria[]>([
     { nome: "", valor: "", cor: coresDisponiveis[0] }
   ]);
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!nome || !periodo) {
@@ -65,37 +67,80 @@ export default function NovoOrcamentoModal({
       return;
     }
 
-    const categoriasFormatadas = categoriasValidas.map(cat => ({
-      nome: cat.nome,
-      previsto: parseFloat(cat.valor.replace(/[^\d,]/g, '').replace(',', '.')),
-      realizado: 0,
-      cor: cat.cor
-    }));
+    setLoading(true);
 
-    const totalPrevisto = categoriasFormatadas.reduce((sum, cat) => sum + cat.previsto, 0);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Erro de autenticação",
+          description: "Você precisa estar logado para criar um orçamento.",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
 
-    const novoOrcamento = {
-      id: Date.now().toString(),
-      nome,
-      periodo,
-      totalPrevisto,
-      totalRealizado: 0,
-      categorias: categoriasFormatadas,
-      dataCriacao: new Date().toISOString()
-    };
+      // Insert each category as a separate budget entry
+      const mesReferencia = new Date().toISOString().split('T')[0];
+      
+      const orcamentosToInsert = categoriasValidas.map(cat => ({
+        user_id: user.id,
+        categoria: cat.nome,
+        valor_planejado: parseFloat(cat.valor.replace(/[^\d,]/g, '').replace(',', '.')) || 0,
+        valor_gasto: 0,
+        mes_referencia: mesReferencia,
+        tipo: periodo
+      }));
 
-    onOrcamentoAdicionado(novoOrcamento);
-    
-    toast({
-      title: "Orçamento criado!",
-      description: "O orçamento foi criado com sucesso."
-    });
+      const { data: savedData, error } = await supabase
+        .from('orcamentos')
+        .insert(orcamentosToInsert)
+        .select();
 
-    // Reset form
-    setNome("");
-    setPeriodo("");
-    setCategorias([{ nome: "", valor: "", cor: coresDisponiveis[0] }]);
-    onOpenChange(false);
+      if (error) throw error;
+
+      const categoriasFormatadas = categoriasValidas.map(cat => ({
+        nome: cat.nome,
+        previsto: parseFloat(cat.valor.replace(/[^\d,]/g, '').replace(',', '.')),
+        realizado: 0,
+        cor: cat.cor
+      }));
+
+      const totalPrevisto = categoriasFormatadas.reduce((sum, cat) => sum + cat.previsto, 0);
+
+      const novoOrcamento = {
+        id: savedData?.[0]?.id || Date.now().toString(),
+        nome,
+        periodo,
+        totalPrevisto,
+        totalRealizado: 0,
+        categorias: categoriasFormatadas,
+        dataCriacao: new Date().toISOString()
+      };
+
+      onOrcamentoAdicionado(novoOrcamento);
+      
+      toast({
+        title: "Orçamento criado!",
+        description: "O orçamento foi salvo com sucesso."
+      });
+
+      // Reset form
+      setNome("");
+      setPeriodo("");
+      setCategorias([{ nome: "", valor: "", cor: coresDisponiveis[0] }]);
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error('Erro ao salvar:', error);
+      toast({
+        title: "Erro ao salvar",
+        description: error.message || "Não foi possível salvar o orçamento.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const adicionarCategoria = () => {
@@ -280,12 +325,13 @@ export default function NovoOrcamentoModal({
               type="button" 
               variant="outline" 
               onClick={() => onOpenChange(false)}
+              disabled={loading}
             >
               Cancelar
             </Button>
-            <Button type="submit">
+            <Button type="submit" disabled={loading}>
               <Calculator className="h-4 w-4 mr-2" />
-              Criar Orçamento
+              {loading ? "Salvando..." : "Criar Orçamento"}
             </Button>
           </div>
         </form>
