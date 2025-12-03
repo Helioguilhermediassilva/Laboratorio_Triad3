@@ -221,7 +221,7 @@ export default function Landing() {
 
           <div className="pt-6 border-t mt-6">
             <p className="text-sm text-muted-foreground">
-              Após o período de teste, continue por apenas <strong className="text-foreground">R$ 299,00/mês</strong>
+              Após o período de teste, continue por apenas <strong className="text-foreground">R$ 99,00/mês</strong>
             </p>
           </div>
         </Card>
