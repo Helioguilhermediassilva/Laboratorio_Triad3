@@ -11,6 +11,7 @@ import { CalendarIcon, Target, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { supabase } from "@/integrations/supabase/client";
 
 interface NovaMetaModalProps {
   open: boolean;
@@ -43,9 +44,10 @@ export default function NovaMetaModal({
   const [categoria, setCategoria] = useState("");
   const [descricao, setDescricao] = useState("");
   const [valorMensal, setValorMensal] = useState("");
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!nome || !valorMeta || !prazo) {
@@ -59,7 +61,6 @@ export default function NovaMetaModal({
 
     const valorMetaNum = parseFloat(valorMeta.replace(/[^\d,]/g, '').replace(',', '.'));
     const valorAtualNum = parseFloat(valorAtual.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
-    const valorMensalNum = parseFloat(valorMensal.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
 
     if (valorMetaNum <= 0) {
       toast({
@@ -79,36 +80,80 @@ export default function NovaMetaModal({
       return;
     }
 
-    const novaMeta = {
-      id: Date.now().toString(),
-      nome,
-      valorMeta: valorMetaNum,
-      valorAtual: valorAtualNum,
-      prazo: format(prazo, "MMM yyyy", { locale: ptBR }),
-      dataLimite: format(prazo, 'yyyy-MM-dd'),
-      categoria: categoria || "Outros",
-      descricao,
-      valorMensal: valorMensalNum,
-      dataCriacao: new Date().toISOString(),
-      status: "ativa"
-    };
+    setLoading(true);
 
-    onMetaAdicionada(novaMeta);
-    
-    toast({
-      title: "Meta criada!",
-      description: "A meta foi criada com sucesso."
-    });
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Erro de autenticação",
+          description: "Você precisa estar logado para criar uma meta.",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
 
-    // Reset form
-    setNome("");
-    setValorMeta("");
-    setValorAtual("");
-    setPrazo(undefined);
-    setCategoria("");
-    setDescricao("");
-    setValorMensal("");
-    onOpenChange(false);
+      const dataInicio = new Date().toISOString().split('T')[0];
+      const dataObjetivo = format(prazo, 'yyyy-MM-dd');
+
+      const { data: savedData, error } = await supabase
+        .from('metas_financeiras')
+        .insert({
+          user_id: user.id,
+          titulo: nome,
+          valor_objetivo: valorMetaNum,
+          valor_atual: valorAtualNum,
+          data_inicio: dataInicio,
+          data_objetivo: dataObjetivo,
+          categoria: categoria || "Outros",
+          descricao: descricao || null,
+          status: "Em Andamento"
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const novaMeta = {
+        id: savedData.id,
+        nome,
+        valorMeta: valorMetaNum,
+        valorAtual: valorAtualNum,
+        prazo: format(prazo, "MMM yyyy", { locale: ptBR }),
+        dataLimite: dataObjetivo,
+        categoria: categoria || "Outros",
+        descricao,
+        dataCriacao: new Date().toISOString(),
+        status: "ativa"
+      };
+
+      onMetaAdicionada(novaMeta);
+      
+      toast({
+        title: "Meta criada!",
+        description: "A meta foi salva com sucesso."
+      });
+
+      // Reset form
+      setNome("");
+      setValorMeta("");
+      setValorAtual("");
+      setPrazo(undefined);
+      setCategoria("");
+      setDescricao("");
+      setValorMensal("");
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error('Erro ao salvar:', error);
+      toast({
+        title: "Erro ao salvar",
+        description: error.message || "Não foi possível salvar a meta.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const formatCurrency = (value: string) => {
@@ -310,12 +355,13 @@ export default function NovaMetaModal({
               type="button" 
               variant="outline" 
               onClick={() => onOpenChange(false)}
+              disabled={loading}
             >
               Cancelar
             </Button>
-            <Button type="submit">
+            <Button type="submit" disabled={loading}>
               <Target className="h-4 w-4 mr-2" />
-              Criar Meta
+              {loading ? "Salvando..." : "Criar Meta"}
             </Button>
           </div>
         </form>
