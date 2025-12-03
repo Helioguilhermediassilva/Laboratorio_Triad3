@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Calculator, TrendingUp, TrendingDown, DollarSign, Target, Plus } from "lucide-react";
+import { Calculator, TrendingUp, TrendingDown, DollarSign, Target, Plus, Pencil, Trash2 } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import NovoOrcamentoModal from "@/components/NovoOrcamentoModal";
 import NovaMetaModal from "@/components/NovaMetaModal";
+import EditarOrcamentoModal from "@/components/EditarOrcamentoModal";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const MetaCard = ({ meta }: { meta: any }) => {
   const percentual = (meta.valorAtual / meta.valorMeta) * 100;
@@ -52,6 +64,8 @@ export default function Orcamentos() {
   const [metas, setMetas] = useState<any[]>([]);
   const [novoOrcamentoOpen, setNovoOrcamentoOpen] = useState(false);
   const [novaMetaOpen, setNovaMetaOpen] = useState(false);
+  const [editarOrcamentoOpen, setEditarOrcamentoOpen] = useState(false);
+  const [orcamentoSelecionado, setOrcamentoSelecionado] = useState<any>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -112,6 +126,40 @@ export default function Orcamentos() {
       title: "Meta criada!",
       description: "A meta foi criada com sucesso."
     });
+  };
+
+  const handleEditarOrcamento = (orcamento: any) => {
+    setOrcamentoSelecionado(orcamento);
+    setEditarOrcamentoOpen(true);
+  };
+
+  const handleOrcamentoEditado = (orcamentoAtualizado: any) => {
+    loadOrcamentos();
+  };
+
+  const handleExcluirOrcamento = async (orcamentoId: string) => {
+    try {
+      const { error } = await supabase
+        .from('orcamentos')
+        .delete()
+        .eq('id', orcamentoId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Orçamento excluído",
+        description: "O orçamento foi removido com sucesso."
+      });
+
+      loadOrcamentos();
+    } catch (error: any) {
+      console.error('Erro ao excluir orçamento:', error);
+      toast({
+        title: "Erro ao excluir",
+        description: error.message || "Não foi possível excluir o orçamento.",
+        variant: "destructive"
+      });
+    }
   };
   
   return (
@@ -214,7 +262,47 @@ export default function Orcamentos() {
                 {orcamentos.map((orcamento) => (
                   <Card key={orcamento.id}>
                     <CardContent className="p-4">
-                      <h3 className="font-medium mb-2">{orcamento.categoria}</h3>
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-medium">{orcamento.categoria}</h3>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleEditarOrcamento(orcamento)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Tem certeza que deseja excluir o orçamento "{orcamento.categoria}"? Esta ação não pode ser desfeita.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction 
+                                  onClick={() => handleExcluirOrcamento(orcamento.id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Excluir
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Planejado</span>
@@ -273,6 +361,13 @@ export default function Orcamentos() {
           open={novaMetaOpen}
           onOpenChange={setNovaMetaOpen}
           onMetaAdicionada={handleMetaAdicionada}
+        />
+
+        <EditarOrcamentoModal
+          open={editarOrcamentoOpen}
+          onOpenChange={setEditarOrcamentoOpen}
+          orcamento={orcamentoSelecionado}
+          onOrcamentoEditado={handleOrcamentoEditado}
         />
       </div>
     </Layout>
