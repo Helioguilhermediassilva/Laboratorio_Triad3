@@ -53,6 +53,8 @@ const AnaliseInteligente = () => {
     try {
       const { data, error } = await supabase.functions.invoke('analise-triad3');
 
+      console.log("Response from edge function:", { data, error });
+
       if (error) {
         console.error("Error invoking function:", error);
         throw error;
@@ -60,6 +62,11 @@ const AnaliseInteligente = () => {
 
       if (data?.error) {
         throw new Error(data.error);
+      }
+
+      if (!data || !data.analise || !data.dados) {
+        console.error("Invalid response structure:", data);
+        throw new Error("Resposta inválida da análise. Tente novamente.");
       }
 
       // Processar o texto da análise para melhorar formatação
@@ -183,7 +190,7 @@ const AnaliseInteligente = () => {
         </Card>
 
         {/* Resultados da Análise */}
-        {analise && (
+        {analise && analise.dados && (
           <>
             {/* Distribuição Atual */}
             <Card>
