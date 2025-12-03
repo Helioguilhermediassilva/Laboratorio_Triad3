@@ -1,7 +1,18 @@
-import { TrendingUp, MapPin, Calendar, DollarSign } from "lucide-react";
+import { TrendingUp, MapPin, Calendar, DollarSign, Trash2 } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Asset {
   id: string;
@@ -21,6 +32,7 @@ interface AssetCardProps {
   asset: Asset;
   onEdit?: (asset: Asset) => void;
   onView?: (asset: Asset) => void;
+  onDelete?: (asset: Asset) => void;
 }
 
 const statusColors = {
@@ -36,7 +48,7 @@ const conditionColors = {
   poor: "destructive"
 } as const;
 
-export default function AssetCard({ asset, onEdit, onView }: AssetCardProps) {
+export default function AssetCard({ asset, onEdit, onView, onDelete }: AssetCardProps) {
   const isFinancialAsset = asset.ticker && asset.quantity && asset.currentPrice;
   
   return (
@@ -134,6 +146,33 @@ export default function AssetCard({ asset, onEdit, onView }: AssetCardProps) {
           >
             Editar
           </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button 
+                variant="destructive" 
+                size="sm"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza que deseja excluir "{asset.name}"? Esta ação não pode ser desfeita.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={() => onDelete?.(asset)}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Excluir
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </CardFooter>
     </Card>
