@@ -9,6 +9,24 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 
+// Funções de formatação de moeda
+const formatCurrency = (value: string): string => {
+  const numericValue = value.replace(/\D/g, '');
+  if (!numericValue) return '';
+  const numberValue = parseInt(numericValue, 10) / 100;
+  return numberValue.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  });
+};
+
+const parseCurrencyToNumber = (value: string): number => {
+  if (!value) return 0;
+  const numericString = value.replace(/[^\d,]/g, '').replace(',', '.');
+  const parsed = parseFloat(numericString);
+  return isNaN(parsed) ? 0 : parsed;
+};
+
 const dividaSchema = z.object({
   tipo: z.string().min(1, "Tipo é obrigatório"),
   credor: z.string().min(1, "Credor é obrigatório"),
@@ -49,10 +67,10 @@ export default function NovaDividaModal({ children, onAdd }: NovaDividaModalProp
     try {
       const data = {
         ...formData,
-        valorTotal: parseFloat(formData.valorTotal),
-        valorPrestacao: parseFloat(formData.valorPrestacao),
-        parcelas: parseInt(formData.parcelas),
-        juros: parseFloat(formData.juros),
+        valorTotal: parseCurrencyToNumber(formData.valorTotal),
+        valorPrestacao: parseCurrencyToNumber(formData.valorPrestacao),
+        parcelas: parseInt(formData.parcelas) || 0,
+        juros: parseFloat(formData.juros) || 0,
       };
 
       dividaSchema.parse(data);
@@ -157,6 +175,14 @@ export default function NovaDividaModal({ children, onAdd }: NovaDividaModalProp
     }
   };
 
+  const handleCurrencyChange = (field: string, value: string) => {
+    const formatted = formatCurrency(value);
+    setFormData(prev => ({ ...prev, [field]: formatted }));
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: "" }));
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -199,11 +225,10 @@ export default function NovaDividaModal({ children, onAdd }: NovaDividaModalProp
               <Label htmlFor="valorTotal">Valor Total</Label>
               <Input
                 id="valorTotal"
-                type="number"
-                step="0.01"
+                type="text"
                 value={formData.valorTotal}
-                onChange={(e) => handleInputChange("valorTotal", e.target.value)}
-                placeholder="0,00"
+                onChange={(e) => handleCurrencyChange("valorTotal", e.target.value)}
+                placeholder="R$ 0,00"
                 className={errors.valorTotal ? "border-red-500" : ""}
               />
               {errors.valorTotal && <p className="text-sm text-red-500">{errors.valorTotal}</p>}
@@ -213,11 +238,10 @@ export default function NovaDividaModal({ children, onAdd }: NovaDividaModalProp
               <Label htmlFor="valorPrestacao">Valor da Prestação</Label>
               <Input
                 id="valorPrestacao"
-                type="number"
-                step="0.01"
+                type="text"
                 value={formData.valorPrestacao}
-                onChange={(e) => handleInputChange("valorPrestacao", e.target.value)}
-                placeholder="0,00"
+                onChange={(e) => handleCurrencyChange("valorPrestacao", e.target.value)}
+                placeholder="R$ 0,00"
                 className={errors.valorPrestacao ? "border-red-500" : ""}
               />
               {errors.valorPrestacao && <p className="text-sm text-red-500">{errors.valorPrestacao}</p>}
