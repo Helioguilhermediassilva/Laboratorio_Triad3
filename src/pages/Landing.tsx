@@ -129,7 +129,7 @@ export default function Landing() {
           </div>
 
           <p className="text-sm text-muted-foreground pt-4">
-            ✨ <strong>14 dias grátis</strong> para testar • Depois apenas <strong>R$ 299/mês</strong>
+            ✨ <strong>14 dias grátis</strong> para testar • Depois apenas <strong>R$ 99/mês</strong>
           </p>
         </div>
       </section>
