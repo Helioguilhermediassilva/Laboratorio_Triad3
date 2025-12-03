@@ -238,7 +238,8 @@ export default function AdicionarBemModal({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Ativo">Ativo</SelectItem>
-                  <SelectItem value="Inativo">Inativo</SelectItem>
+                  <SelectItem value="Vendido">Vendido</SelectItem>
+                  <SelectItem value="Doado">Doado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
