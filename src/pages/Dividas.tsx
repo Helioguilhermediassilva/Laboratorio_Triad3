@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Receipt, Plus, Eye, Trash2, Calendar, DollarSign } from "lucide-react";
+import { Receipt, Plus, Eye, Trash2, Calendar, DollarSign, Pencil } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,16 +9,18 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import NovaDividaModal from "@/components/NovaDividaModal";
 import VisualizarDividaModal from "@/components/VisualizarDividaModal";
+import EditarDividaModal from "@/components/EditarDividaModal";
 import { supabase } from "@/integrations/supabase/client";
 
 interface DebtCardProps {
   divida: any;
   onView: (id: string) => void;
   onDelete: (id: string) => void;
+  onEdit: (divida: any) => void;
   onPagamentoRegistrado: (dividaId: string, valorPago: number, categoria: string) => void;
 }
 
-function DebtCard({ divida, onView, onDelete, onPagamentoRegistrado }: DebtCardProps) {
+function DebtCard({ divida, onView, onDelete, onEdit, onPagamentoRegistrado }: DebtCardProps) {
   const percentualPago = (divida.parcelasPagas / divida.parcelas) * 100;
   
   const getStatusColor = (status: string) => {
@@ -108,6 +110,17 @@ function DebtCard({ divida, onView, onDelete, onPagamentoRegistrado }: DebtCardP
               Detalhes
             </Button>
           </VisualizarDividaModal>
+          <EditarDividaModal
+            divida={divida}
+            onUpdate={onEdit}
+          >
+            <Button
+              size="sm"
+              variant="outline"
+            >
+              <Pencil className="w-4 h-4" />
+            </Button>
+          </EditarDividaModal>
           <Button
             size="sm"
             variant="outline"
@@ -290,6 +303,12 @@ export default function Dividas() {
     setDividas(prev => [...prev, novaDivida]);
   };
 
+  const handleEditDivida = (dividaAtualizada: any) => {
+    setDividas(prev => prev.map(d => 
+      d.id === dividaAtualizada.id ? dividaAtualizada : d
+    ));
+  };
+
   // Calculations
   const totalPendente = dividas.reduce((sum, divida) => sum + divida.valorPendente, 0);
   const totalPrestacoes = dividas.reduce((sum, divida) => sum + divida.valorPrestacao, 0);
@@ -373,6 +392,7 @@ export default function Dividas() {
               divida={divida}
               onView={handleView}
               onDelete={handleDelete}
+              onEdit={handleEditDivida}
               onPagamentoRegistrado={handlePagamentoRegistrado}
             />
           ))}
