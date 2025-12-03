@@ -237,10 +237,8 @@ export default function AdicionarBemModal({
                   <SelectValue placeholder="Selecione o status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Próprio">Próprio</SelectItem>
-                  <SelectItem value="Financiado">Financiado</SelectItem>
-                  <SelectItem value="Alugado">Alugado</SelectItem>
-                  <SelectItem value="Comodato">Comodato</SelectItem>
+                  <SelectItem value="Ativo">Ativo</SelectItem>
+                  <SelectItem value="Inativo">Inativo</SelectItem>
                 </SelectContent>
               </Select>
             </div>
