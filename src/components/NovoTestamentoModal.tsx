@@ -461,10 +461,10 @@ ${partilhasText}`;
                     <SelectValue placeholder="Selecione o tipo" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Testamento Público">Testamento Público</SelectItem>
-                    <SelectItem value="Testamento Particular">Testamento Particular</SelectItem>
-                    <SelectItem value="Testamento Cerrado">Testamento Cerrado</SelectItem>
-                    <SelectItem value="Codicilo">Codicilo</SelectItem>
+                    <SelectItem value="Público">Testamento Público</SelectItem>
+                    <SelectItem value="Particular">Testamento Particular</SelectItem>
+                    <SelectItem value="Cerrado">Testamento Cerrado</SelectItem>
+                    <SelectItem value="Vital">Testamento Vital</SelectItem>
                   </SelectContent>
                 </Select>
                 {errors.tipo && <p className="text-sm text-red-500">{errors.tipo}</p>}
