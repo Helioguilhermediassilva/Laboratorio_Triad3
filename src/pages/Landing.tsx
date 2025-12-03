@@ -182,42 +182,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Who is it for */}
-      <section className="container mx-auto px-4 py-20">
-        <div className="max-w-4xl mx-auto">
-          <Card className="p-8 md:p-12 bg-gradient-to-br from-primary/5 to-accent/5 border-primary/20">
-            <div className="space-y-6">
-              <h2 className="text-3xl md:text-4xl font-bold">
-                Para quem é a TRIAD3?
-              </h2>
-              
-              <div className="space-y-4 text-lg">
-                <p className="flex items-start gap-3">
-                  <span className="text-2xl">💡</span>
-                  <span>
-                    <strong>Idealizado</strong> para apoiar o crescimento do seu patrimônio
-                  </span>
-                </p>
-                
-                <p className="flex items-start gap-3">
-                  <span className="text-2xl">🎯</span>
-                  <span>
-                    <strong>Projetado</strong> para aumentar a eficiência das decisões
-                  </span>
-                </p>
-                
-                <p className="flex items-start gap-3">
-                  <span className="text-2xl">🤝</span>
-                  <span>
-                    <strong>Adequado</strong> para pessoas que precisam de ajuda para construir e administrar seu patrimônio
-                  </span>
-                </p>
-              </div>
-            </div>
-          </Card>
-        </div>
-      </section>
-
       {/* Testimonial */}
       <section className="bg-primary text-primary-foreground py-20">
         <div className="container mx-auto px-4">
