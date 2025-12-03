@@ -13,9 +13,9 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface DebtCardProps {
   divida: any;
-  onView: (id: number) => void;
-  onDelete: (id: number) => void;
-  onPagamentoRegistrado: (dividaId: number, valorPago: number, categoria: string) => void;
+  onView: (id: string) => void;
+  onDelete: (id: string) => void;
+  onPagamentoRegistrado: (dividaId: string, valorPago: number, categoria: string) => void;
 }
 
 function DebtCard({ divida, onView, onDelete, onPagamentoRegistrado }: DebtCardProps) {
@@ -126,7 +126,7 @@ export default function Dividas() {
   const [dividas, setDividas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [dividaToDelete, setDividaToDelete] = useState<number | null>(null);
+  const [dividaToDelete, setDividaToDelete] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -198,44 +198,89 @@ export default function Dividas() {
     }
   };
 
-  const handlePagamentoRegistrado = (dividaId: number, valorPago: number, categoria: string) => {
-    // Atualiza a dívida
-    setDividas(prev => prev.map(divida => {
-      if (divida.id === dividaId) {
-        const novoPendente = divida.valorPendente - valorPago;
-        const parcelasPagasAdicionais = Math.floor(valorPago / divida.valorPrestacao);
-        
-        return {
-          ...divida,
-          valorPendente: Math.max(0, novoPendente),
-          parcelasPagas: Math.min(divida.parcelas, divida.parcelasPagas + parcelasPagasAdicionais),
-          status: novoPendente <= 0 ? "Quitado" : divida.status
-        };
-      }
-      return divida;
-    }));
+  const handlePagamentoRegistrado = async (dividaId: string, valorPago: number, categoria: string) => {
+    try {
+      const divida = dividas.find(d => d.id === dividaId);
+      if (!divida) return;
 
-    // Se for imóvel ou veículo, a lógica para atualizar o patrimônio imobilizado
-    // seria implementada aqui através de uma API ou contexto global
-    // Por ora, apenas mostramos um toast informativo
+      const novoPendente = Math.max(0, divida.valorPendente - valorPago);
+      const parcelasPagasAdicionais = Math.floor(valorPago / divida.valorPrestacao);
+      const novasParcelasPagas = Math.min(divida.parcelas, divida.parcelasPagas + parcelasPagasAdicionais);
+      const novoStatus = novoPendente <= 0 ? "Quitado" : divida.status;
+
+      // Atualizar no Supabase
+      const { error } = await supabase
+        .from('dividas')
+        .update({
+          saldo_devedor: novoPendente,
+          parcelas_pagas: novasParcelasPagas,
+          status: novoStatus
+        })
+        .eq('id', dividaId);
+
+      if (error) throw error;
+
+      // Atualiza estado local
+      setDividas(prev => prev.map(d => {
+        if (d.id === dividaId) {
+          return {
+            ...d,
+            valorPendente: novoPendente,
+            parcelasPagas: novasParcelasPagas,
+            status: novoStatus
+          };
+        }
+        return d;
+      }));
+
+      toast({
+        title: "Pagamento registrado!",
+        description: "O pagamento foi salvo permanentemente.",
+      });
+    } catch (error: any) {
+      console.error('Erro ao registrar pagamento:', error);
+      toast({
+        title: "Erro ao salvar",
+        description: "Não foi possível registrar o pagamento. Tente novamente.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleView = (id: number) => {
+  const handleView = (id: string) => {
     console.log("Visualizar dívida:", id);
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = (id: string) => {
     setDividaToDelete(id);
     setDeleteDialogOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (dividaToDelete) {
-      setDividas(prev => prev.filter(d => d.id !== dividaToDelete));
-      toast({
-        title: "Dívida excluída",
-        description: "A dívida foi removida com sucesso.",
-      });
+      try {
+        // Deletar do Supabase
+        const { error } = await supabase
+          .from('dividas')
+          .delete()
+          .eq('id', dividaToDelete);
+
+        if (error) throw error;
+
+        // Atualiza estado local
+        setDividas(prev => prev.filter(d => d.id !== dividaToDelete));
+        toast({
+          title: "Dívida excluída",
+          description: "A dívida foi removida permanentemente.",
+        });
+      } catch (error: any) {
+        console.error('Erro ao excluir dívida:', error);
+        toast({
+          title: "Erro ao excluir",
+          description: "Não foi possível excluir a dívida. Tente novamente.",
+          variant: "destructive"
+        });
+      }
     }
     setDeleteDialogOpen(false);
     setDividaToDelete(null);

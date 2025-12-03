@@ -11,6 +11,7 @@ import { CalendarIcon, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { supabase } from "@/integrations/supabase/client";
 
 interface EditarBemModalProps {
   open: boolean;
@@ -33,6 +34,7 @@ export default function EditarBemModal({
   const [status, setStatus] = useState("");
   const [condicao, setCondicao] = useState("");
   const [observacoes, setObservacoes] = useState("");
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
   // Populate form with existing data when bem changes
@@ -49,7 +51,7 @@ export default function EditarBemModal({
     }
   }, [bem]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!nome || !categoria || !endereco || !valor || !dataAquisicao || !status || !condicao) {
@@ -61,26 +63,56 @@ export default function EditarBemModal({
       return;
     }
 
-    const bemEditado = {
-      ...bem,
-      nome,
-      categoria,
-      endereco,
-      valor: parseFloat(valor.replace(/[^\d,]/g, '').replace(',', '.')),
-      dataAquisicao: format(dataAquisicao, 'yyyy-MM-dd'),
-      status,
-      condicao,
-      observacoes
-    };
+    setLoading(true);
 
-    onBemEditado(bemEditado);
-    
-    toast({
-      title: "Bem atualizado!",
-      description: "As alterações foram salvas com sucesso."
-    });
+    try {
+      const valorNumerico = parseFloat(valor.replace(/[^\d,]/g, '').replace(',', '.'));
 
-    onOpenChange(false);
+      const { error } = await supabase
+        .from('bens_imobilizados')
+        .update({
+          nome,
+          categoria,
+          localizacao: endereco,
+          valor_atual: valorNumerico,
+          data_aquisicao: format(dataAquisicao, 'yyyy-MM-dd'),
+          status,
+          descricao: observacoes
+        })
+        .eq('id', bem.id);
+
+      if (error) throw error;
+
+      const bemEditado = {
+        ...bem,
+        nome,
+        categoria,
+        endereco,
+        valor: valorNumerico,
+        dataAquisicao: format(dataAquisicao, 'yyyy-MM-dd'),
+        status,
+        condicao,
+        observacoes
+      };
+
+      onBemEditado(bemEditado);
+      
+      toast({
+        title: "Bem atualizado!",
+        description: "As alterações foram salvas permanentemente."
+      });
+
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error('Erro ao atualizar bem:', error);
+      toast({
+        title: "Erro ao salvar",
+        description: error.message || "Não foi possível salvar as alterações. Tente novamente.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const formatCurrency = (value: string) => {
@@ -242,12 +274,13 @@ export default function EditarBemModal({
               type="button" 
               variant="outline" 
               onClick={() => onOpenChange(false)}
+              disabled={loading}
             >
               Cancelar
             </Button>
-            <Button type="submit">
+            <Button type="submit" disabled={loading}>
               <Edit className="h-4 w-4 mr-2" />
-              Salvar Alterações
+              {loading ? "Salvando..." : "Salvar Alterações"}
             </Button>
           </div>
         </form>
