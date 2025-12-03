@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 
 const planoSchema = z.object({
@@ -16,10 +17,8 @@ const planoSchema = z.object({
   aportesMensais: z.number().min(0, "Aportes mensais não podem ser negativos"),
   dataContratacao: z.string().min(1, "Data de contratação é obrigatória"),
   taxaAdministracao: z.number().min(0, "Taxa de administração não pode ser negativa"),
-  taxaCarregamento: z.number().min(0, "Taxa de carregamento não pode ser negativa"),
   beneficiarioIdeal: z.number().min(18, "Idade deve ser maior que 18 anos"),
   idadeAtual: z.number().min(18, "Idade deve ser maior que 18 anos"),
-  observacoes: z.string().optional(),
 });
 
 interface NovoPlanoPrevidenciaModalProps {
@@ -29,6 +28,7 @@ interface NovoPlanoPrevidenciaModalProps {
 
 export default function NovoPlanoPrevidenciaModal({ children, onAdd }: NovoPlanoPrevidenciaModalProps) {
   const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     tipo: "",
@@ -38,38 +38,88 @@ export default function NovoPlanoPrevidenciaModal({ children, onAdd }: NovoPlano
     aportesMensais: "",
     dataContratacao: "",
     taxaAdministracao: "",
-    taxaCarregamento: "",
     beneficiarioIdeal: "",
     idadeAtual: "",
     observacoes: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const formatCurrency = (value: string): string => {
+    const numericValue = value.replace(/[^\d]/g, '');
+    if (!numericValue) return '';
+    const formattedValue = (parseFloat(numericValue) / 100).toFixed(2);
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(parseFloat(formattedValue));
+  };
+
+  const parseCurrencyToNumber = (value: string): number => {
+    const numericValue = value.replace(/[^\d,]/g, '').replace(',', '.');
+    return parseFloat(numericValue) || 0;
+  };
+
+  const handleCurrencyChange = (field: string, value: string) => {
+    const formatted = formatCurrency(value);
+    setFormData(prev => ({ ...prev, [field]: formatted }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     
     try {
       const data = {
         ...formData,
-        valorAcumulado: parseFloat(formData.valorAcumulado) || 0,
-        aportesMensais: parseFloat(formData.aportesMensais) || 0,
-        taxaAdministracao: parseFloat(formData.taxaAdministracao),
-        taxaCarregamento: parseFloat(formData.taxaCarregamento),
-        beneficiarioIdeal: parseInt(formData.beneficiarioIdeal),
-        idadeAtual: parseInt(formData.idadeAtual),
+        valorAcumulado: parseCurrencyToNumber(formData.valorAcumulado),
+        aportesMensais: parseCurrencyToNumber(formData.aportesMensais),
+        taxaAdministracao: parseFloat(formData.taxaAdministracao) || 0,
+        beneficiarioIdeal: parseInt(formData.beneficiarioIdeal) || 65,
+        idadeAtual: parseInt(formData.idadeAtual) || 45,
       };
 
       planoSchema.parse(data);
 
-      const proximaContribuicao = data.aportesMensais > 0 
-        ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR')
-        : "-";
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Erro de autenticação",
+          description: "Você precisa estar logado para adicionar um plano.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Insert into Supabase
+      const { data: savedData, error } = await supabase
+        .from('planos_previdencia')
+        .insert({
+          user_id: user.id,
+          nome: data.produto,
+          tipo: data.tipo,
+          instituicao: data.instituicao,
+          valor_acumulado: data.valorAcumulado,
+          contribuicao_mensal: data.aportesMensais,
+          data_inicio: data.dataContratacao,
+          taxa_administracao: data.taxaAdministracao,
+          idade_resgate: data.beneficiarioIdeal,
+          rentabilidade_acumulada: 0,
+          ativo: data.aportesMensais > 0
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
 
       const novoPlano = {
-        id: Date.now(),
+        id: savedData.id,
         ...data,
-        proximaContribuicao,
-        rentabilidadeAno: Math.random() * 10 + 5, // Mock rentability between 5-15%
+        proximaContribuicao: data.aportesMensais > 0 
+          ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR')
+          : "-",
+        rentabilidadeAno: 0,
         status: data.aportesMensais > 0 ? "Ativo" : "Suspenso",
         categoria: data.tipo
       };
@@ -84,7 +134,6 @@ export default function NovoPlanoPrevidenciaModal({ children, onAdd }: NovoPlano
         aportesMensais: "",
         dataContratacao: "",
         taxaAdministracao: "",
-        taxaCarregamento: "",
         beneficiarioIdeal: "",
         idadeAtual: "",
         observacoes: "",
@@ -93,7 +142,7 @@ export default function NovoPlanoPrevidenciaModal({ children, onAdd }: NovoPlano
 
       toast({
         title: "Plano adicionado!",
-        description: "O novo plano previdenciário foi adicionado com sucesso.",
+        description: "O plano previdenciário foi salvo com sucesso.",
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -104,7 +153,16 @@ export default function NovoPlanoPrevidenciaModal({ children, onAdd }: NovoPlano
           }
         });
         setErrors(newErrors);
+      } else {
+        console.error('Erro ao salvar:', error);
+        toast({
+          title: "Erro ao salvar",
+          description: "Não foi possível salvar o plano. Tente novamente.",
+          variant: "destructive",
+        });
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -177,11 +235,9 @@ export default function NovoPlanoPrevidenciaModal({ children, onAdd }: NovoPlano
               <Label htmlFor="valorAcumulado">Valor Acumulado Atual</Label>
               <Input
                 id="valorAcumulado"
-                type="number"
-                step="0.01"
                 value={formData.valorAcumulado}
-                onChange={(e) => handleInputChange("valorAcumulado", e.target.value)}
-                placeholder="0,00"
+                onChange={(e) => handleCurrencyChange("valorAcumulado", e.target.value)}
+                placeholder="R$ 0,00"
                 className={errors.valorAcumulado ? "border-red-500" : ""}
               />
               {errors.valorAcumulado && <p className="text-sm text-red-500">{errors.valorAcumulado}</p>}
@@ -191,18 +247,16 @@ export default function NovoPlanoPrevidenciaModal({ children, onAdd }: NovoPlano
               <Label htmlFor="aportesMensais">Aportes Mensais</Label>
               <Input
                 id="aportesMensais"
-                type="number"
-                step="0.01"
                 value={formData.aportesMensais}
-                onChange={(e) => handleInputChange("aportesMensais", e.target.value)}
-                placeholder="0,00"
+                onChange={(e) => handleCurrencyChange("aportesMensais", e.target.value)}
+                placeholder="R$ 0,00"
                 className={errors.aportesMensais ? "border-red-500" : ""}
               />
               {errors.aportesMensais && <p className="text-sm text-red-500">{errors.aportesMensais}</p>}
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="dataContratacao">Data de Contratação</Label>
               <Input
@@ -227,20 +281,6 @@ export default function NovoPlanoPrevidenciaModal({ children, onAdd }: NovoPlano
                 className={errors.taxaAdministracao ? "border-red-500" : ""}
               />
               {errors.taxaAdministracao && <p className="text-sm text-red-500">{errors.taxaAdministracao}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="taxaCarregamento">Taxa Carreg. (%)</Label>
-              <Input
-                id="taxaCarregamento"
-                type="number"
-                step="0.1"
-                value={formData.taxaCarregamento}
-                onChange={(e) => handleInputChange("taxaCarregamento", e.target.value)}
-                placeholder="2,0"
-                className={errors.taxaCarregamento ? "border-red-500" : ""}
-              />
-              {errors.taxaCarregamento && <p className="text-sm text-red-500">{errors.taxaCarregamento}</p>}
             </div>
           </div>
 
@@ -284,11 +324,11 @@ export default function NovoPlanoPrevidenciaModal({ children, onAdd }: NovoPlano
           </div>
 
           <div className="flex justify-end space-x-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={loading}>
               Cancelar
             </Button>
-            <Button type="submit">
-              Adicionar Plano
+            <Button type="submit" disabled={loading}>
+              {loading ? "Salvando..." : "Adicionar Plano"}
             </Button>
           </div>
         </form>
