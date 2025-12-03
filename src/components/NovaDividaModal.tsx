@@ -299,13 +299,11 @@ export default function NovaDividaModal({ children, onAdd }: NovaDividaModalProp
                 <SelectValue placeholder="Selecione uma categoria" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Imóvel">Imóvel</SelectItem>
-                <SelectItem value="Veículo">Veículo</SelectItem>
-                <SelectItem value="Pessoal">Pessoal</SelectItem>
-                <SelectItem value="Cartão">Cartão de Crédito</SelectItem>
-                <SelectItem value="Estudantil">Empréstimo Estudantil</SelectItem>
-                <SelectItem value="Empresarial">Empresarial</SelectItem>
-                <SelectItem value="Outros">Outros</SelectItem>
+                <SelectItem value="Financiamento Imobiliário">Financiamento Imobiliário</SelectItem>
+                <SelectItem value="Financiamento Veículo">Financiamento Veículo</SelectItem>
+                <SelectItem value="Empréstimo Pessoal">Empréstimo Pessoal</SelectItem>
+                <SelectItem value="Cartão de Crédito">Cartão de Crédito</SelectItem>
+                <SelectItem value="Outro">Outro</SelectItem>
               </SelectContent>
             </Select>
             {errors.categoria && <p className="text-sm text-red-500">{errors.categoria}</p>}
