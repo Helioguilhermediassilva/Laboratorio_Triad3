@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, Filter, TrendingUp, TrendingDown } from "lucide-react";
+import { Search, Filter, TrendingUp, TrendingDown, Plus } from "lucide-react";
 import Layout from "@/components/Layout";
 import AssetCard from "@/components/AssetCard";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import VisualizarAplicacaoModal from "@/components/VisualizarAplicacaoModal";
 import EditarAplicacaoModal from "@/components/EditarAplicacaoModal";
+import NovaAplicacaoModal from "@/components/NovaAplicacaoModal";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function Carteira() {
@@ -99,17 +100,53 @@ export default function Carteira() {
     });
   };
 
+  const handleAddAplicacao = (novaAplicacao: any) => {
+    setAssets(prev => [...prev, novaAplicacao]);
+  };
+
+  const handleDeleteAplicacao = async (aplicacao: any) => {
+    try {
+      const { error } = await supabase
+        .from('aplicacoes')
+        .delete()
+        .eq('id', aplicacao.id);
+
+      if (error) throw error;
+
+      setAssets(prev => prev.filter(asset => asset.id !== aplicacao.id));
+      toast({
+        title: "Aplicação excluída",
+        description: "A aplicação foi removida com sucesso."
+      });
+    } catch (error: any) {
+      console.error('Erro ao excluir aplicação:', error);
+      toast({
+        title: "Erro ao excluir",
+        description: "Não foi possível excluir a aplicação. Tente novamente.",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <Layout>
       <div className="space-y-8">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">
-            Minha Carteira
-          </h1>
-          <p className="text-muted-foreground">
-            Gerencie todos os seus ativos financeiros em um só lugar
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground mb-2">
+              Minha Carteira
+            </h1>
+            <p className="text-muted-foreground">
+              Gerencie todos os seus ativos financeiros em um só lugar
+            </p>
+          </div>
+          <NovaAplicacaoModal onAdd={handleAddAplicacao}>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Nova Aplicação
+            </Button>
+          </NovaAplicacaoModal>
         </div>
 
         {/* Portfolio Summary */}
@@ -237,6 +274,7 @@ export default function Carteira() {
                 asset={asset}
                 onEdit={handleEditarAplicacao}
                 onView={handleVisualizarAplicacao}
+                onDelete={handleDeleteAplicacao}
               />
             ))}
           </div>
