@@ -78,10 +78,10 @@ export default function Relatorios() {
       const dividasTotal = (dividasRes.data || []).reduce((sum, item) => sum + Number(item.saldo_devedor || 0), 0);
       
       const receitas = (transacoesRes.data || [])
-        .filter(t => t.tipo === 'Receita')
+        .filter(t => t.tipo === 'Receita' || t.tipo === 'entrada')
         .reduce((sum, t) => sum + Number(t.valor || 0), 0);
       const despesas = (transacoesRes.data || [])
-        .filter(t => t.tipo === 'Despesa')
+        .filter(t => t.tipo === 'Despesa' || t.tipo === 'saida')
         .reduce((sum, t) => sum + Number(t.valor || 0), 0);
 
       setTotalImobilizado(imobilizadoTotal);
@@ -484,40 +484,43 @@ export default function Relatorios() {
           <CardContent>
             {recentTransactions.length > 0 ? (
               <div className="space-y-3">
-                {recentTransactions.map((transaction) => (
-                  <div key={transaction.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${
-                        transaction.tipo === 'Receita' 
-                          ? 'bg-green-500/10' 
-                          : 'bg-red-500/10'
-                      }`}>
-                        {transaction.tipo === 'Receita' ? (
-                          <TrendingUp className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <TrendingDown className="h-4 w-4 text-red-500" />
-                        )}
-                      </div>
-                      <div>
-                        <div className="font-medium">{transaction.descricao}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {new Date(transaction.data).toLocaleDateString('pt-BR')} • {transaction.categoria}
+                {recentTransactions.map((transaction) => {
+                  const isReceita = transaction.tipo === 'Receita' || transaction.tipo === 'entrada';
+                  return (
+                    <div key={transaction.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg ${
+                          isReceita 
+                            ? 'bg-green-500/10' 
+                            : 'bg-red-500/10'
+                        }`}>
+                          {isReceita ? (
+                            <TrendingUp className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <TrendingDown className="h-4 w-4 text-red-500" />
+                          )}
+                        </div>
+                        <div>
+                          <div className="font-medium">{transaction.descricao}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(transaction.data).toLocaleDateString('pt-BR')} • {transaction.categoria}
+                          </div>
                         </div>
                       </div>
+                      <div className={`font-semibold ${
+                        isReceita 
+                          ? 'text-green-600' 
+                          : 'text-red-600'
+                      }`}>
+                        {isReceita ? '+' : '-'}
+                        {Math.abs(Number(transaction.valor)).toLocaleString('pt-BR', { 
+                          style: 'currency', 
+                          currency: 'BRL' 
+                        })}
+                      </div>
                     </div>
-                    <div className={`font-semibold ${
-                      transaction.tipo === 'Receita' 
-                        ? 'text-green-600' 
-                        : 'text-red-600'
-                    }`}>
-                      {transaction.tipo === 'Receita' ? '+' : '-'}
-                      {Math.abs(Number(transaction.valor)).toLocaleString('pt-BR', { 
-                        style: 'currency', 
-                        currency: 'BRL' 
-                      })}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
