@@ -177,11 +177,13 @@ export default function EditarAplicacaoModal({
                   <SelectValue placeholder="Selecione a categoria" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Ação">Ação</SelectItem>
-                  <SelectItem value="FII">FII</SelectItem>
-                  <SelectItem value="ETF">ETF</SelectItem>
-                  <SelectItem value="Renda Fixa">Renda Fixa</SelectItem>
-                  <SelectItem value="Criptomoeda">Criptomoeda</SelectItem>
+                  <SelectItem value="Ações">Ações</SelectItem>
+                  <SelectItem value="Fundo">Fundo</SelectItem>
+                  <SelectItem value="Tesouro Direto">Tesouro Direto</SelectItem>
+                  <SelectItem value="CDB">CDB</SelectItem>
+                  <SelectItem value="LCI">LCI</SelectItem>
+                  <SelectItem value="LCA">LCA</SelectItem>
+                  <SelectItem value="Outro">Outro</SelectItem>
                 </SelectContent>
               </Select>
             </div>
