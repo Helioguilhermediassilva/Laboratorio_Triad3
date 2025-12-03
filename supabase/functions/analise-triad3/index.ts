@@ -17,367 +17,193 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY not configured");
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    // Buscar todas as transações disponíveis
-    const { data: transacoes, error: transacoesError } = await supabase
-      .from('transacoes')
-      .select('*')
-      .order('data', { ascending: false })
-      .limit(100);
-
-    if (transacoesError) {
-      console.error("Error fetching transactions:", transacoesError);
-      throw transacoesError;
+    // Obter token do usuário do header Authorization
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error("Não autorizado. Faça login para continuar.");
     }
 
-    // Se não houver transações, usar dados de exemplo consolidados de TODAS as páginas da Triad3
-    // VALORES EXATOS:
-    // Dívidas: R$ 360.350 (Financ. Imob R$ 287.500 + Financ. Veic R$ 45.600 + Emprést. R$ 18.750 + Cartão R$ 8.500)
-    // Imobilizado: R$ 1.450.000 (Casa Praia R$ 850K + Apt Centro R$ 450K + Honda Civic R$ 125K + Equipamentos R$ 25K)
-    const dadosTransacoes = transacoes && transacoes.length > 0 ? transacoes : [
-      // Imobilizado - R$ 1.450.000 (valores EXATOS da página)
-      {
-        id: "imob1",
-        data: "2020-03-15",
-        descricao: "Apartamento Centro - Rua das Flores, 123",
-        categoria: "Patrimônio",
-        tipo: "entrada",
-        valor: 450000,
-        conta: "Imobilizado"
-      },
-      {
-        id: "imob2",
-        data: "2022-01-10",
-        descricao: "Honda Civic 2022",
-        categoria: "Patrimônio",
-        tipo: "entrada",
-        valor: 125000,
-        conta: "Imobilizado"
-      },
-      {
-        id: "imob3",
-        data: "2019-07-20",
-        descricao: "Casa de Praia - Guarujá",
-        categoria: "Patrimônio",
-        tipo: "entrada",
-        valor: 850000,
-        conta: "Imobilizado"
-      },
-      {
-        id: "imob4",
-        data: "2023-05-12",
-        descricao: "Equipamentos e Móveis",
-        categoria: "Patrimônio",
-        tipo: "entrada",
-        valor: 25000,
-        conta: "Imobilizado"
-      },
-      // Aplicações/Liquidez - R$ 485.200 (conforme Dashboard)
-      {
-        id: "apl1",
-        data: "2024-01-15",
-        descricao: "PETR4 - 1000 ações",
-        categoria: "Investimentos",
-        tipo: "entrada",
-        valor: 35840,
-        conta: "XP Investimentos"
-      },
-      {
-        id: "apl2",
-        data: "2023-11-20",
-        descricao: "VALE3 - 850 ações",
-        categoria: "Investimentos",
-        tipo: "entrada",
-        valor: 42650,
-        conta: "Rico Investimentos"
-      },
-      {
-        id: "apl3",
-        data: "2024-02-10",
-        descricao: "HGLG11 - 120 cotas",
-        categoria: "Investimentos",
-        tipo: "entrada",
-        valor: 12480,
-        conta: "Inter Investimentos"
-      },
-      {
-        id: "apl4",
-        data: "2023-09-15",
-        descricao: "ITUB4 - 500 ações",
-        categoria: "Investimentos",
-        tipo: "entrada",
-        valor: 28750,
-        conta: "XP Investimentos"
-      },
-      {
-        id: "apl5",
-        data: "2024-03-10",
-        descricao: "BBDC4 - 800 ações",
-        categoria: "Investimentos",
-        tipo: "entrada",
-        valor: 19880,
-        conta: "Rico Investimentos"
-      },
-      {
-        id: "apl6",
-        data: "2024-01-20",
-        descricao: "MXRF11 - 80 cotas",
-        categoria: "Investimentos",
-        tipo: "entrada",
-        valor: 8640,
-        conta: "Inter Investimentos"
-      },
-      {
-        id: "apl7",
-        data: "2024-02-15",
-        descricao: "Tesouro Direto - IPCA+ 2035",
-        categoria: "Investimentos",
-        tipo: "entrada",
-        valor: 85000,
-        conta: "Tesouro Direto"
-      },
-      {
-        id: "apl8",
-        data: "2023-12-10",
-        descricao: "CDB Banco Inter - 120% CDI",
-        categoria: "Investimentos",
-        tipo: "entrada",
-        valor: 120000,
-        conta: "Banco Inter"
-      },
-      {
-        id: "apl9",
-        data: "2024-01-05",
-        descricao: "Fundos Imobiliários - Diversos",
-        categoria: "Investimentos",
-        tipo: "entrada",
-        valor: 95000,
-        conta: "XP Investimentos"
-      },
-      {
-        id: "apl10",
-        data: "2023-11-01",
-        descricao: "LCI/LCA - Carteira",
-        categoria: "Investimentos",
-        tipo: "entrada",
-        valor: 36960,
-        conta: "Banco do Brasil"
-      },
-      // Negócios/Receita - Ajustado para totalizar R$ 2.8M
-      {
-        id: "neg1",
-        data: "2023-01-01",
-        descricao: "Participações Societárias - Empresas",
-        categoria: "Negócios",
-        tipo: "entrada",
-        valor: 600000,
-        conta: "Participações"
-      },
-      {
-        id: "neg2",
-        data: "2023-06-15",
-        descricao: "Investimento em Startup Tech",
-        categoria: "Negócios",
-        tipo: "entrada",
-        valor: 120000,
-        conta: "Participações"
-      },
-      {
-        id: "neg3",
-        data: "2024-01-01",
-        descricao: "Consultoria Empresarial - Contratos Ativos",
-        categoria: "Negócios",
-        tipo: "entrada",
-        valor: 85000,
-        conta: "Empresa"
-      },
-      {
-        id: "neg4",
-        data: "2023-09-10",
-        descricao: "E-commerce - Loja Online",
-        categoria: "Negócios",
-        tipo: "entrada",
-        valor: 45000,
-        conta: "Negócio Digital"
-      },
-      {
-        id: "rend1",
-        data: "2024-01-15",
-        descricao: "Salário Anual",
-        categoria: "Salário",
-        tipo: "entrada",
-        valor: 8500,
-        conta: "Conta Corrente Itaú"
-      },
-      {
-        id: "rend2",
-        data: "2024-01-19",
-        descricao: "Freelance - Projetos Mensais",
-        categoria: "Negócios",
-        tipo: "entrada",
-        valor: 3500,
-        conta: "Conta Corrente Nubank"
-      },
-      {
-        id: "rend3",
-        data: "2024-01-17",
-        descricao: "Dividendos e Proventos",
-        categoria: "Investimentos",
-        tipo: "entrada",
-        valor: 2800,
-        conta: "Conta XP"
-      },
-      // Dívidas - R$ 360.350 EXATO (valores da página Dívidas)
-      {
-        id: "div1",
-        data: "2024-01-15",
-        descricao: "Financiamento Imobiliário - Banco do Brasil",
-        categoria: "Dívida",
-        tipo: "saida",
-        valor: 287500,
-        conta: "Banco do Brasil"
-      },
-      {
-        id: "div2",
-        data: "2024-01-10",
-        descricao: "Financiamento Veicular - Santander",
-        categoria: "Dívida",
-        tipo: "saida",
-        valor: 45600,
-        conta: "Santander"
-      },
-      {
-        id: "div3",
-        data: "2024-01-05",
-        descricao: "Empréstimo Pessoal - Nubank",
-        categoria: "Dívida",
-        tipo: "saida",
-        valor: 18750,
-        conta: "Nubank"
-      },
-      {
-        id: "div4",
-        data: "2024-01-25",
-        descricao: "Cartão de Crédito - Itaú",
-        categoria: "Dívida",
-        tipo: "saida",
-        valor: 8500,
-        conta: "Itaú"
-      }
-    ];
-
-    console.log(`Analyzing ${dadosTransacoes.length} transactions from Triad3 system...`);
-
-    // Calcular totais por categoria baseado no conceito Triad3
-    const totais = {
-      liquidez: 0,
-      imobilizado: 0,
-      negocios: 0,
-      total: 0
-    };
-
-    const categoriasPorTipo = {
-      liquidez: ['Investimentos', 'Conta Corrente', 'Poupança', 'Outros'],
-      imobilizado: ['Moradia', 'Transporte', 'Patrimônio'],
-      negocios: ['Salário', 'Freelance', 'Negócios', 'Empresa']
-    };
-
-    dadosTransacoes?.forEach((t: any) => {
-      const valor = parseFloat(t.valor);
-      if (t.tipo === 'entrada') {
-        totais.total += valor;
-        
-        // Classificar por tipo Triad3
-        if (categoriasPorTipo.liquidez.includes(t.categoria)) {
-          totais.liquidez += valor;
-        } else if (categoriasPorTipo.imobilizado.includes(t.categoria)) {
-          totais.imobilizado += valor;
-        } else if (categoriasPorTipo.negocios.includes(t.categoria)) {
-          totais.negocios += valor;
-        }
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+    
+    // Criar cliente com o token do usuário
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: { Authorization: authHeader }
       }
     });
 
-    // Calcular patrimônio líquido (descontando dívidas)
-    const totalDividas = dadosTransacoes
-      ?.filter((t: any) => t.categoria === 'Dívida' && t.tipo === 'saida')
-      .reduce((sum: number, t: any) => sum + parseFloat(t.valor), 0) || 0;
+    // Verificar usuário autenticado
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      throw new Error("Usuário não autenticado");
+    }
+
+    console.log(`Fetching real data for user: ${user.id}`);
+
+    // Buscar dados REAIS de todas as tabelas do usuário
+    const [
+      imobilizadoRes,
+      aplicacoesRes,
+      previdenciaRes,
+      contasRes,
+      dividasRes
+    ] = await Promise.all([
+      supabase.from('bens_imobilizados').select('*').eq('user_id', user.id),
+      supabase.from('aplicacoes').select('*').eq('user_id', user.id),
+      supabase.from('planos_previdencia').select('*').eq('user_id', user.id),
+      supabase.from('contas_bancarias').select('*').eq('user_id', user.id),
+      supabase.from('dividas').select('*').eq('user_id', user.id)
+    ]);
+
+    // Calcular totais reais
+    const totalImobilizado = (imobilizadoRes.data || []).reduce((sum, item) => sum + Number(item.valor_atual || 0), 0);
+    const totalAplicacoes = (aplicacoesRes.data || []).reduce((sum, item) => sum + Number(item.valor_atual || 0), 0);
+    const totalPrevidencia = (previdenciaRes.data || []).reduce((sum, item) => sum + Number(item.valor_acumulado || 0), 0);
+    const totalContasBancarias = (contasRes.data || []).reduce((sum, item) => sum + Number(item.saldo_atual || 0), 0);
+    const totalDividas = (dividasRes.data || []).reduce((sum, item) => sum + Number(item.saldo_devedor || 0), 0);
+
+    // Liquidez = Aplicações + Previdência + Contas Bancárias
+    const totalLiquidez = totalAplicacoes + totalPrevidencia + totalContasBancarias;
     
-    const patrimonioLiquido = totais.total - totalDividas;
+    // Patrimônio total (ativos)
+    const patrimonioTotal = totalImobilizado + totalLiquidez;
+    
+    // Patrimônio líquido
+    const patrimonioLiquido = patrimonioTotal - totalDividas;
+
+    // Log dos dados encontrados
+    console.log("Dados reais encontrados:");
+    console.log(`- Imobilizado: R$ ${totalImobilizado.toFixed(2)} (${imobilizadoRes.data?.length || 0} bens)`);
+    console.log(`- Aplicações: R$ ${totalAplicacoes.toFixed(2)} (${aplicacoesRes.data?.length || 0} aplicações)`);
+    console.log(`- Previdência: R$ ${totalPrevidencia.toFixed(2)} (${previdenciaRes.data?.length || 0} planos)`);
+    console.log(`- Contas Bancárias: R$ ${totalContasBancarias.toFixed(2)} (${contasRes.data?.length || 0} contas)`);
+    console.log(`- Dívidas: R$ ${totalDividas.toFixed(2)} (${dividasRes.data?.length || 0} dívidas)`);
+    console.log(`- Patrimônio Total: R$ ${patrimonioTotal.toFixed(2)}`);
+    console.log(`- Patrimônio Líquido: R$ ${patrimonioLiquido.toFixed(2)}`);
+
+    // Verificar se há dados cadastrados
+    const temDados = patrimonioTotal > 0 || totalDividas > 0;
+    
+    if (!temDados) {
+      return new Response(
+        JSON.stringify({ 
+          error: "Você ainda não possui dados cadastrados. Adicione bens imobilizados, aplicações, contas bancárias ou dívidas para gerar uma análise." 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Calcular totais no conceito Triad3
+    // Liquidez (33%): Aplicações + Contas + Previdência
+    // Imobilizado (34%): Bens imobilizados
+    // Negócios (33%): Como não temos tabela de negócios, consideramos 0
+    const totais = {
+      liquidez: totalLiquidez,
+      imobilizado: totalImobilizado,
+      negocios: 0, // Sem tabela específica de negócios
+      total: patrimonioTotal
+    };
 
     // Calcular percentuais
     const percentuais = {
-      liquidez: totais.total > 0 ? (totais.liquidez / totais.total * 100).toFixed(2) : 0,
-      imobilizado: totais.total > 0 ? (totais.imobilizado / totais.total * 100).toFixed(2) : 0,
-      negocios: totais.total > 0 ? (totais.negocios / totais.total * 100).toFixed(2) : 0
+      liquidez: patrimonioTotal > 0 ? (totais.liquidez / patrimonioTotal * 100).toFixed(2) : "0.00",
+      imobilizado: patrimonioTotal > 0 ? (totais.imobilizado / patrimonioTotal * 100).toFixed(2) : "0.00",
+      negocios: "0.00"
     };
+
+    // Preparar detalhes para a IA
+    const detalhesImobilizado = (imobilizadoRes.data || []).map(b => 
+      `- ${b.nome} (${b.categoria}): R$ ${Number(b.valor_atual).toLocaleString('pt-BR')}`
+    ).join('\n');
+
+    const detalhesAplicacoes = (aplicacoesRes.data || []).map(a => 
+      `- ${a.nome} (${a.tipo}): R$ ${Number(a.valor_atual).toLocaleString('pt-BR')} em ${a.instituicao}`
+    ).join('\n');
+
+    const detalhesPrevidencia = (previdenciaRes.data || []).map(p => 
+      `- ${p.nome} (${p.tipo}): R$ ${Number(p.valor_acumulado).toLocaleString('pt-BR')} em ${p.instituicao}`
+    ).join('\n');
+
+    const detalhesContas = (contasRes.data || []).map(c => 
+      `- ${c.banco} (${c.tipo_conta}): R$ ${Number(c.saldo_atual).toLocaleString('pt-BR')}`
+    ).join('\n');
+
+    const detalhesDividas = (dividasRes.data || []).map(d => 
+      `- ${d.nome} (${d.tipo}): Saldo devedor R$ ${Number(d.saldo_devedor).toLocaleString('pt-BR')} - ${d.parcelas_pagas}/${d.numero_parcelas} parcelas pagas - Credor: ${d.credor}`
+    ).join('\n');
 
     // Preparar prompt para análise com IA
     const prompt = `Você é um consultor financeiro especializado no conceito Triad3 de gestão patrimonial.
 
 CONCEITO TRIAD3:
 O patrimônio ideal deve estar dividido em:
-- 33% em LIQUIDEZ (investimentos líquidos, ações, FIIs, conta corrente, poupança)
+- 33% em LIQUIDEZ (investimentos líquidos, aplicações financeiras, contas bancárias, previdência)
 - 34% em IMOBILIZADO (imóveis, veículos, bens duráveis, equipamentos)
-- 33% em NEGÓCIOS (empresas, participações societárias, rendimentos de negócios, renda ativa)
+- 33% em NEGÓCIOS (empresas, participações societárias, negócios próprios)
 
-DADOS PATRIMONIAIS ATUAIS:
-Patrimônio Bruto Total: R$ ${totais.total.toFixed(2)}
-Total de Dívidas: R$ ${totalDividas.toFixed(2)}
-Patrimônio Líquido: R$ ${patrimonioLiquido.toFixed(2)}
+=== DADOS PATRIMONIAIS REAIS DO USUÁRIO ===
 
-Distribuição Atual:
-- Liquidez (Investimentos): R$ ${totais.liquidez.toFixed(2)} (${percentuais.liquidez}%)
-- Imobilizado (Bens): R$ ${totais.imobilizado.toFixed(2)} (${percentuais.imobilizado}%)
-- Negócios (Rendimentos): R$ ${totais.negocios.toFixed(2)} (${percentuais.negocios}%)
+RESUMO PATRIMONIAL:
+- Patrimônio Bruto Total: R$ ${patrimonioTotal.toLocaleString('pt-BR')}
+- Total de Dívidas: R$ ${totalDividas.toLocaleString('pt-BR')}
+- Patrimônio Líquido: R$ ${patrimonioLiquido.toLocaleString('pt-BR')}
 
-Total de ${dadosTransacoes?.length || 0} transações analisadas incluindo:
-- ${dadosTransacoes?.filter((t: any) => t.categoria === 'Patrimônio').length || 0} bens imobilizados
-- ${dadosTransacoes?.filter((t: any) => t.categoria === 'Investimentos').length || 0} aplicações financeiras
-- ${dadosTransacoes?.filter((t: any) => t.categoria === 'Dívida').length || 0} dívidas em aberto
-${dadosTransacoes && dadosTransacoes.length > 0 && !transacoes?.length ? '\n(Análise baseada em dados de exemplo do sistema)' : ''}
+DISTRIBUIÇÃO ATUAL:
+- Liquidez: R$ ${totais.liquidez.toLocaleString('pt-BR')} (${percentuais.liquidez}% do patrimônio)
+  • Aplicações: R$ ${totalAplicacoes.toLocaleString('pt-BR')}
+  • Previdência: R$ ${totalPrevidencia.toLocaleString('pt-BR')}
+  • Contas Bancárias: R$ ${totalContasBancarias.toLocaleString('pt-BR')}
+- Imobilizado: R$ ${totais.imobilizado.toLocaleString('pt-BR')} (${percentuais.imobilizado}% do patrimônio)
+- Negócios: R$ 0,00 (0% do patrimônio - sem dados cadastrados)
 
-TAREFA:
-Analise a distribuição patrimonial atual e forneça:
+DETALHAMENTO DOS BENS IMOBILIZADOS (${imobilizadoRes.data?.length || 0} itens):
+${detalhesImobilizado || 'Nenhum bem imobilizado cadastrado'}
+
+DETALHAMENTO DAS APLICAÇÕES FINANCEIRAS (${aplicacoesRes.data?.length || 0} aplicações):
+${detalhesAplicacoes || 'Nenhuma aplicação cadastrada'}
+
+DETALHAMENTO DOS PLANOS DE PREVIDÊNCIA (${previdenciaRes.data?.length || 0} planos):
+${detalhesPrevidencia || 'Nenhum plano cadastrado'}
+
+DETALHAMENTO DAS CONTAS BANCÁRIAS (${contasRes.data?.length || 0} contas):
+${detalhesContas || 'Nenhuma conta cadastrada'}
+
+DETALHAMENTO DAS DÍVIDAS (${dividasRes.data?.length || 0} dívidas):
+${detalhesDividas || 'Nenhuma dívida cadastrada'}
+
+=== TAREFA ===
+
+Analise APENAS os dados REAIS apresentados acima. NÃO INVENTE valores ou bens que não foram listados.
+
+Forneça:
 
 1. **Diagnóstico Executivo**: 
-   - Avalie se a distribuição está alinhada com o conceito Triad3 (33% liquidez, 34% imobilizado, 33% negócios)
-   - Identifique pontos fortes e fracos da distribuição atual
+   - Avalie se a distribuição atual está alinhada com o conceito Triad3
+   - Identifique pontos fortes e fracos baseados nos dados REAIS
 
-2. **Pontos Críticos de Atenção**: 
-   - Identifique desequilíbrios significativos e seus riscos
-   - Analise o impacto das dívidas no patrimônio líquido
-   - Avalie a diversificação dos investimentos
-   - Considere riscos de concentração em categorias específicas
+2. **Análise de Liquidez**: 
+   - Avalie a proporção entre ativos líquidos e imobilizados
+   - Analise a diversificação das aplicações (se houver)
+   - Comente sobre a reserva de emergência
 
-3. **Recomendações Estratégicas**: Forneça 4-6 ações práticas e específicas para:
-   - Melhorar o equilíbrio patrimonial conforme o conceito Triad3
-   - Otimizar a gestão das dívidas existentes
-   - Aumentar participação em áreas deficitárias
-   - Maximizar retorno dos ativos existentes
-   - Proteger e preservar o patrimônio
+3. **Análise de Dívidas**: 
+   - Analise o comprometimento do patrimônio com dívidas
+   - Avalie a relação dívida/patrimônio
+   - Identifique riscos de endividamento
 
-4. **Análise de Liquidez e Risco**: 
-   - Avalie a capacidade de honrar compromissos financeiros
-   - Analise a proporção patrimônio/dívida
-   - Identifique riscos de liquidez e concentração
-   - Considere reservas de emergência
+4. **Recomendações Específicas**: 
+   - Forneça 3-5 ações práticas e específicas baseadas nos dados REAIS
+   - Priorize ações de acordo com o impacto no equilíbrio patrimonial
+   - Considere a situação atual de dívidas
 
-5. **Plano de Ação 6 Meses**: 
-   - Sugira 3-5 objetivos tangíveis e mensuráveis
-   - Priorize ações de acordo com o impacto no equilíbrio Triad3
-   - Estabeleça metas realistas de acordo com o perfil atual
+5. **Plano de Ação**: 
+   - Sugira 2-3 objetivos tangíveis para os próximos 6 meses
+   - Metas realistas de acordo com o perfil REAL apresentado
 
-Forneça uma análise profissional, clara, acionável e personalizada para o perfil patrimonial apresentado.
+IMPORTANTE: Baseie sua análise EXCLUSIVAMENTE nos dados fornecidos. Não mencione valores ou bens que não estejam listados acima.`;
 
----
-**Equipe de Consultoria Financeira Triad3**`;
-
-    console.log("Calling Lovable AI for analysis...");
+    console.log("Calling Lovable AI for analysis with real user data...");
 
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -390,7 +216,7 @@ Forneça uma análise profissional, clara, acionável e personalizada para o per
         messages: [
           { 
             role: 'system', 
-            content: 'Você é um consultor financeiro expert em planejamento patrimonial e no conceito Triad3. Forneça análises profissionais, práticas e acionáveis.' 
+            content: 'Você é um consultor financeiro expert em planejamento patrimonial e no conceito Triad3. Forneça análises profissionais baseadas APENAS nos dados REAIS fornecidos. NUNCA invente valores, bens ou informações que não foram apresentados pelo usuário.' 
           },
           { role: 'user', content: prompt }
         ],
@@ -420,13 +246,18 @@ Forneça uma análise profissional, clara, acionável e personalizada para o per
     const aiData = await aiResponse.json();
     const analise = aiData.choices[0].message.content;
 
-    console.log("Analysis completed successfully");
+    console.log("Analysis completed successfully with real user data");
 
     return new Response(
       JSON.stringify({
         analise,
         dados: {
-          totais,
+          totais: {
+            ...totais,
+            aplicacoes: totalAplicacoes,
+            previdencia: totalPrevidencia,
+            contasBancarias: totalContasBancarias
+          },
           percentuais,
           dividas: totalDividas,
           patrimonioLiquido,
@@ -436,9 +267,16 @@ Forneça uma análise profissional, clara, acionável e personalizada para o per
             negocios: 33
           },
           desvios: {
-            liquidez: (parseFloat(percentuais.liquidez.toString()) - 33).toFixed(2),
-            imobilizado: (parseFloat(percentuais.imobilizado.toString()) - 34).toFixed(2),
-            negocios: (parseFloat(percentuais.negocios.toString()) - 33).toFixed(2)
+            liquidez: (parseFloat(percentuais.liquidez) - 33).toFixed(2),
+            imobilizado: (parseFloat(percentuais.imobilizado) - 34).toFixed(2),
+            negocios: (0 - 33).toFixed(2)
+          },
+          quantidades: {
+            imobilizado: imobilizadoRes.data?.length || 0,
+            aplicacoes: aplicacoesRes.data?.length || 0,
+            previdencia: previdenciaRes.data?.length || 0,
+            contas: contasRes.data?.length || 0,
+            dividas: dividasRes.data?.length || 0
           }
         },
         timestamp: new Date().toISOString()
