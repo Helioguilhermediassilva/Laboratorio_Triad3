@@ -217,7 +217,7 @@ export default function NovoTestamentoModal({ children, onAdd }: NovoTestamentoM
           regime_bens: data.regimeBens || null,
           nome_conjuge: data.nomeConjuge || null,
           observacoes: data.observacoes,
-          status: 'Rascunho',
+          status: 'Vigente',
         })
         .select()
         .single();
