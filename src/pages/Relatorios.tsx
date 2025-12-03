@@ -511,7 +511,7 @@ export default function Relatorios() {
                         : 'text-red-600'
                     }`}>
                       {transaction.tipo === 'Receita' ? '+' : '-'}
-                      {Number(transaction.valor).toLocaleString('pt-BR', { 
+                      {Math.abs(Number(transaction.valor)).toLocaleString('pt-BR', { 
                         style: 'currency', 
                         currency: 'BRL' 
                       })}
