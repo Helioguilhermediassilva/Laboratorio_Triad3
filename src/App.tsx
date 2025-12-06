@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import AuthGuard from "./components/AuthGuard";
+import SubscriptionGuard from "./components/SubscriptionGuard";
 import Auth from "./pages/Auth";
 import Landing from "./pages/Landing";
 import Index from "./pages/Index";
@@ -35,22 +36,22 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/dashboard" element={<AuthGuard><Index /></AuthGuard>} />
-          <Route path="/imobilizado" element={<AuthGuard><Imobilizado /></AuthGuard>} />
-          <Route path="/aplicacoes" element={<AuthGuard><Aplicacoes /></AuthGuard>} />
-          <Route path="/previdencia" element={<AuthGuard><Previdencia /></AuthGuard>} />
-          <Route path="/orcamentos" element={<AuthGuard><Orcamentos /></AuthGuard>} />
-          <Route path="/livro-caixa" element={<AuthGuard><LivroCaixa /></AuthGuard>} />
-          <Route path="/imposto-renda" element={<AuthGuard><ImpostoRenda /></AuthGuard>} />
-          <Route path="/contas-bancarias" element={<AuthGuard><ContasBancarias /></AuthGuard>} />
-          <Route path="/dividas" element={<AuthGuard><Dividas /></AuthGuard>} />
-          <Route path="/relatorios" element={<AuthGuard><Relatorios /></AuthGuard>} />
-          <Route path="/plano-do-milhao" element={<AuthGuard><PlanoDoMilhao /></AuthGuard>} />
-          <Route path="/testamento" element={<AuthGuard><Testamento /></AuthGuard>} />
-          <Route path="/contrato-namoro" element={<AuthGuard><ContratoNamoro /></AuthGuard>} />
-          <Route path="/analise-inteligente" element={<AuthGuard><AnaliseInteligente /></AuthGuard>} />
-          <Route path="/educacao-financeira" element={<AuthGuard><EducacaoFinanceira /></AuthGuard>} />
-          <Route path="/configuracoes" element={<AuthGuard><Configuracoes /></AuthGuard>} />
+          <Route path="/dashboard" element={<AuthGuard><SubscriptionGuard><Index /></SubscriptionGuard></AuthGuard>} />
+          <Route path="/imobilizado" element={<AuthGuard><SubscriptionGuard><Imobilizado /></SubscriptionGuard></AuthGuard>} />
+          <Route path="/aplicacoes" element={<AuthGuard><SubscriptionGuard><Aplicacoes /></SubscriptionGuard></AuthGuard>} />
+          <Route path="/previdencia" element={<AuthGuard><SubscriptionGuard><Previdencia /></SubscriptionGuard></AuthGuard>} />
+          <Route path="/orcamentos" element={<AuthGuard><SubscriptionGuard><Orcamentos /></SubscriptionGuard></AuthGuard>} />
+          <Route path="/livro-caixa" element={<AuthGuard><SubscriptionGuard><LivroCaixa /></SubscriptionGuard></AuthGuard>} />
+          <Route path="/imposto-renda" element={<AuthGuard><SubscriptionGuard><ImpostoRenda /></SubscriptionGuard></AuthGuard>} />
+          <Route path="/contas-bancarias" element={<AuthGuard><SubscriptionGuard><ContasBancarias /></SubscriptionGuard></AuthGuard>} />
+          <Route path="/dividas" element={<AuthGuard><SubscriptionGuard><Dividas /></SubscriptionGuard></AuthGuard>} />
+          <Route path="/relatorios" element={<AuthGuard><SubscriptionGuard><Relatorios /></SubscriptionGuard></AuthGuard>} />
+          <Route path="/plano-do-milhao" element={<AuthGuard><SubscriptionGuard><PlanoDoMilhao /></SubscriptionGuard></AuthGuard>} />
+          <Route path="/testamento" element={<AuthGuard><SubscriptionGuard><Testamento /></SubscriptionGuard></AuthGuard>} />
+          <Route path="/contrato-namoro" element={<AuthGuard><SubscriptionGuard><ContratoNamoro /></SubscriptionGuard></AuthGuard>} />
+          <Route path="/analise-inteligente" element={<AuthGuard><SubscriptionGuard><AnaliseInteligente /></SubscriptionGuard></AuthGuard>} />
+          <Route path="/educacao-financeira" element={<AuthGuard><SubscriptionGuard><EducacaoFinanceira /></SubscriptionGuard></AuthGuard>} />
+          <Route path="/configuracoes" element={<AuthGuard><SubscriptionGuard><Configuracoes /></SubscriptionGuard></AuthGuard>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
