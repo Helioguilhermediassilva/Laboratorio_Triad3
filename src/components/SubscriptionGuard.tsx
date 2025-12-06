@@ -143,9 +143,9 @@ export default function SubscriptionGuard({ children }: SubscriptionGuardProps) 
           <Button 
             variant="ghost" 
             className="w-full"
-            onClick={() => navigate("/auth")}
+            onClick={() => navigate("/")}
           >
-            Voltar para login
+            Voltar ao início
           </Button>
         </div>
       </Card>
