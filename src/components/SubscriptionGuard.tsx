@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useSubscription } from "@/hooks/use-subscription";
+import { supabase } from "@/integrations/supabase/client";
 import { Loader2, CreditCard, Clock, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -14,6 +15,7 @@ interface SubscriptionGuardProps {
 export default function SubscriptionGuard({ children }: SubscriptionGuardProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const { 
     subscribed, 
     is_trialing, 
@@ -24,22 +26,43 @@ export default function SubscriptionGuard({ children }: SubscriptionGuardProps) 
     checkSubscription
   } = useSubscription();
 
+  // Check authentication first
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate("/auth");
+        return;
+      }
+      setIsAuthenticated(true);
+    };
+    checkAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) {
+        navigate("/auth");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
   // Check for checkout success in URL
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get('checkout') === 'success') {
-      // Remove the query param and refresh subscription
       navigate(location.pathname, { replace: true });
       checkSubscription();
     }
   }, [location, navigate, checkSubscription]);
 
-  if (loading) {
+  // Show loading while checking auth or subscription
+  if (isAuthenticated === null || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-          <p className="text-muted-foreground">Verificando assinatura...</p>
+          <p className="text-muted-foreground">Verificando acesso...</p>
         </div>
       </div>
     );
