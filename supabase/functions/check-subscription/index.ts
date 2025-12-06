@@ -43,15 +43,17 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    // Check if user already has a profile - if so, grant access (existing users bypass Stripe)
-    const { data: profile, error: profileError } = await supabaseClient
-      .from('profiles')
-      .select('id')
-      .eq('id', user.id)
-      .single();
-
-    if (profile && !profileError) {
-      logStep("User has existing profile, granting access", { profileId: profile.id });
+    // Check if user was created before the Stripe integration launch date (legacy users bypass Stripe)
+    // Users created before December 6, 2025 are considered legacy users
+    const legacyCutoffDate = new Date('2025-12-06T00:00:00Z');
+    const userCreatedAt = user.created_at ? new Date(user.created_at) : null;
+    
+    if (userCreatedAt && userCreatedAt < legacyCutoffDate) {
+      logStep("Legacy user detected, granting access", { 
+        userId: user.id, 
+        createdAt: user.created_at,
+        cutoffDate: legacyCutoffDate.toISOString()
+      });
       return new Response(JSON.stringify({
         subscribed: true,
         is_trialing: false,
@@ -64,7 +66,7 @@ serve(async (req) => {
       });
     }
 
-    logStep("No existing profile, checking Stripe subscription");
+    logStep("New user, checking Stripe subscription");
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
