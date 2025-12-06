@@ -25,6 +25,21 @@ export function useSubscription() {
     try {
       setSubscriptionStatus(prev => ({ ...prev, loading: true, error: null }));
       
+      // Use getUser() to validate session with server instead of getSession()
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        setSubscriptionStatus({
+          subscribed: false,
+          is_trialing: false,
+          trial_end: null,
+          subscription_end: null,
+          loading: false,
+          error: null,
+        });
+        return;
+      }
+
+      // Get the session for the access token
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         setSubscriptionStatus({
