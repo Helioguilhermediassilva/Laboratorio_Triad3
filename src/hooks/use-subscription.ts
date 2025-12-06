@@ -38,17 +38,18 @@ export function useSubscription() {
         return;
       }
 
-      const { data, error } = await supabase.functions.invoke('check-subscription', {
+      const response = await supabase.functions.invoke('check-subscription', {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
         },
       });
 
-      // Handle auth errors gracefully - treat as not subscribed
-      if (error) {
-        const errorMsg = error.message || '';
-        if (errorMsg.includes('401') || errorMsg.includes('Authentication') || errorMsg.includes('session')) {
-          console.warn('Session expired, treating as not subscribed');
+      // Handle errors - treat auth errors as not subscribed
+      if (response.error) {
+        const errorName = response.error?.name || '';
+        // FunctionsHttpError means non-2xx response - treat as not subscribed
+        if (errorName === 'FunctionsHttpError') {
+          console.warn('Subscription check returned non-2xx, treating as not subscribed');
           setSubscriptionStatus({
             subscribed: false,
             is_trialing: false,
@@ -59,27 +60,29 @@ export function useSubscription() {
           });
           return;
         }
-        throw error;
+        throw response.error;
       }
 
+      const data = response.data;
       setSubscriptionStatus({
-        subscribed: data.subscribed,
-        is_trialing: data.is_trialing,
-        trial_end: data.trial_end,
-        subscription_end: data.subscription_end,
-        status: data.status,
+        subscribed: data?.subscribed ?? false,
+        is_trialing: data?.is_trialing ?? false,
+        trial_end: data?.trial_end ?? null,
+        subscription_end: data?.subscription_end ?? null,
+        status: data?.status,
         loading: false,
         error: null,
       });
     } catch (error: any) {
       console.error('Error checking subscription:', error);
+      // Fail gracefully - don't block the user
       setSubscriptionStatus({
         subscribed: false,
         is_trialing: false,
         trial_end: null,
         subscription_end: null,
         loading: false,
-        error: null, // Don't show error to user for subscription check failures
+        error: null,
       });
     }
   }, []);
