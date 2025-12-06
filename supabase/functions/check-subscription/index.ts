@@ -43,6 +43,29 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
+    // Check if user already has a profile - if so, grant access (existing users bypass Stripe)
+    const { data: profile, error: profileError } = await supabaseClient
+      .from('profiles')
+      .select('id')
+      .eq('id', user.id)
+      .single();
+
+    if (profile && !profileError) {
+      logStep("User has existing profile, granting access", { profileId: profile.id });
+      return new Response(JSON.stringify({
+        subscribed: true,
+        is_trialing: false,
+        trial_end: null,
+        subscription_end: null,
+        status: "legacy_user"
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
+    logStep("No existing profile, checking Stripe subscription");
+
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     
