@@ -44,7 +44,23 @@ export function useSubscription() {
         },
       });
 
-      if (error) throw error;
+      // Handle auth errors gracefully - treat as not subscribed
+      if (error) {
+        const errorMsg = error.message || '';
+        if (errorMsg.includes('401') || errorMsg.includes('Authentication') || errorMsg.includes('session')) {
+          console.warn('Session expired, treating as not subscribed');
+          setSubscriptionStatus({
+            subscribed: false,
+            is_trialing: false,
+            trial_end: null,
+            subscription_end: null,
+            loading: false,
+            error: null,
+          });
+          return;
+        }
+        throw error;
+      }
 
       setSubscriptionStatus({
         subscribed: data.subscribed,
@@ -57,11 +73,14 @@ export function useSubscription() {
       });
     } catch (error: any) {
       console.error('Error checking subscription:', error);
-      setSubscriptionStatus(prev => ({
-        ...prev,
+      setSubscriptionStatus({
+        subscribed: false,
+        is_trialing: false,
+        trial_end: null,
+        subscription_end: null,
         loading: false,
-        error: error.message || 'Failed to check subscription',
-      }));
+        error: null, // Don't show error to user for subscription check failures
+      });
     }
   }, []);
 
