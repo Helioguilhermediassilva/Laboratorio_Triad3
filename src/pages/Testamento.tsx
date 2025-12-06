@@ -162,26 +162,56 @@ export default function Testamento() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data, error } = await supabase
+    // Fetch testamentos
+    const { data: testamentosData, error: testamentosError } = await supabase
       .from('testamentos')
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error loading testamentos:', error);
+    if (testamentosError) {
+      console.error('Error loading testamentos:', testamentosError);
       return;
     }
 
+    // Fetch beneficiaries for all testamentos
+    const { data: beneficiariosData, error: beneficiariosError } = await supabase
+      .from('beneficiarios_testamento')
+      .select('*');
+
+    if (beneficiariosError) {
+      console.error('Error loading beneficiarios:', beneficiariosError);
+    }
+
+    // Fetch bens_imobilizados for listing as included assets
+    const { data: bensData, error: bensError } = await supabase
+      .from('bens_imobilizados')
+      .select('*')
+      .eq('user_id', user.id);
+
+    if (bensError) {
+      console.error('Error loading bens:', bensError);
+    }
+
     // Transform data to match expected format
-    const transformed = (data || []).map((t: any) => ({
-      ...t,
-      dataElaboracao: new Date(t.data_elaboracao).toLocaleDateString('pt-BR'),
-      ultimaAtualizacao: new Date(t.updated_at).toLocaleDateString('pt-BR'),
-      testamenteiro: t.titulo,
-      beneficiarios: [],
-      bensIncluidos: []
-    }));
+    const transformed = (testamentosData || []).map((t: any) => {
+      // Get beneficiaries for this testamento
+      const testamentoBeneficiarios = (beneficiariosData || [])
+        .filter((b: any) => b.testamento_id === t.id)
+        .map((b: any) => b.nome);
+
+      // Get all user's assets as included assets (can be customized later)
+      const bensIncluidos = (bensData || []).map((b: any) => `${b.nome} - ${b.categoria}`);
+
+      return {
+        ...t,
+        dataElaboracao: new Date(t.data_elaboracao).toLocaleDateString('pt-BR'),
+        ultimaAtualizacao: new Date(t.updated_at).toLocaleDateString('pt-BR'),
+        testamenteiro: t.titulo,
+        beneficiarios: testamentoBeneficiarios,
+        bensIncluidos: bensIncluidos
+      };
+    });
 
     setTestamentos(transformed);
   };
@@ -225,7 +255,7 @@ export default function Testamento() {
   // Calculations
   const testamentosAtivos = testamentos.filter(t => t.status === "Vigente").length;
   const testamentosRascunho = testamentos.filter(t => t.status === "Rascunho").length;
-  const totalBeneficiarios = 0;
+  const totalBeneficiarios = testamentos.reduce((acc, t) => acc + (t.beneficiarios?.length || 0), 0);
 
   return (
     <Layout>
