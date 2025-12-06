@@ -26,11 +26,13 @@ export default function SubscriptionGuard({ children }: SubscriptionGuardProps) 
     checkSubscription
   } = useSubscription();
 
-  // Check authentication first
+  // Check authentication first - use getUser() to validate token with server
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error || !user) {
+        // Clear any stale session
+        await supabase.auth.signOut();
         navigate("/auth");
         return;
       }
@@ -39,7 +41,7 @@ export default function SubscriptionGuard({ children }: SubscriptionGuardProps) 
     checkAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!session) {
+      if (event === 'SIGNED_OUT' || !session) {
         navigate("/auth");
       }
     });
